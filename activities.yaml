@@ -1,0 +1,103 @@
+# Hand-curated activities for everyday life in a German-speaking country.
+# `id` is stable — don't rename once used; word_activities rows point to it.
+# Keep `name` short (it fits on the card) and `description` concrete.
+
+- id: doctor
+  name: At the doctor
+  description: Appointments, symptoms, prescriptions, test results.
+
+- id: pharmacy
+  name: Pharmacy
+  description: Rezept, side effects, dosage, over-the-counter.
+
+- id: health_insurance
+  name: Health insurance & admin
+  description: Krankenkasse, forms, co-pays, specialist referrals.
+
+- id: shopping
+  name: Groceries & shopping
+  description: Supermarkt, prices, Pfand, bakery, weighing produce.
+
+- id: clothes
+  name: Clothes shopping
+  description: Sizes, fitting rooms, returns, materials.
+
+- id: work
+  name: Work & meetings
+  description: Office, colleagues, deadlines, calls, agendas.
+
+- id: email
+  name: Email & writing
+  description: Formal greetings, requests, attachments, replies.
+
+- id: flat_hunt
+  name: Finding a flat
+  description: Besichtigung, contracts, deposit, Nebenkosten.
+
+- id: landlord
+  name: Landlord & utilities
+  description: Rent, bills, repairs, Nachbarn, Hausordnung.
+
+- id: anmeldung
+  name: Bureaucracy & Anmeldung
+  description: Bürgeramt, forms, residence permit, appointments.
+
+- id: banking
+  name: Banking & money
+  description: Konto, Überweisung, cards, fees, loans.
+
+- id: restaurant
+  name: Restaurant & cafe
+  description: Ordering, splitting the bill, dietary needs, reservations.
+
+- id: cooking
+  name: Cooking & recipes
+  description: Ingredients, utensils, steps, measurements.
+
+- id: transport
+  name: Public transport
+  description: Tickets, delays, platforms, apps, lost items.
+
+- id: driving
+  name: Driving & cars
+  description: Petrol, parking, Werkstatt, directions, Autobahn.
+
+- id: directions
+  name: Directions & navigation
+  description: Asking where things are, left/right, nearby landmarks.
+
+- id: smalltalk
+  name: Small talk & weather
+  description: Greetings, weekend plans, weather, light complaints.
+
+- id: family
+  name: Family & relationships
+  description: Partner, siblings, parents, visits, feelings.
+
+- id: kids
+  name: Kids & school
+  description: Kita, parent-teacher, homework, playdates, sickness.
+
+- id: hobbies
+  name: Hobbies & sports
+  description: Clubs, gym, outdoors, music, games.
+
+- id: travel
+  name: Travel & holidays
+  description: Flights, hotels, luggage, sightseeing.
+
+- id: hotel
+  name: Hotels & accommodation
+  description: Check-in, breakfast, keys, complaints, Wi-Fi.
+
+- id: tech
+  name: Phone, internet & tech
+  description: Contracts, Wi-Fi, apps, bugs, cancellations.
+
+- id: dating
+  name: Dating & going out
+  description: Bars, clubs, feelings, plans, chatter.
+
+- id: news
+  name: News & opinions
+  description: Headlines, politics, current events, personal views.

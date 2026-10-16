@@ -1,0 +1,10 @@
+.env
+.venv/
+node_modules/
+dist/
+data/
+__pycache__/
+*.pyc
+.DS_Store
+test-results/
+playwright-report/
