@@ -25,11 +25,11 @@ Vocabulary data must exist at `data/vocab.sqlite`. This checkout includes a loca
 
 ## Learning flow
 
-- **Garden:** each planted topic is a raised patch of land, with one plant per word. Select a patch for a closer view, then select a plant to see its vocabulary and growth. Reviews grow plants through six stages; learned words display mature trees. A word belonging to several topics appears in each relevant patch, sharing the same progress. All planted levels remain visible. The seed bag, unexplored topics, and progress totals expand on demand.
+- **Garden:** each planted topic is a raised patch of land, with one plant per word. Select a patch for a closer view, then select a plant to see its vocabulary and growth. Reviews grow plants through six stages; learned words display sunflowers. A word belonging to several topics appears in each relevant patch, sharing the same progress. All planted levels remain visible. The seed bag, unexplored topics, and progress totals expand on demand.
 - **Find words:** topic selection sits on the left, the word card in the centre, and the seed bag on the right. Selecting a topic applies immediately; expand “Describe a situation” for free-text guidance. Keep, set aside, or mark known words using the original adaptive feed logic.
 - **Seed bag:** practise new words without changing progress; rating a seed in Review plants it automatically. A bag holds up to 20 seeds; review one to make room when full.
-- **Review:** reveal the meaning and grade Again / Hard / Good / Easy to update the existing spaced-repetition scheduler. The original app also permits early reviews.
-- **Practice:** flashcards, conversation, reading, and grammar. The original flashcard “Learned” action is preserved and counts the word as fully grown.
+- **Review:** reveal the meaning and grade Again / Hard / Good / Easy to update the existing spaced-repetition scheduler. Review finishes when no new or currently due words remain.
+- **Practice:** flashcards, conversation, reading, and grammar. Practice does not change growth or planting.
 - **Profiles:** use the name button in the header to switch learners. New profiles choose a level before learning.
 
 AI guidance, conversations, reading, and grammar use the existing Anthropic integration. The local `.env` configuration was copied from GermanMatch without changing the original. For a fresh setup, copy `.env.example` to `.env` and set `ANTHROPIC_API_KEY`. Standard discovery, flashcards, and reviews work without AI. Keys stay on the Python server.
@@ -70,4 +70,129 @@ Then open **http://127.0.0.1:8000**. Restart that process after rebuilding front
 - `pipeline/`, `schema.sql`, `activities.yaml`: original vocabulary pipeline and schema. Raw pipeline inputs are not duplicated here.
 - `tests/`: API integration tests using Python’s built-in unittest runner.
 
-The existing Python app takes precedence when it differs from `vocab-garden-ux.md`. `AGENTS.md` has been left unchanged.
+Product behavior is documented in `vocab-garden-ux.md`; repository commands and conventions are in `AGENTS.md`.
+
+## Supabase + GitHub Pages
+
+The cloud version serves the static React app on GitHub Pages and runs the API in
+`supabase/functions/garden/`. Supabase Auth provides email/password login;
+PostgreSQL holds shared vocabulary and private progress. The original Python app
+still works when the frontend has no Supabase environment variables.
+
+For this private garden, accounts are created by the owner. There is no public
+signup screen. Disable **Allow new users to sign up** in the hosted Supabase Auth
+settings before publishing; the local configuration already disables signup.
+
+### Local cloud development
+
+Requires Node 22+, Python 3, Docker and the Supabase CLI. From the repository root:
+
+```bash
+npm ci
+supabase start
+supabase functions serve garden
+```
+
+The project uses its own ports to coexist with other local Supabase projects:
+API `http://127.0.0.1:55321`, database `55322`, Studio `55323`.
+In another terminal, copy `.env.cloud.example` to `.env.local`, set the URL to the
+local API URL, and set the publishable key to the local **anon** key from
+`supabase status`. Never use the service-role key in the frontend. Then run
+`npm run dev`. Restart Vite when changing these settings.
+
+Import vocabulary before using the app:
+
+```bash
+python3 scripts/export-supabase.py --output data/supabase-content.sql
+psql 'postgresql://postgres:postgres@127.0.0.1:55322/postgres' -v ON_ERROR_STOP=1 -f data/supabase-content.sql
+```
+
+Create a test account in local Studio → Authentication → Users (email confirmed,
+with a password). Use that account on the sign-in screen. For optional local AI,
+copy `supabase/.env.example` to `supabase/.env`, fill in the Anthropic key and run
+`supabase functions serve garden --env-file supabase/.env`. Keep this file private.
+The Edge Function caches vocabulary for up to one minute after imports.
+
+### Create the hosted backend
+
+1. Create a Supabase project, choose a nearby region, and keep its database password.
+2. Run `supabase login`, then `supabase link --project-ref YOUR_PROJECT_REF`.
+3. Run `supabase db push` to apply the migration, then disable public signup in Auth.
+4. Create your two accounts in Authentication → Users with confirmed emails and
+   passwords. Their UUIDs identify which existing profile belongs to each account.
+5. Export each profile, supplying the corresponding account UUID:
+
+```bash
+python3 scripts/export-supabase.py --profile data/profiles/leo.sqlite --user-id ACCOUNT_UUID --output data/supabase-leo.sql
+```
+
+Run the generated SQL against the hosted database using `psql`, with the session
+pooler connection details from Supabase's **Connect** dialog (use `-W` to enter the
+password interactively), or the SQL Editor for small exports. The file imports
+vocabulary plus progress in one transaction. Repeat with the other profile and
+its account UUID. Import **before the first app login**, because the app creates
+an empty progress record on first access. An existing progress record makes the
+import fail; it never silently replaces cloud progress. Local databases are read
+only and remain unchanged. Export files contain private data and belong under
+ignored `data/`, never in the public repository.
+
+6. Set the function secrets from a private file:
+
+```bash
+supabase secrets set --env-file supabase/.env
+supabase functions deploy garden
+```
+
+Set `ALLOWED_ORIGINS` to the exact site origin, for example
+`https://YOUR_USERNAME.github.io` (without the repository path). Add a custom
+origin if using a custom domain. `ANTHROPIC_API_KEY` is optional; without it,
+flashcards, discovery and reviews work, but AI practice is unavailable.
+The function validates each user token through Supabase Auth before accessing
+any data, including when gateway JWT verification is disabled in the config.
+
+### Publish the frontend
+
+1. Create a GitHub repository and push this project. GitHub Free Pages requires a
+   public repository; only source code and built browser assets belong there.
+2. In repository **Settings → Secrets and variables → Actions → Variables**, add:
+   - `VITE_SUPABASE_URL`: your hosted project URL.
+   - `VITE_SUPABASE_PUBLISHABLE_KEY`: the public publishable key (legacy anon keys
+     also work). Never put a service-role or Anthropic key here.
+3. In **Settings → Pages**, choose **GitHub Actions** as the source.
+4. Run **Deploy GitHub Pages** from the Actions tab. Deployment is deliberately
+   manual so code pushes do not publish unfinished changes.
+
+The workflow tests the cloud logic, builds with the correct repository base path,
+and publishes `dist/`. Routes use `/#/…` so direct navigation and refresh work on
+GitHub Pages. No Python server is needed in production. Supabase functions and
+migrations are deployed separately with the CLI commands above.
+
+### Cloud verification
+
+```bash
+npm run check:cloud
+npm run test:cloud
+npm run build
+```
+
+These tests run without Docker or network access, using embedded PostgreSQL for
+migration/RLS tests. They cover scheduler parity with Python, all planting ratings,
+practice immutability, review completion, learned words, concurrent writes and
+account isolation. With `supabase start` and `supabase functions serve garden`
+running, also run:
+
+```bash
+node --import tsx tests/cloud/local-integration.ts
+# Also verify the built site on a GitHub-style repository subpath:
+node --import tsx tests/cloud/local-integration.ts --browser
+```
+
+This uses only the dedicated local stack, creates temporary accounts and vocabulary,
+checks real Auth/API/RLS behavior, and removes its fixtures. It does not call AI. The browser variant needs Playwright Chromium (`npx playwright install chromium`), builds into ignored `dist-cloud/`, and writes screenshots to `test-results/`.
+
+Progress is stored as one versioned JSON document per learner. This keeps the
+existing per-profile behavior and makes imports straightforward for a small private
+app. The Edge Function uses compare-and-swap writes with conflict retries; it
+rechecks capacity and review eligibility each time. Content tables are shared and
+read-only to users. Revisit the document model before expanding to large accounts
+or analytics workloads. Keep independent backups of important learner progress.

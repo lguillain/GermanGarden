@@ -1,38 +1,57 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
+## Product specification
 
-This repository currently contains the product specification for Vocab Garden, a German vocabulary web app. `vocab-garden-ux.md` defines terminology, word states, and user flows. Read it before proposing implementation or changing behavior.
+Read `vocab-garden-ux.md` before changing behavior. Keep product decisions there.
+Use the domain terms seed bank, seed bag, garden, practice, and review consistently.
 
-There are no source, test, or asset directories yet. When adding the application, establish clear locations for these components and update this guide with the actual structure. Keep product decisions in the UX document rather than scattering them across implementation notes.
+## Structure
 
-## Build, Test, and Development Commands
+- `frontend/src/`: React/TypeScript app and SVG garden artwork.
+- `supabase/migrations/`: PostgreSQL schema, RLS policies and atomic write functions.
+- `supabase/functions/garden/`: TypeScript Edge Function, domain rules and AI prompts.
+- `app/`: original Python/FastAPI backend, retained for local use and parity checks.
+- `pipeline/`, `schema.sql`: offline SQLite vocabulary pipeline.
+- `scripts/export-supabase.py`: read-only SQLite-to-PostgreSQL export.
+- `tests/cloud/`: TypeScript domain, PostgreSQL and local Supabase integration tests.
+- `tests/test_*.py`: original API and migration tests; `tests/browser/`: Playwright.
+- `.github/workflows/pages.yml`: manually triggered GitHub Pages deployment.
+- `data/`: ignored private SQLite databases and generated exports; never publish.
 
-No build system, package manifest, development server, or automated test runner is configured. There are currently no build or test commands to run.
+## Commands (repository root)
 
-When introducing tooling, document the exact install, local development, build, lint, and test commands here. Ensure each command works from the repository root.
+- Install frontend/test dependencies: `npm ci`.
+- Install legacy backend: `python3 -m venv .venv`, then `.venv/bin/pip install -r requirements.txt`.
+- Legacy development: `./scripts/dev.sh`.
+- Cloud development: `supabase start`, `supabase functions serve garden`, then `npm run dev` with `.env.local` configured as described in README.
+- Build and frontend typecheck: `npm run build`.
+- Cloud typecheck: `npm run check:cloud`.
+- Cloud tests: `npm run test:cloud` (Node 22+ and Python 3; no Docker required).
+- Local Auth/API integration: `node --import tsx tests/cloud/local-integration.ts` (local Supabase and function must be running).
+- Legacy API tests: `.venv/bin/python -m unittest discover -s tests -v`.
+- Legacy browser tests: `npm run build`, then `npm run test:e2e` (requires Playwright Chromium and no cloud variables in the build).
+- No separate lint tool is configured; run typechecks and `git diff --check`.
 
-## Coding Style & Naming Conventions
+## Style and tests
 
-For Markdown, use descriptive headings, short paragraphs, hyphenated bullet lists, and tables for comparable states or terms. Use lowercase, hyphen-separated filenames, following `vocab-garden-ux.md`.
+Use strict TypeScript, clear domain names, and lowercase hyphenated new filenames.
+Keep learning rules in the cloud domain module; keep HTTP, authentication and
+persistence in the handler/service. Match the original scheduler using parity tests.
+Never accept a user ID from the browser to choose whose progress to read or write.
 
-No programming language, formatter, or linter has been selected. Establish language-specific conventions alongside the first implementation. Reuse the specification's domain terms consistently: seed bank, seed bag, garden, practice, and review.
+Verify meaningful behavior changes, especially:
 
-## Testing Guidelines
+- A seed bag holds at most 20 words, including concurrent additions.
+- A review plants only its rated seed immediately and removes it from the bag.
+- Practice never plants words or changes growth; only reviews change growth.
+- Learned words remain fully grown and never wilt.
+- Reviews stop when there are no new/currently due words.
+- Accounts cannot access or overwrite each other's progress.
+- Imports preserve source data and never silently replace cloud progress.
 
-No testing framework or coverage threshold exists yet. Documentation changes should be checked for clear wording and consistency with the UX specification.
+## Git and deployment
 
-When implementing behavior, test these core rules:
-
-- A seed bag holds at most 20 words and plants automatically when full.
-- Practice never changes growth stages; reviews do.
-- Learned words remain fully grown.
-- Planting empties the seed bag and places words under their topics.
-
-Document test locations, naming conventions, and execution commands when tests are introduced.
-
-## Commit & Pull Request Guidelines
-
-No Git metadata or commit history is available in this checkout, so no existing commit convention can be inferred. Use concise, imperative commit subjects, such as `Clarify seed bag planting behavior`.
-
-Pull requests should explain the change, identify affected user flows, link relevant issues when available, and describe validation performed. Include screenshots for visual changes. Update the UX specification whenever intended product behavior changes.
+Use concise imperative commit subjects. PRs describe affected flows and validation;
+include screenshots for visual changes. Keep `.env`, server keys, database copies,
+and SQL exports out of commits. Public browser configuration is limited to the
+Supabase URL and publishable key. Document deployment steps in README.

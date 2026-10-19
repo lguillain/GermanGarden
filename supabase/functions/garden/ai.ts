@@ -1,0 +1,78 @@
+import { Garden, grammarOptions } from './domain.ts';
+import { requireThat, HttpError } from './model.ts';
+import { READ_SYSTEM, CHAT_SYSTEM, GRAMMAR_GEN_SYSTEM, GRAMMAR_CHECK_SYSTEM, LEVEL_GUIDANCE, GUIDE_SYSTEM, REFLECT_SYSTEM } from './prompts.ts';
+export type Body = Record<string, unknown>;
+export type Message = { role: 'user' | 'assistant'; content: string; corrections?: unknown[] };
+export type Complete = (system: string, message: string, history?: Message[]) => Promise<Record<string, unknown>>;
+export function text(body: Body, key: string, fallback = '', max = 3000): string {
+  const value = body[key] ?? fallback;
+  requireThat(typeof value === 'string' && value.length <= max, `Invalid ${key}.`);
+  return value;
+}
+function format(template: string, values: Record<string, string>) {
+  return template.replace(/\{(level|level_rule|targets)\}/g, (_, key) => values[key] || '').replaceAll('{{', '{').replaceAll('}}', '}');
+}
+function corrections(data: Record<string, unknown>, sentence: string) {
+  return (Array.isArray(data.corrections) ? data.corrections : []).filter(c => c && typeof c.original === 'string' && typeof c.corrected === 'string' && c.original && c.original !== c.corrected && sentence.toLowerCase().includes(c.original.toLowerCase())).map(c => ({ original: c.original, corrected: c.corrected, note: String(c.note || '') }));
+}
+export async function aiPractice(path: string, body: Body, garden: Garden, complete: Complete) {
+  const level = garden.state.user.level || 'A2';
+  const values = { level, level_rule: LEVEL_GUIDANCE[level as keyof typeof LEVEL_GUIDANCE] || LEVEL_GUIDANCE.A2, targets: '' };
+  if (path === '/reading') {
+    const targets = garden.targets(text(body, 'scope', 'all'), text(body, 'topic'));
+    const result = await complete(format(READ_SYSTEM, values), 'Target words: ' + JSON.stringify(targets.map(w => ({ lemma: w.lemma, article: w.article, english: w.english, level: w.level }))));
+    requireThat(typeof result.de === 'string' && typeof result.en === 'string', 'The AI returned an incomplete passage. Try again.', 502);
+    return { targets, text: { setting: String(result.setting || ''), de: result.de, en: result.en } };
+  }
+  if (path === '/chat') {
+    const ids = body.target_ids ?? []; requireThat(Array.isArray(ids) && ids.length <= 5 && ids.every(id => typeof id === 'string'), 'Invalid target words.');
+    const pool = garden.scope(text(body, 'scope', 'all'), text(body, 'topic'));
+    requireThat(ids.every(id => pool.some(w => w.id === id)), 'Choose words from the current practice set.');
+    const targets = ids.length ? [...new Set(ids)].map(id => garden.sentence(garden.word(id))) : garden.targets(text(body, 'scope', 'all'), text(body, 'topic'));
+    values.targets = targets.map(w => w.lemma).join(', ');
+    const history = body.history ?? [];
+    requireThat(Array.isArray(history) && history.length <= 100 && history.every(m => m && ['user', 'assistant'].includes(m.role) && typeof m.content === 'string' && m.content.length <= 20000), 'Invalid conversation.');
+    const message = text(body, 'message').trim();
+    if (ids.length) requireThat(message, 'Write a message first.');
+    const result = await complete(format(CHAT_SYSTEM, values), ids.length ? message : 'Open with a greeting and a friendly question inviting use of a target word.', ids.length ? history : []);
+    requireThat(typeof result.reply === 'string', 'The AI returned an incomplete reply. Try again.', 502);
+    const updated: Message[] = ids.length ? [...history, { role: 'user', content: message, corrections: corrections(result, message) }, { role: 'assistant', content: result.reply }] : [{ role: 'assistant', content: result.reply }];
+    const userWords = updated.filter(m => m.role === 'user').map(m => m.content.toLowerCase()).join(' ').match(/[\p{L}]+/gu) || [];
+    const used = targets.filter(w => {
+      const lemma = w.lemma.toLowerCase(), stems = [lemma];
+      for (const end of ['en', 'ern', 'eln', 'e', 'n']) if (lemma.endsWith(end) && lemma.length - end.length >= 3) stems.push(lemma.slice(0, -end.length));
+      return userWords.some(word => stems.some(stem => word.startsWith(stem)));
+    }).map(w => w.lemma);
+    return { targets, history: updated, used };
+  }
+  if (path === '/grammar') {
+    const word = garden.word(text(body, 'word_id')); requireThat(garden.kept(word.id), 'Kept word not found.', 404);
+    const supplied = body.config ?? {}; requireThat(supplied && typeof supplied === 'object' && !Array.isArray(supplied), 'Invalid grammar options.');
+    const config: Record<string, string> = {};
+    for (const [key, options] of Object.entries(grammarOptions[word.pos] || {})) {
+      const value = (supplied as Body)[key] ?? options[0]; requireThat(typeof value === 'string' && options.includes(value), 'Choose a valid grammar option.'); config[key] = value;
+    }
+    const action = text(body, 'action', 'generate'); requireThat(['generate', 'correct'].includes(action), 'Invalid grammar action.');
+    const sentence = text(body, 'sentence').trim(); if (action === 'correct') requireThat(sentence, 'Write a sentence first.');
+    const result = await complete(format(action === 'correct' ? GRAMMAR_CHECK_SYSTEM : GRAMMAR_GEN_SYSTEM, values), `Target: ${JSON.stringify(word)}\nConfiguration: ${JSON.stringify(config)}\nLearner sentence: ${sentence}`);
+    return action === 'correct' ? { ...result, corrections: corrections(result, sentence) } : result;
+  }
+  throw new HttpError(404, 'Unknown AI activity.');
+}
+export async function guidance(garden: Garden, input: string, complete: Complete) {
+  const result = await complete(GUIDE_SYSTEM + '\nActivities:\n' + JSON.stringify(garden.catalog.activities), input);
+  const weights: Record<string, number> = {};
+  for (const a of garden.catalog.activities) weights[a.id] = typeof result[a.id] === 'number' && Number.isFinite(result[a.id]) ? Math.max(.3, Math.min(3, result[a.id] as number)) : 1;
+  return weights;
+}
+
+export async function recommendTopic(garden: Garden, exclude: string, complete: Complete): Promise<string | undefined> {
+  const keeps = garden.state.swipes.filter(s => s.action === 'keep').slice(-40);
+  if (keeps.length < 5) return;
+  const candidates = garden.catalog.activities.filter(a => a.id !== exclude && garden.catalog.words.some(w => w.level === (garden.state.user.level || 'A2') && garden.inTopic(w.id, a.id) && garden.unseen(w)));
+  if (!candidates.length) return;
+  try {
+    const result = await complete(REFLECT_SYSTEM + '\nShortlist: ' + JSON.stringify(candidates), 'Recent keeps: ' + JSON.stringify(keeps.map(s => ({ ...garden.word(s.word_id), activity_id: s.activity_id }))));
+    return candidates.find(a => a.id === result.activity_id)?.id;
+  } catch { return; } // Discovery still works when AI is unavailable.
+}

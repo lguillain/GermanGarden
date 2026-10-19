@@ -1,0 +1,35 @@
+project_id = "vocab-garden"
+
+[api]
+enabled = true
+port = 55321
+schemas = ["public", "graphql_public"]
+max_rows = 1000
+
+[db]
+port = 55322
+shadow_port = 55320
+major_version = 17
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173", "http://127.0.0.1:5173"]
+enable_signup = false
+
+[functions.garden]
+# Authentication is performed by auth.getUser(token) before any data access.
+# This also supports projects with asymmetric JWT signing keys.
+verify_jwt = false
+
+[studio]
+port = 55323
+
+[inbucket]
+port = 55324
+
+[analytics]
+enabled = false
+
+[edge_runtime]
+inspector_port = 8183

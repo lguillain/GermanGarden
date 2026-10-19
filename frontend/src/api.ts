@@ -1,17 +1,30 @@
+import { supabase, cloudApiUrl, publishableKey } from './supabase';
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
 export async function api<T>(path: string, body?: unknown, method?: string): Promise<T> {
   const requestMethod = method ?? (body === undefined ? 'GET' : 'POST');
+  if (supabase && path === '/profile' && requestMethod === 'DELETE') {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw new ApiError(503, error.message);
+    return { ok: true } as T;
+  }
+  const headers: Record<string, string> = body === undefined ? {} : { 'Content-Type': 'application/json' };
+  if (supabase) {
+    const { data, error } = await supabase.auth.getSession();
+    if (error || !data.session) throw new ApiError(401, 'Please sign in.');
+    headers.Authorization = `Bearer ${data.session.access_token}`;
+    headers.apikey = publishableKey;
+  }
   let response: Response;
   try {
-    response = await fetch(`/api${path}`, {
+    response = await fetch(`${supabase ? cloudApiUrl : '/api'}${path}`, {
       method: requestMethod,
-      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+      headers,
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
-    throw new ApiError(0, 'Cannot reach the app. Check that your local server is running.');
+    throw new ApiError(0, 'Cannot reach the app. Check your connection and try again.');
   }
   const result = await response.json().catch(() => null);
   if (!response.ok) {
