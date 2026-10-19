@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient
 import { BrowserRouter, Link, Navigate, NavLink, Outlet, Route, Routes, useLocation, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
 import { api, ApiError } from './api';
 import type { Activity, Card, Chat, Correction, Garden, Grammar, GrammarOptions, Matcher, Session, Time, Topic, Word } from './api';
-import GardenScene, { TopicScene } from './GardenScene';
+import GardenScene, { PlantIcon, SeedIcon, TopicScene } from './GardenScene';
 import './styles.css';
 
 const client = new QueryClient({ defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false }, mutations: { retry: false } } });
@@ -24,13 +24,22 @@ function useScope() {
   const label = scope === 'bag' ? 'Seed bag' : scope === 'topic' ? activities.find(a => a.id === topic)?.name || 'Topic' : 'Your garden';
   return { scope, topic, label, query: `?${new URLSearchParams({ scope, topic })}` };
 }
+function WordSetSwitch({ page, counts }: { page: '/practice' | '/review'; counts?: { plants: number; seeds: number } }) {
+  const { scope, topic } = useScope();
+  return (
+    <div className="word-set-switch" role="group" aria-label="Word set">
+      <Link className={`button${scope !== 'bag' ? ' primary' : ''}`} aria-current={scope !== 'bag' ? 'true' : undefined} to={`${page}?${new URLSearchParams({ scope: topic ? 'topic' : 'all', topic })}`}><span aria-hidden="true"><PlantIcon /></span>Plants{counts && <span className="word-set-count">{counts.plants}</span>}</Link>
+      <Link className={`button${scope === 'bag' ? ' primary' : ''}`} aria-current={scope === 'bag' ? 'true' : undefined} to={`${page}?${new URLSearchParams({ scope: 'bag', topic })}`}><span aria-hidden="true"><SeedIcon /></span>Seeds{counts && <span className="word-set-count">{counts.seeds}</span>}</Link>
+    </div>
+  );
+}
 function ScopeLinks({ scope = 'all', topic = '', disabled = false }: { scope?: string; topic?: string; disabled?: boolean }) {
   const query = `?${new URLSearchParams({ scope, topic })}`;
   return disabled ? <span className="muted">Plant words to practise and review</span> : <div className="actions"><Link className="button" to={`/practice${query}`}>Practice</Link><Link className="button" to={`/review${query}`}>Review</Link></div>;
 }
-function WordTitle({ word }: { word: Word }) { return <span lang="de">{word.article && <span className="article">{word.article} </span>}{word.lemma}</span>; }
-function WordCard({ word, revealed, onReveal }: { word: Word; revealed: boolean; onReveal: () => void }) {
-  return <article className="panel word-card"><div className="word-meta">{word.level} <span>·</span> {word.pos}</div><h2><WordTitle word={word} /></h2>
+function WordTitle({ word, showArticle = true }: { word: Word; showArticle?: boolean }) { return <span lang="de">{showArticle && word.article && <span className="article">{word.article} </span>}{word.lemma}</span>; }
+function WordCard({ word, revealed, onReveal, hideArticleUntilRevealed = false }: { word: Word; revealed: boolean; onReveal: () => void; hideArticleUntilRevealed?: boolean }) {
+  return <article className="panel word-card"><div className="word-meta">{word.level} <span>·</span> {word.pos}</div><h2><WordTitle word={word} showArticle={!hideArticleUntilRevealed || revealed} /></h2>
     {word.plural && <p className="muted" lang="de">Plural: {word.plural}</p>}
     {word.de && <p className="sentence" lang="de">{word.de}</p>}
     {revealed ? <div className="translation"><strong>{word.english}</strong>{word.en && <p>{word.en}</p>}</div> : <button className="button" onClick={onReveal}>Show translation</button>}
@@ -82,17 +91,13 @@ function Shell() {
   </>;
 }
 function Bag({ words, collapsed = false, concise = false }: { words: Word[]; collapsed?: boolean; concise?: boolean }) {
-  const cache = useQueryClient();
-  const [notice, setNotice] = useState('');
-  const plant = useMutation({ mutationFn: () => api<{ planted: number }>('/plant', {}), onSuccess: () => { setNotice('Words planted in your garden.'); cache.invalidateQueries(); } });
   const content = <>
-    {!concise && <p className="muted small">New words stay here until you plant them. At 20, they plant automatically.</p>}
-    {words.length ? <><ul className="bag-words">{words.map(w => <li key={w.id}><WordTitle word={w} />{!concise && <span className="muted small">{w.english}</span>}</li>)}</ul><ScopeLinks scope="bag" /><button className="primary full-width" disabled={plant.isPending} onClick={() => plant.mutate()}>Plant {words.length} {words.length === 1 ? 'word' : 'words'}</button></> : <><p className="muted">Your seed bag is empty.</p><Link className="button primary" to="/matcher">Find words</Link></>}
+    {!concise && <p className="muted small">Review a seed to plant it in your garden.</p>}
+    {words.length ? <><ul className="bag-words">{words.map(w => <li key={w.id}><WordTitle word={w} />{!concise && <span className="muted small">{w.english}</span>}</li>)}</ul><div className="actions"><Link className="button" to="/practice?scope=bag">Practice</Link><Link className="button primary" to="/review?scope=bag">Plant</Link></div></> : <><p className="muted">Your seed bag is empty.</p><Link className="button primary" to="/matcher">Find words</Link></>}
   </>;
   const count = <span className="badge">{words.length} / 20</span>;
   return <aside className={collapsed ? 'garden-bag' : 'panel bag'} aria-label="Seed bag">
     {collapsed ? <details className="disclosure"><summary><span>Seed bag</span>{count}</summary><div className="disclosure-body">{content}</div></details> : <><div className="section-heading"><h2>Seed bag</h2>{count}</div>{content}</>}
-    {notice && <p className="small" role="status">{notice}</p>}<ErrorNotice error={plant.error} />
   </aside>;
 }
 const topicStages = [
@@ -103,17 +108,10 @@ const topicStages = [
   ['grown', 'Grown / Learned'],
 ] as const;
 function TopicProgress({ counts, labelled = false }: { counts: Topic['overview']; labelled?: boolean }) {
-  const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
-  const shares = topicStages.map(([key]) => total ? counts[key] / total * 100 : 0);
-  // Largest remainders make displayed whole percentages add up to exactly 100.
-  const percentages = shares.map(Math.floor);
-  const remaining = (total ? 100 : 0) - percentages.reduce((sum, value) => sum + value, 0);
-  const order = shares.map((value, index) => ({ index, remainder: value - percentages[index] })).sort((a, b) => b.remainder - a.remainder);
-  for (let i = 0; i < remaining; i++) percentages[order[i].index]++;
-  const description = topicStages.map(([key, label], index) => `${label}: ${percentages[index]}% (${counts[key]} words)`).join(', ');
+  const description = topicStages.map(([key, label]) => `${label}: ${counts[key]} words`).join(', ');
   return <span className={`topic-distribution${labelled ? ' topic-distribution-full' : ''}`} role="img" aria-label={description}>
     <span className="topic-bar" aria-hidden="true">{topicStages.map(([key, label]) => <span key={key} className={`stage-${key}`} style={{ flexGrow: counts[key] }} title={`${label}: ${counts[key]} words`} />)}</span>
-    <span className="topic-percentages" aria-hidden="true">{topicStages.map(([key, label], index) => <span key={key} title={label}><i className={`stage-${key}`} />{labelled && <span>{label}</span>}{percentages[index]}%</span>)}</span>
+    <span className="topic-counts" aria-hidden="true">{topicStages.map(([key, label]) => <span key={key} title={`${label}: ${counts[key]} words`}><i className={`stage-${key}`} />{labelled && <span>{label}</span>}{counts[key]}</span>)}</span>
   </span>;
 }
 function TopicList({ topics }: { topics: Topic[] }) {
@@ -171,9 +169,9 @@ function TopicPage() {
   const [notice, setNotice] = useState('');
   const result = useQuery({ queryKey: ['topic', topic], queryFn: () => api<{ activity: Activity; words: Word[] }>(`/topics/${encodeURIComponent(topic)}`) });
   const add = useMutation({
-    mutationFn: (word: Word) => api<{ added: boolean; auto_planted: boolean }>(`/topics/${encodeURIComponent(topic)}/words/${encodeURIComponent(word.id)}/keep`, {}),
+    mutationFn: (word: Word) => api<{ added: boolean }>(`/topics/${encodeURIComponent(topic)}/words/${encodeURIComponent(word.id)}/keep`, {}),
     onSuccess: async (data, word) => {
-      setNotice(data.auto_planted ? 'Your full seed bag was planted in the garden.' : data.added ? `${word.lemma} added to your seed bag.` : 'This word is already in your bag or garden.');
+      setNotice(data.added ? `${word.lemma} added to your seed bag.` : 'This word is already in your bag or garden.');
       await cache.invalidateQueries();
     },
   });
@@ -188,7 +186,10 @@ function TopicPage() {
   const visibleWords = words.filter(w => showOtherLevels || w.level === user.level || (w.status !== 'new' && w.status !== 'not_now'));
   const matching = visibleWords.filter(w => (filter === 'all' || (filter === 'due' ? w.review_due : filter === 'grown' ? w.visual_stage === 'grown' : filter === 'learned' ? w.learned : w.status === filter)) &&
     `${w.article || ''} ${w.lemma} ${w.english}`.toLowerCase().includes(search.trim().toLowerCase()));
-  const statusLabel = (word: Word) => word.review_due ? 'Review due' : word.visual_stage === 'grown' ? (word.learned ? 'Learned' : 'Grown') : statuses[word.status || 'new'];
+  const statusLabel = (word: Word) => {
+    const status = word.review_due ? 'Review due' : word.learned ? 'Learned' : statuses[word.status || 'new'];
+    return status;
+  };
   if (sort) matching.sort((a, b) => {
     const valueA = sort.key === 'status' ? statusLabel(a) : a[sort.key];
     const valueB = sort.key === 'status' ? statusLabel(b) : b[sort.key];
@@ -198,7 +199,7 @@ function TopicPage() {
   const columns = [['lemma', 'Word'], ['english', 'Meaning'], ['level', 'Level'], ['status', 'Status']] as const;
   return <><div className="topic-back-links"><Link className="back" to="/">← Garden</Link><Link className="back" to="/explore">Explore topics</Link></div><div className="topic-page-heading"><Heading title={activity.name} /><ScopeLinks scope="topic" topic={topic} disabled={!words.some(w => w.status === 'planted')} /></div>
     <section className="topic-progress-summary" aria-label="Topic progress"><span className="level-progress-label">{user.level} progress</span><TopicProgress counts={overview} /></section>
-    <TopicScene key={topic} plot={{ id: activity.id, name: activity.name, words: words.filter(w => w.status === 'planted') }} />
+    <TopicScene key={topic} plot={{ id: activity.id, name: activity.name, words: words.filter(w => w.status === 'planted' || w.learned) }} />
     <h2 className="topic-list-heading">Words</h2>
     <div className="topic-word-controls">
       <label><span className="sr-only">Search words</span><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search German or English…" /></label>
@@ -207,7 +208,7 @@ function TopicPage() {
     </div>
     {notice && <p role="status" className="small">{notice}</p>}<ErrorNotice error={add.error} />
     {matching.length ? <div className="panel table-wrap"><table className="topic-words"><thead><tr>{columns.map(([key, label]) => <th key={key} scope="col" aria-sort={sort?.key === key ? (sort.descending ? 'descending' : 'ascending') : 'none'}><button className="table-sort" onClick={() => setSort(current => ({ key, descending: current?.key === key ? !current.descending : false }))}>{label}<span aria-hidden="true">{sort?.key === key ? (sort.descending ? '↓' : '↑') : '↕'}</span></button></th>)}<th><span className="sr-only">Seed bag</span></th></tr></thead>
-      <tbody>{matching.map(w => <tr key={w.id} className={w.status === 'new' && user.level && w.level !== user.level ? 'word-outside-level' : undefined}><td><WordTitle word={w} /></td><td>{w.english}</td><td>{w.level}</td><td><span className={`badge status-chip stage-${w.visual_stage || 'unseen'}`}>{statusLabel(w)}</span></td>
+      <tbody>{matching.map(w => <tr key={w.id} className={w.status === 'new' && user.level && w.level !== user.level ? 'word-outside-level' : undefined}><td><WordTitle word={w} /></td><td>{w.english}</td><td>{w.level}</td><td><span className={`badge status-chip stage-${w.visual_stage || 'unseen'}`}>{w.status === 'bag' ? <SeedIcon /> : (w.status === 'planted' || Boolean(w.learned)) ? <PlantIcon word={w} /> : null}{statusLabel(w)}</span></td>
         <td>{w.review_due && <Link className="button review-word-link" to={`/review?scope=topic&topic=${encodeURIComponent(topic)}`}>Review</Link>}{w.status !== 'bag' && w.status !== 'planted' && <button disabled={add.isPending} aria-label={`Add ${w.lemma} to seed bag`} onClick={() => add.mutate(w)}>{add.isPending && add.variables?.id === w.id ? 'Adding…' : 'Add to bag'}</button>}</td></tr>)}</tbody></table></div>
       : <Empty>No words match this view.</Empty>}
   </>;
@@ -231,7 +232,7 @@ function MatcherPage() {
   return <>
     <Heading title="Find new words" />
     <div className="matcher-layout">
-      <section className="matcher-selection" aria-label="Word selection">
+      <section className="panel matcher-selection" aria-label="Word selection">
         <label htmlFor="matcher-topic">Topic</label>
         <select id="matcher-topic" value={topic} disabled={busy || result.isPending} onChange={e => {
           setTopic(e.target.value);
@@ -241,15 +242,16 @@ function MatcherPage() {
           {activities.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
         {ai_available && <details className="disclosure matcher-guidance">
-          <summary>Describe a situation</summary>
+          <summary>Help me choose a topic</summary>
           <form className="disclosure-body" onSubmit={e => {
             e.preventDefault();
             setTopic('');
             guide.mutate({ topic: '', guidance });
           }}>
-            <label className="sr-only" htmlFor="matcher-guidance">What would you like words for?</label>
-            <textarea id="matcher-guidance" value={guidance} onChange={e => setGuidance(e.target.value)} placeholder="A wine evening with friends" maxLength={3000} disabled={busy} required />
-            <button disabled={busy || !guidance.trim()}>Find words</button>
+            <label htmlFor="matcher-guidance">Where will you use German?</label>
+            <p id="matcher-guidance-help" className="muted small">We’ll match your description to a topic and show related words.</p>
+            <textarea id="matcher-guidance" aria-describedby="matcher-guidance-help" value={guidance} onChange={e => setGuidance(e.target.value)} placeholder="A wine evening with friends" maxLength={3000} disabled={busy} required />
+            <button disabled={busy || !guidance.trim()}>{guide.isPending ? 'Matching…' : 'Match a topic'}</button>
           </form>
         </details>}
         {guide.isPending && <p className="muted small" role="status">Finding words…</p>}
@@ -257,15 +259,16 @@ function MatcherPage() {
       </section>
       <section className="matcher-study" aria-label="Current word" aria-busy={busy}>
         {result.isPending ? <Loading /> : result.error ? <ErrorNotice error={result.error} /> : card ? <>
+          <div className="panel matcher-card">
           <p className="eyebrow">{card.activity_name || 'Core vocabulary'}</p>
-          <WordCard key={card.word_id} word={card} revealed={revealed} onReveal={() => setRevealed(true)} />
+          <WordCard key={card.word_id} word={card} hideArticleUntilRevealed revealed={revealed} onReveal={() => setRevealed(true)} />
           <div className="card-actions">
             <button disabled={busy} onClick={() => swipe.mutate('not_now')}>Not now</button>
             <button disabled={busy} onClick={() => swipe.mutate('learned')}>Already learned</button>
             <button className="primary" disabled={busy} onClick={() => swipe.mutate('keep')}>Keep word</button>
           </div>
+          </div>
         </> : <Empty><h2>No more words in this selection</h2><p>Choose another topic.</p></Empty>}
-        {swipe.data?.auto_planted && <p className="success" role="status">Your full seed bag was planted automatically.</p>}
         <ErrorNotice error={swipe.error} />
         {swipe.error && <button onClick={() => result.refetch()}>Refresh card</button>}
       </section>
@@ -283,24 +286,31 @@ function ReviewPage() {
   const { scope, topic, query, label } = useScope();
   const cache = useQueryClient();
   const [revealed, setRevealed] = useState(false);
-  const [count, setCount] = useState(0);
+  const [reviewed, setReviewed] = useState<Set<string>>(() => new Set());
   const key = ['review', scope, topic];
-  const result = useQuery({ queryKey: key, queryFn: () => api<{ card: Card | null }>(`/review${query}`), staleTime: Infinity, refetchOnMount: 'always' });
-  const grade = useMutation({ mutationFn: (value: number) => api<{ card: Card | null }>('/review', { word_id: result.data!.card!.word_id, grade: value, scope, topic }), onSuccess: data => { cache.setQueryData(key, data); cache.invalidateQueries({ queryKey: ['garden'] }); cache.invalidateQueries({ queryKey: ['topic'] }); setRevealed(false); setCount(n => n+1); } });
+  const result = useQuery({ queryKey: key, queryFn: () => api<{ card: Card | null; remaining: number; counts: { plants: number; seeds: number } }>(`/review${query}`), staleTime: Infinity, refetchOnMount: 'always' });
+  const grade = useMutation({ mutationFn: (value: number) => api<{ card: Card | null; remaining: number; counts: { plants: number; seeds: number } }>('/review', { word_id: result.data!.card!.word_id, grade: value, scope, topic }), onSuccess: data => { const reviewedId = result.data!.card!.word_id; cache.setQueryData(key, data); cache.invalidateQueries({ queryKey: ['review'], refetchType: 'none' }); cache.invalidateQueries({ queryKey: ['garden'] }); cache.invalidateQueries({ queryKey: ['topic'] }); cache.invalidateQueries({ queryKey: ['matcher'] }); cache.invalidateQueries({ queryKey: ['practice'] }); cache.invalidateQueries({ queryKey: ['flashcards'] }); setRevealed(false); setReviewed(previous => new Set([...previous, reviewedId])); } });
   const card = result.data?.card;
-  useEffect(() => { setRevealed(false); setCount(0); }, [query]);
-  return <><Heading title="Review"><span>{label} · {count} reviewed this visit</span></Heading><div className="study">{result.isPending ? <Loading /> : result.error ? <ErrorNotice error={result.error} /> : card ? <><WordCard key={card.word_id} word={card} revealed={revealed} onReveal={() => setRevealed(true)} />{revealed && <div className="grade-actions">{card.rating_options?.map(option => <button key={option.grade} disabled={grade.isPending} className={option.grade === 3 ? 'primary' : ''} onClick={() => grade.mutate(option.grade)}>
+  useEffect(() => { setRevealed(false); setReviewed(new Set()); }, [query]);
+  return <><div className="practice-heading-row"><Heading title="Review">{scope === 'topic' ? label : undefined}</Heading><WordSetSwitch page="/review" counts={result.data?.counts} /></div><div className="study">
+    {result.data && <div className="review-progress">
+      <div className="review-progress-counts"><span>{reviewed.size} reviewed</span><span>{result.data.remaining} to review</span></div>
+      <progress aria-label="Review progress" aria-valuetext={`${reviewed.size} words reviewed this visit, ${result.data.remaining} words to review`} value={reviewed.size} max={Math.max(1, reviewed.size + result.data.remaining)} />
+    </div>}{result.isPending ? <Loading /> : result.error ? <ErrorNotice error={result.error} /> : card ? <><WordCard key={card.word_id} word={card} hideArticleUntilRevealed revealed={revealed} onReveal={() => setRevealed(true)} />{revealed && <div className="grade-actions">{card.rating_options?.map(option => <button key={option.grade} disabled={grade.isPending} className={option.grade === 3 ? 'primary' : ''} onClick={() => grade.mutate(option.grade)}>
   <strong>{['Again', 'Hard', 'Good', 'Easy'][option.grade - 1]}</strong>
   <span className="rating-delay">In {reviewDelay(option.next_review_seconds)}</span>
-  <span className="rating-growth">{option.grade === 1 ? 'Needs more care' : option.growth > (card.growth ?? 0) ? 'Plant grows' : 'Waters plant'}</span>
-</button>)}</div>}</> : <Empty>No words to review in this set yet. <Link to="/matcher">Find new words</Link>.</Empty>}<ErrorNotice error={grade.error} /></div></>;
+  <span className="rating-growth">{scope === 'bag' ? 'Plants seed' : option.grade === 1 ? 'Needs more care' : option.growth > (card.growth ?? 0) ? 'Plant grows' : 'Waters plant'}</span>
+</button>)}</div>}</> : <Empty>{scope === 'bag' && reviewed.size > 0 ? 'Your seeds are planted.' : scope === 'bag' ? 'No seeds to review.' : 'All caught up! No words are due for review.'} <Link to="/matcher">Find new words</Link>.</Empty>}<ErrorNotice error={grade.error} /></div></>;
 }
 function PracticePage() {
-  const { query, label } = useScope();
+  const { scope, query, label } = useScope();
   const { ai_available } = useOutletContext<Session>();
-  const result = useQuery({ queryKey: ['practice', query], queryFn: () => api<{ words: Word[] }>(`/practice${query}`) });
+  const result = useQuery({ queryKey: ['practice', query], queryFn: () => api<{ words: Word[]; counts: { plants: number; seeds: number } }>(`/practice${query}`) });
   const modes = [ ['flashcards', 'Flashcards', 'Browse your words and reveal their translations.'], ['chat', 'Conversation', 'Practise your words in a short German conversation.'], ['read', 'Reading', 'Read a short passage written around your vocabulary.'], ['grammar', 'Grammar playground', 'Explore word forms and get feedback on your own sentences.'] ];
-  return <><Heading title="Practice">{label}{result.data ? ` · ${result.data.words.length} words` : ''}</Heading>{result.isPending ? <Loading /> : result.error ? <ErrorNotice error={result.error} /> : !result.data?.words.length ? <Empty>No words in this set yet. <Link to="/matcher">Find new words</Link> or practise your <Link to="/practice?scope=bag">seed bag</Link>.</Empty> : <div className="practice-grid">{modes.map(([path, title, description]) => <article className="panel" key={path}><h2>{title}</h2><p className="muted">{description}</p>{path === 'flashcards' || ai_available ? <Link className="button" to={`/practice/${path}${query}`}>Start {title.toLowerCase()} →</Link> : <p className="muted small">Needs ANTHROPIC_API_KEY in your local .env file.</p>}</article>)}</div>}</>;
+  return <><div className="practice-heading-row"><Heading title="Practice">{scope === 'topic' ? label : undefined}</Heading>
+    <WordSetSwitch page="/practice" counts={result.data?.counts} /></div>
+    {result.isPending ? <Loading /> : result.error ? <ErrorNotice error={result.error} /> : !result.data?.words.length ? <Empty>No words in this set yet. <Link to="/matcher">Find new words</Link> or practise your <Link to="/practice?scope=bag">seed bag</Link>.</Empty> : <div className="practice-grid">
+    {!!result.data?.words.length && modes.map(([path, title, description]) => <article className="panel" key={path}><h2>{title}</h2><p className="muted">{description}</p>{path === 'flashcards' || ai_available ? <Link className="button" to={`/practice/${path}${query}`}>Start {title.toLowerCase()} →</Link> : <p className="muted small">Needs ANTHROPIC_API_KEY in your local .env file.</p>}</article>)}</div>}</>;
 }
 function Flashcards() {
   const { query, label } = useScope();
@@ -312,7 +322,7 @@ function Flashcards() {
   const move = (next: number) => { setIndex(next); setRevealed(false); };
   return <><Link className="back" to={`/practice${query}`}>← Practice</Link><Heading title="Flashcards">{label}{cards.length && index < cards.length ? ` · ${index + 1} / ${cards.length}` : ''}</Heading>
     <div className="study">{result.isPending ? <Loading /> : result.error ? <ErrorNotice error={result.error} /> : !cards.length ? <Empty>No words in this deck yet.</Empty> : index < cards.length ? <>
-      <WordCard word={cards[index]} revealed={revealed} onReveal={() => setRevealed(true)} />
+      <WordCard word={cards[index]} hideArticleUntilRevealed revealed={revealed} onReveal={() => setRevealed(true)} />
       <div className="card-actions"><button disabled={index === 0} onClick={() => move(index - 1)}>Previous</button><button className="primary" onClick={() => move(index + 1)}>{index === cards.length - 1 ? 'Finish deck' : 'Next'}</button></div>
     </> : <Empty><h2>Deck complete</h2><div className="actions"><button onClick={() => move(0)}>Go through again</button><Link className="button" to={`/practice${query}`}>Back to practice</Link></div></Empty>}</div>
   </>;
@@ -326,6 +336,7 @@ function AiPractice({ mode }: { mode: 'chat' | 'read' | 'grammar' }) {
   const [message, setMessage] = useState('');
   const [showTranslation, setShowTranslation] = useState(false);
   const [wordId, setWordId] = useState('');
+  const [wordSearch, setWordSearch] = useState('');
   const [config, setConfig] = useState<Record<string, string>>({});
   const [sentence, setSentence] = useState('');
   const selected = words.data?.words.find(w => w.id === wordId) || words.data?.words[0];
@@ -333,10 +344,18 @@ function AiPractice({ mode }: { mode: 'chat' | 'read' | 'grammar' }) {
   const reading = useMutation({ mutationFn: () => api<{ targets: Word[]; text: { setting: string; de: string; en: string } }>('/reading', { scope, topic }), onSuccess: () => setShowTranslation(false) });
   const grammar = useMutation({ mutationFn: (action: string) => api<Grammar>('/grammar', { word_id: selected?.id, config, sentence, action }) });
   const titles = { chat: 'Conversation', read: 'Reading', grammar: 'Grammar playground' };
-  return <><Link className="back" to={`/practice${query}`}>← Practice</Link><Heading title={titles[mode]}>{label}</Heading>{!ai_available ? <Empty>Configure ANTHROPIC_API_KEY in your local .env file to use AI practice.</Empty> : words.isPending ? <Loading /> : words.error ? <ErrorNotice error={words.error} /> : !words.data?.words.length ? <Empty>No words in this practice set yet. <Link to="/matcher">Find words</Link>.</Empty> : <div className="study wide">
-    {mode === 'chat' && <><p className="muted">Use your target words in the conversation. Corrections appear below your messages.</p>{chat && <div className="chips">{chat.targets.map(w => <span className={`badge ${chat.used.includes(w.lemma) ? 'used' : ''}`} key={w.id}><WordTitle word={w} />{chat.used.includes(w.lemma) ? ' ✓' : ''}</span>)}</div>}<div className="chat-log" aria-live="polite">{chat?.history.map((m,i) => <article className={`panel message ${m.role}`} key={i}><p className="eyebrow">{m.role === 'user' ? 'You' : 'Conversation partner'}</p><p lang="de">{m.content}</p><Corrections items={m.corrections} /></article>)}</div>{!chat ? <button className="primary" disabled={chatCall.isPending} onClick={() => chatCall.mutate()}>{chatCall.isPending ? 'Starting conversation…' : 'Start conversation'}</button> : <form className="input-row" onSubmit={e => { e.preventDefault(); chatCall.mutate(); }}><label className="flex">Your reply in German<input value={message} onChange={e => setMessage(e.target.value)} maxLength={3000} required disabled={chatCall.isPending} autoComplete="off" /></label><button className="primary" disabled={chatCall.isPending || !message.trim()}>{chatCall.isPending ? 'Replying…' : 'Send'}</button></form>}<ErrorNotice error={chatCall.error} /></>}
-    {mode === 'read' && <><p className="muted">Generate a short passage using words from this set.</p><button className="primary" disabled={reading.isPending} onClick={() => reading.mutate()}>{reading.isPending ? 'Writing passage…' : reading.data ? 'Generate another passage' : 'Generate passage'}</button><ErrorNotice error={reading.error} />{reading.data && <><div className="chips">{reading.data.targets.map(w => <span className="badge" key={w.id}><WordTitle word={w} /></span>)}</div><article className="panel reading"><p className="eyebrow">{reading.data.text.setting}</p><p lang="de">{reading.data.text.de}</p><button aria-expanded={showTranslation} onClick={() => setShowTranslation(s => !s)}>{showTranslation ? 'Hide translation' : 'Show English translation'}</button>{showTranslation && <p className="translation">{reading.data.text.en}</p>}</article></>}</>}
-    {mode === 'grammar' && <><div className="panel"><label>Choose a word<select value={selected?.id || ''} onChange={e => { setWordId(e.target.value); setConfig({}); setSentence(''); grammar.reset(); }} disabled={grammar.isPending}>{words.data?.words.map(w => <option key={w.id} value={w.id}>{[w.article,w.lemma].filter(Boolean).join(' ')} — {w.english}</option>)}</select></label><div className="input-row grammar-options">{Object.entries(words.data?.grammar_options[selected?.pos || ''] || {}).map(([key, values]) => <label className="flex" key={key}>{key[0].toUpperCase()+key.slice(1)}<select value={config[key] || values[0]} disabled={grammar.isPending} onChange={e => { setConfig(c => ({ ...c, [key]: e.target.value })); grammar.reset(); }}>{values.map(value => <option key={value} value={value}>{grammarLabels[value] || value}</option>)}</select></label>)}</div><button disabled={grammar.isPending} onClick={() => grammar.mutate('generate')}>{grammar.isPending ? 'Working…' : 'Generate example'}</button><hr /><form onSubmit={e => { e.preventDefault(); grammar.mutate('correct'); }}><label htmlFor="sentence">Or write your own German sentence</label><textarea id="sentence" value={sentence} onChange={e => setSentence(e.target.value)} maxLength={3000} required disabled={grammar.isPending} /><button className="primary" disabled={grammar.isPending || !sentence.trim()}>Check sentence</button></form></div><ErrorNotice error={grammar.error} />{grammar.data && <article className="panel grammar-result" aria-live="polite">{grammar.data.expected_form && <p>Target form: <strong lang="de">{grammar.data.expected_form}</strong></p>}{grammar.data.de && <p className="sentence" lang="de">{grammar.data.de}</p>}{grammar.data.en && <p className="muted">{grammar.data.en}</p>}{grammar.data.meets_config !== undefined && <p>{grammar.data.meets_config ? 'The target word matches the chosen form.' : 'The target word does not match the chosen form yet.'}</p>}<Corrections items={grammar.data.corrections} /><p>{grammar.data.focus || grammar.data.grammar_focus}</p></article>}</>}
+  return <><Link className="back" to={`/practice${query}`}>← Practice</Link><Heading title={titles[mode]}>{scope === 'all' ? undefined : label}</Heading>{!ai_available ? <Empty>Configure ANTHROPIC_API_KEY in your local .env file to use AI practice.</Empty> : words.isPending ? <Loading /> : words.error ? <ErrorNotice error={words.error} /> : !words.data?.words.length ? <Empty>No words in this practice set yet. <Link to="/matcher">Find words</Link>.</Empty> : <div className={`study wide${mode === 'grammar' ? ' grammar-study' : ' ai-study'}`}>
+    {mode === 'chat' && <>{chat && <div className="chips">{chat.targets.map(w => <span className={`badge ${chat.used.includes(w.lemma) ? 'used' : ''}`} key={w.id}><WordTitle word={w} />{chat.used.includes(w.lemma) ? ' ✓' : ''}</span>)}</div>}{chat && <div className="chat-log" aria-live="polite">{chat?.history.map((m,i) => <article className={`panel message ${m.role}`} key={i}><p className="eyebrow">{m.role === 'user' ? 'You' : 'Conversation partner'}</p><p lang="de">{m.content}</p><Corrections items={m.corrections} /></article>)}</div>}{!chat ? <button className="primary" disabled={chatCall.isPending} onClick={() => chatCall.mutate()}>{chatCall.isPending ? 'Starting conversation…' : 'Start conversation'}</button> : <form className="input-row" onSubmit={e => { e.preventDefault(); chatCall.mutate(); }}><label className="flex">Your reply in German<input value={message} onChange={e => setMessage(e.target.value)} maxLength={3000} required disabled={chatCall.isPending} autoComplete="off" /></label><button className="primary" disabled={chatCall.isPending || !message.trim()}>{chatCall.isPending ? 'Replying…' : 'Send'}</button></form>}<ErrorNotice error={chatCall.error} /></>}
+    {mode === 'read' && <><button className="primary" disabled={reading.isPending} onClick={() => reading.mutate()}>{reading.isPending ? 'Writing passage…' : reading.data ? 'New passage' : 'Start reading'}</button><ErrorNotice error={reading.error} />{reading.data && <><div className="chips">{reading.data.targets.map(w => <span className="badge" key={w.id}><WordTitle word={w} /></span>)}</div><article className="panel reading"><p className="eyebrow">{reading.data.text.setting}</p><p lang="de">{reading.data.text.de}</p><button aria-expanded={showTranslation} onClick={() => setShowTranslation(s => !s)}>{showTranslation ? 'Hide translation' : 'Show English translation'}</button>{showTranslation && <p className="translation">{reading.data.text.en}</p>}</article></>}</>}
+    {mode === 'grammar' && <div className="grammar-layout">
+      <aside className="grammar-word-picker" aria-label="Practice words">
+        <label htmlFor="grammar-word-search">Words</label><input id="grammar-word-search" placeholder="Find a word…" value={wordSearch} onChange={e => setWordSearch(e.target.value)} />
+        <ul className="grammar-word-list">{words.data.words.filter(w => `${w.lemma} ${w.english}`.toLowerCase().includes(wordSearch.trim().toLowerCase())).map(w => <li key={w.id}>
+          <button aria-pressed={selected?.id === w.id} disabled={grammar.isPending} onClick={() => { setWordId(w.id); setConfig({}); setSentence(''); grammar.reset(); }}><span><WordTitle word={w} /></span><span className="small muted">{w.english}</span></button>
+        </li>)}</ul>
+        {!words.data.words.some(w => `${w.lemma} ${w.english}`.toLowerCase().includes(wordSearch.trim().toLowerCase())) && <p className="small muted">No matching words.</p>}
+      </aside>
+      <div className="grammar-workspace"><div className="panel"><h2><WordTitle word={selected!} /></h2><div className="input-row grammar-options">{Object.entries(words.data?.grammar_options[selected?.pos || ''] || {}).map(([key, values]) => <label className="flex" key={key}>{key[0].toUpperCase()+key.slice(1)}<select value={config[key] || values[0]} disabled={grammar.isPending} onChange={e => { setConfig(c => ({ ...c, [key]: e.target.value })); grammar.reset(); }}>{values.map(value => <option key={value} value={value}>{grammarLabels[value] || value}</option>)}</select></label>)}</div><button disabled={grammar.isPending} onClick={() => grammar.mutate('generate')}>{grammar.isPending ? 'Working…' : 'Generate example'}</button><hr /><form onSubmit={e => { e.preventDefault(); grammar.mutate('correct'); }}><label htmlFor="sentence">Or write your own German sentence</label><textarea id="sentence" value={sentence} onChange={e => setSentence(e.target.value)} maxLength={3000} required disabled={grammar.isPending} /><button className="primary" disabled={grammar.isPending || !sentence.trim()}>Check sentence</button></form></div><ErrorNotice error={grammar.error} />{grammar.data && <article className="panel grammar-result" aria-live="polite">{grammar.data.expected_form && <p>Target form: <strong lang="de">{grammar.data.expected_form}</strong></p>}{grammar.data.de && <p className="sentence" lang="de">{grammar.data.de}</p>}{grammar.data.en && <p className="muted">{grammar.data.en}</p>}{grammar.data.meets_config !== undefined && <p>{grammar.data.meets_config ? 'The target word matches the chosen form.' : 'The target word does not match the chosen form yet.'}</p>}<Corrections items={grammar.data.corrections} /><p>{grammar.data.focus || grammar.data.grammar_focus}</p></article>}</div></div>}
   </div>}</>;
 }
 function AiRoute({ mode }: { mode: 'chat' | 'read' | 'grammar' }) {

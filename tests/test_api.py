@@ -47,6 +47,13 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(result.status_code, 200, result.text)
         return card, payload, result.json()
 
+    def plant_fixture(self):
+        """Set up existing plants for tests unrelated to first-review planting."""
+        with db.open_app_db('test_learner') as conn:
+            count = conn.execute("UPDATE swipes SET planted_at=datetime('now') WHERE action='keep' AND planted_at IS NULL").rowcount
+            conn.commit()
+        return {'planted': count}
+
     def test_profile_and_onboarding(self):
         self.assertEqual(self.client.get('/api/session').status_code, 401)
         self.login()
@@ -70,7 +77,7 @@ class ApiTests(unittest.TestCase):
         self.client.get('/api/flashcards?scope=bag')
         with db.open_app_db('test_learner') as conn:
             self.assertEqual(conn.execute('SELECT COUNT(*) FROM reviews').fetchone()[0], 0)
-        self.assertEqual(self.client.post('/api/plant', json={}).json()['planted'], 1)
+        self.assertEqual(self.plant_fixture()['planted'], 1)
         home = self.client.get('/api/garden').json()
         self.assertEqual(home['summary']['planted_total'], 1)
         self.assertEqual(home['bag'], [])
@@ -149,7 +156,7 @@ class ApiTests(unittest.TestCase):
         initial = counts()
         self.assertEqual(initial['seeds'], 1)
         self.assertEqual(initial['grown'], 0)
-        self.client.post('/api/plant', json={})
+        self.plant_fixture()
         planted = counts()
         self.assertEqual(planted['seeds'], 0)
         self.assertEqual(planted['planted'], 1)
@@ -164,7 +171,7 @@ class ApiTests(unittest.TestCase):
     def test_review_due_colors_match_topic_overview(self):
         self.login()
         card, _, _ = self.keep()
-        self.client.post('/api/plant', json={})
+        self.plant_fixture()
         self.client.post('/api/review', json={'word_id': card['word_id'], 'grade': 3})
         topic = card['activity_id']
         self.client.post('/api/onboarding', json={'level': card['level']})
@@ -173,12 +180,18 @@ class ApiTests(unittest.TestCase):
             return next(w for w in self.client.get('/api/topics/' + topic).json()['words']
                         if w['id'] == card['word_id'])
 
+        def garden_word():
+            return next(w for plot in self.client.get('/api/garden').json()['plots']
+                        for w in plot['words'] if w['id'] == card['word_id'])
+
         self.assertFalse(word()['review_due'])
+        self.assertFalse(garden_word()['review_due'])
         self.assertEqual(word()['visual_stage'], 'planted')
         with db.open_app_db('test_learner') as conn:
             conn.execute("UPDATE word_srs SET due_at=datetime('now', '-1 day') WHERE word_id=?", (card['word_id'],))
             conn.commit()
         self.assertTrue(word()['review_due'])
+        self.assertTrue(garden_word()['review_due'])
         self.assertEqual(word()['visual_stage'], 'due')
         overview = next(t['overview'] for t in self.client.get('/api/garden').json()['topics'] if t['id'] == topic)
         self.assertEqual(overview['due'], 1)
@@ -187,26 +200,33 @@ class ApiTests(unittest.TestCase):
             conn.execute('INSERT INTO flashcard_learned (word_id) VALUES (?)', (card['word_id'],))
             conn.commit()
         self.assertFalse(word()['review_due'])
+        self.assertFalse(garden_word()['review_due'])
         self.assertEqual(word()['visual_stage'], 'grown')
         overview = next(t['overview'] for t in self.client.get('/api/garden').json()['topics'] if t['id'] == topic)
         self.assertEqual(overview['due'], 0)
         self.assertEqual(overview['grown'], 1)
 
-    def test_manual_add_auto_plants(self):
+    def test_manual_add_full_bag_requires_review(self):
         self.login()
         with db.open_app_db('test_learner') as conn:
-            rows = conn.execute('SELECT word_id, MIN(activity_id) AS topic FROM word_activities GROUP BY word_id LIMIT 20').fetchall()
-        for row in rows:
+            rows = conn.execute('SELECT word_id, MIN(activity_id) AS topic FROM word_activities GROUP BY word_id LIMIT 21').fetchall()
+        for row in rows[:20]:
             response = self.client.post('/api/topics/' + row['topic'] + '/words/' + row['word_id'] + '/keep', json={})
             self.assertEqual(response.status_code, 200, response.text)
-        self.assertTrue(response.json()['auto_planted'])
-        self.assertEqual(self.client.get('/api/garden').json()['bag'], [])
+        self.assertEqual(len(self.client.get('/api/garden').json()['bag']), 20)
+        last = rows[20]
+        url = '/api/topics/' + last['topic'] + '/words/' + last['word_id'] + '/keep'
+        self.assertEqual(self.client.post(url, json={}).status_code, 409)
+        self.assertEqual(self.client.get('/api/garden').json()['summary']['planted_total'], 0)
+        first = rows[0]
+        self.assertEqual(self.client.post('/api/review', json={'scope': 'bag', 'word_id': first['word_id'], 'grade': 3}).status_code, 200)
+        self.assertEqual(self.client.post(url, json={}).status_code, 200)
 
     def test_rating_previews_match_saved_outcomes_without_writes(self):
         from app import garden
         self.login()
         card, _, _ = self.keep()
-        self.client.post('/api/plant', json={})
+        self.plant_fixture()
         review_card = self.client.get('/api/review').json()['card']
         self.assertEqual(review_card['growth'], 0)
         initial = review_card['rating_options']
@@ -234,13 +254,119 @@ class ApiTests(unittest.TestCase):
                         self.assertEqual(preview['next_review_seconds'], int(saved['interval_days'] * 86400))
                         self.assertEqual(preview['growth'], garden.growth_stage(saved))
 
-    def test_full_bag_auto_plants(self):
+    def test_discovery_learned_words_appear_as_grown_plants(self):
+        self.login()
+        card = self.client.get('/api/matcher').json()['card']
+        payload = {key: card[key] for key in ('word_id', 'activity_id', 'sentence_id')}
+        response = self.client.post('/api/matcher', json={**payload, 'action': 'learned'})
+        self.assertEqual(response.status_code, 200)
+        home = self.client.get('/api/garden').json()
+        plot = next(p for p in home['plots'] if p['id'] == card['activity_id'])
+        word = next(w for w in plot['words'] if w['id'] == card['word_id'])
+        self.assertTrue(word['learned'])
+        self.assertEqual(word['growth'], 5)
+        detail = self.client.get('/api/topics/' + card['activity_id']).json()
+        word = next(w for w in detail['words'] if w['id'] == card['word_id'])
+        self.assertEqual(word['status'], 'learned')
+        self.assertEqual(word['growth'], 5)
+        self.assertTrue(word['learned'])
+        # Displaying learned flowers must not turn them into new keeps.
+        self.assertEqual(home['bag'], [])
+        self.assertEqual(home['summary']['planted_total'], 0)
+        with db.open_app_db('test_learner') as conn:
+            self.assertEqual(conn.execute("SELECT COUNT(*) FROM swipes WHERE action='keep'").fetchone()[0], 0)
+
+    def test_review_remaining_tracks_new_due_and_scope(self):
+        self.login()
+        first, _, _ = self.keep()
+        self.keep()
+        self.assertEqual(self.client.get('/api/review?scope=bag').json()['remaining'], 2)
+        self.assertEqual(self.client.get('/api/review').json()['counts'], {'plants': 0, 'seeds': 2})
+        self.assertEqual(self.client.get('/api/review').json()['remaining'], 0)
+        self.assertEqual(self.client.get('/api/garden').json()['summary']['due_now'], 0)
+        self.plant_fixture()
+        self.assertEqual(self.client.get('/api/review').json()['remaining'], 2)
+        self.assertEqual(self.client.get('/api/garden').json()['summary']['due_now'], 2)
+        result = self.client.post('/api/review', json={'word_id': first['word_id'], 'grade': 3})
+        self.assertEqual(result.json()['remaining'], 1)
+        self.assertEqual(result.json()['counts'], {'plants': 1, 'seeds': 0})
+        self.assertEqual(self.client.get('/api/garden').json()['summary']['due_now'], 1)
+        # An early repeat doesn't count a second word as completed.
+        result = self.client.post('/api/review', json={'word_id': first['word_id'], 'grade': 3})
+        self.assertEqual(result.json()['remaining'], 1)
+        self.assertEqual(self.client.get('/api/garden').json()['summary']['due_now'], 1)
+        with db.open_app_db('test_learner') as conn:
+            conn.execute("UPDATE word_srs SET due_at=datetime('now', '-1 minute')")
+            conn.commit()
+        self.assertEqual(self.client.get('/api/review').json()['remaining'], 2)
+        self.assertEqual(self.client.get('/api/garden').json()['summary']['due_now'], 2)
+        self.assertEqual(self.client.get('/api/review?scope=bag').json()['remaining'], 0)
+
+    def test_review_finishes_after_last_due_word(self):
+        self.login()
+        seed, _, _ = self.keep()
+        self.plant_fixture()
+        topic_query = '/api/review?scope=topic&topic=' + seed['activity_id']
+        self.assertEqual(self.client.get(topic_query).json()['card']['word_id'], seed['word_id'])
+        result = self.client.post('/api/review', json={
+            'word_id': seed['word_id'], 'grade': 3,
+            'scope': 'topic', 'topic': seed['activity_id'],
+        }).json()
+        self.assertEqual(result['remaining'], 0)
+        self.assertIsNone(result['card'])
+        for url in ['/api/review', topic_query]:
+            result = self.client.get(url).json()
+            self.assertEqual(result['remaining'], 0)
+            self.assertIsNone(result['card'])
+        with db.open_app_db('test_learner') as conn:
+            conn.execute("UPDATE word_srs SET due_at=datetime('now', '-1 minute')")
+            conn.commit()
+        result = self.client.get('/api/review').json()
+        self.assertEqual(result['remaining'], 1)
+        self.assertEqual(result['card']['word_id'], seed['word_id'])
+
+    def test_practice_exposes_seeds_before_any_planting(self):
+        self.login()
+        seed, _, _ = self.keep()
+        practice = self.client.get('/api/practice').json()
+        self.assertEqual(practice['words'], [])
+        self.assertEqual(practice['counts'], {'plants': 0, 'seeds': 1})
+        self.assertEqual(len(self.client.get('/api/practice?scope=bag').json()['words']), 1)
+        self.client.post('/api/review', json={'word_id': seed['word_id'], 'scope': 'bag', 'grade': 3})
+        practice = self.client.get('/api/practice').json()
+        self.assertEqual(self.client.get('/api/practice?scope=bag').json()['words'], [])
+        self.assertEqual(len(practice['words']), 1)
+        self.assertEqual(practice['counts'], {'plants': 1, 'seeds': 0})
+
+    def test_full_bag_does_not_plant_without_review(self):
         self.login()
         for _ in range(20):
             _, _, result = self.keep()
-        self.assertTrue(result['auto_planted'])
-        self.assertEqual(result['bag'], [])
-        self.assertEqual(self.client.get('/api/garden').json()['summary']['planted_total'], 20)
+        self.assertEqual(len(result['bag']), 20)
+        self.assertEqual(self.client.get('/api/garden').json()['summary']['planted_total'], 0)
+        card = self.client.get('/api/matcher').json()['card']
+        payload = {key: card[key] for key in ('word_id', 'activity_id', 'sentence_id')}
+        self.assertEqual(self.client.post('/api/matcher', json={**payload, 'action': 'keep'}).status_code, 409)
+
+    def test_each_seed_rating_plants_only_that_seed(self):
+        self.login()
+        seeds = [self.keep()[0] for _ in range(4)]
+        # Browsing and revealing via GET must not plant anything.
+        self.client.get('/api/review?scope=bag')
+        self.client.get('/api/flashcards?scope=bag')
+        self.assertEqual(self.client.get('/api/garden').json()['summary']['planted_total'], 0)
+        for grade, seed in enumerate(seeds, 1):
+            response = self.client.post('/api/review', json={'word_id': seed['word_id'], 'grade': grade, 'scope': 'bag'})
+            self.assertEqual(response.status_code, 200, response.text)
+            home = self.client.get('/api/garden').json()
+            self.assertEqual(home['summary']['planted_total'], grade)
+            self.assertEqual(len(home['bag']), 4 - grade)
+            self.assertEqual(response.json()['remaining'], 4 - grade)
+            if grade == 4:
+                self.assertIsNone(response.json()['card'])
+            # A retry cannot grade the now-planted word as a bag seed again.
+            self.assertEqual(self.client.post('/api/review', json={'word_id': seed['word_id'], 'grade': grade, 'scope': 'bag'}).status_code, 422)
+        self.assertIn(self.client.post('/api/plant', json={}).status_code, (404, 405))
 
     def test_discovery_actions_and_validation(self):
         self.login()
@@ -259,7 +385,7 @@ class ApiTests(unittest.TestCase):
         with self.client:
             self.login()
             self.keep()
-            self.client.post('/api/plant', json={})
+            self.plant_fixture()
 
             def fetch(path):
                 if path == '/api/heartbeat':

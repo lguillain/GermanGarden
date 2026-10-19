@@ -117,12 +117,12 @@ def setup(body: OnboardingInput, conn: sqlite3.Connection = Db):
 def home(conn: sqlite3.Connection = Db):
     topics = garden.garden_topics(conn, None)
     overview = garden.topic_overview(conn, user(conn)['level'])
-    # A garden shows every planted word, including words outside the discovery level.
+    # Show planted and learned words, including those outside the discovery level.
     plots = []
-    for topic in garden.garden_topics(conn, None):
-        if topic.planted:
-            words = [{**dict(w), 'growth': garden.growth_stage(w)}
-                     for w in garden.topic_words(conn, topic.id)]
+    for topic in topics:
+        words = [{**dict(w), 'growth': garden.growth_stage(w)}
+                 for w in garden.topic_words(conn, topic.id)]
+        if words:
             plots.append({'id': topic.id, 'name': topic.name, 'words': words})
     plots.sort(key=lambda plot: plot['name'].casefold())
     return {'topics': [{**asdict(t), 'planted_pct': t.planted_pct, 'grown_pct': t.grown_pct, 'overview': overview.get(t.id, dict(unseen=0, seeds=0, planted=0, due=0, grown=0))} for t in topics],
@@ -175,20 +175,16 @@ def add_topic_word(topic: str, word_id: str, conn: sqlite3.Connection = Db):
     existing = conn.execute("SELECT 1 FROM swipes WHERE word_id=? AND action='keep'",
                             (word_id,)).fetchone()
     if existing:
-        return {'added': False, 'auto_planted': False}
+        return {'added': False}
+    if garden.seed_bag_count(conn) >= garden.SEED_BAG_CAP:
+        raise HTTPException(409, 'Your seed bag is full. Review a seed to plant it and make room.')
     sentence = conn.execute('''SELECT id FROM sentences WHERE word_id=?
         AND (activity_id=? OR activity_id IS NULL)
         ORDER BY activity_id IS NULL, id LIMIT 1''', (word_id, topic)).fetchone()
     conn.execute("INSERT INTO swipes (word_id, activity_id, sentence_id, action) VALUES (?, ?, ?, 'keep')",
                  (word_id, topic, sentence['id'] if sentence else None))
-    auto_planted = garden.maybe_auto_plant(conn)
     conn.commit()
-    return {'added': True, 'auto_planted': auto_planted}
-
-
-@app.post('/api/plant')
-def plant(conn: sqlite3.Connection = Db):
-    return {'planted': garden.plant_bag(conn)}
+    return {'added': True}
 
 
 @app.get('/api/matcher')
@@ -239,17 +235,30 @@ def swipe(body: SwipeInput, conn: sqlite3.Connection = Db):
         raise HTTPException(409, 'This word has already been handled. Refresh to continue.')
     if body.activity_id:
         validate_scope(conn, 'topic', body.activity_id)
+    if body.action == 'keep':
+        conn.execute('BEGIN IMMEDIATE')
+        if garden.seed_bag_count(conn) >= garden.SEED_BAG_CAP:
+            raise HTTPException(409, 'Your seed bag is full. Review a seed to plant it and make room.')
     record_swipe(conn, body.word_id, body.activity_id or None, body.sentence_id,
                  'keep' if body.action == 'keep' else 'drop',
                  drop_reason=None if body.action == 'keep' else ('known' if body.action == 'learned' else 'uninteresting'))
-    planted = garden.maybe_auto_plant(conn) if body.action == 'keep' else False
-    return {**matcher_data(conn), 'auto_planted': planted}
+    return matcher_data(conn)
+
+
+def review_data(conn: sqlite3.Connection, scope: str, topic: str):
+    counts = {
+        'plants': garden.review_remaining(conn, 'topic' if topic else 'all', topic or None),
+        'seeds': garden.review_remaining(conn, 'bag'),
+    }
+    return {'card': garden.next_review_card(conn, scope, topic or None),
+            'remaining': counts['seeds' if scope == 'bag' else 'plants'],
+            'counts': counts}
 
 
 @app.get('/api/review')
 def review(scope: Scope = 'all', topic: str = '', conn: sqlite3.Connection = Db):
     validate_scope(conn, scope, topic)
-    return {'card': garden.next_review_card(conn, scope, topic or None)}
+    return review_data(conn, scope, topic)
 
 
 class GradeInput(BaseModel):
@@ -266,7 +275,7 @@ def grade(body: GradeInput, conn: sqlite3.Connection = Db):
     if body.word_id not in {w['id'] for w in words}:
         raise HTTPException(422, 'This word is not in the selected review set.')
     garden.grade_word(conn, body.word_id, body.grade)
-    return {'card': garden.next_review_card(conn, body.scope, body.topic or None)}
+    return review_data(conn, body.scope, body.topic)
 
 
 @app.get('/api/practice')
@@ -277,7 +286,13 @@ def practice(scope: Scope = 'all', topic: str = '', conn: sqlite3.Connection = D
         srs = conn.execute('SELECT * FROM word_srs WHERE word_id = ?', (word['id'],)).fetchone()
         learned = conn.execute('SELECT 1 FROM flashcard_learned WHERE word_id = ?', (word['id'],)).fetchone()
         word['growth'] = garden.growth_stage({**(dict(srs) if srs else {}), 'learned': bool(learned)})
-    return {'words': words, 'grammar_options': learn.GRAMMAR_CONFIG_OPTIONS}
+    plant_count = conn.execute('''SELECT COUNT(DISTINCT s.word_id) FROM swipes s
+        WHERE s.action='keep' AND s.planted_at IS NOT NULL
+          AND (?='' OR EXISTS(SELECT 1 FROM word_activities wa
+                              WHERE wa.word_id=s.word_id AND wa.activity_id=?))''',
+        (topic, topic)).fetchone()[0]
+    return {'words': words, 'grammar_options': learn.GRAMMAR_CONFIG_OPTIONS,
+            'counts': {'plants': plant_count, 'seeds': garden.seed_bag_count(conn)}}
 
 
 @app.get('/api/flashcards')

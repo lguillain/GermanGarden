@@ -27,7 +27,7 @@ Vocabulary data must exist at `data/vocab.sqlite`. This checkout includes a loca
 
 - **Garden:** each planted topic is a raised patch of land, with one plant per word. Select a patch for a closer view, then select a plant to see its vocabulary and growth. Reviews grow plants through six stages; learned words display mature trees. A word belonging to several topics appears in each relevant patch, sharing the same progress. All planted levels remain visible. The seed bag, unexplored topics, and progress totals expand on demand.
 - **Find words:** topic selection sits on the left, the word card in the centre, and the seed bag on the right. Selecting a topic applies immediately; expand “Describe a situation” for free-text guidance. Keep, set aside, or mark known words using the original adaptive feed logic.
-- **Seed bag:** practise or review new words, then plant them. A full bag of 20 plants automatically.
+- **Seed bag:** practise new words without changing progress; rating a seed in Review plants it automatically. A bag holds up to 20 seeds; review one to make room when full.
 - **Review:** reveal the meaning and grade Again / Hard / Good / Easy to update the existing spaced-repetition scheduler. The original app also permits early reviews.
 - **Practice:** flashcards, conversation, reading, and grammar. The original flashcard “Learned” action is preserved and counts the word as fully grown.
 - **Profiles:** use the name button in the header to switch learners. New profiles choose a level before learning.

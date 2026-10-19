@@ -54,26 +54,6 @@ def seed_bag_count(conn: sqlite3.Connection) -> int:
     ).fetchone()[0])
 
 
-def plant_bag(conn: sqlite3.Connection) -> int:
-    """Flip every unplanted keep to planted_at = now. Returns rows updated."""
-    cur = conn.execute(
-        """
-        UPDATE swipes SET planted_at = datetime('now')
-        WHERE action = 'keep' AND planted_at IS NULL
-        """
-    )
-    conn.commit()
-    return cur.rowcount or 0
-
-
-def maybe_auto_plant(conn: sqlite3.Connection) -> bool:
-    """Called after each keep swipe. Plants when the bag hits the cap."""
-    if seed_bag_count(conn) >= SEED_BAG_CAP:
-        plant_bag(conn)
-        return True
-    return False
-
-
 # ---------------------------- garden view ----------------------------
 
 
@@ -157,7 +137,7 @@ def garden_topics(conn: sqlite3.Connection, level: str | None) -> list[TopicCard
 
 
 def topic_words(conn: sqlite3.Connection, activity_id: str) -> list[sqlite3.Row]:
-    """Planted words in a topic with their growth stage and English gloss."""
+    """Plants include planted words and words already marked learned."""
     return conn.execute(
         """
         SELECT w.id, w.lemma, w.article, w.pos, w.english, w.level,
@@ -165,17 +145,19 @@ def topic_words(conn: sqlite3.Connection, activity_id: str) -> list[sqlite3.Row]
                COALESCE(srs.interval_days, 0) AS interval_days,
                COALESCE(srs.state, 'learning') AS state,
                srs.due_at,
-               CASE WHEN fl.word_id IS NOT NULL THEN 1 ELSE 0 END AS learned
+               (COALESCE(srs.due_at <= datetime('now'), 0)
+                AND fl.word_id IS NULL AND k.word_id IS NULL) AS review_due,
+               CASE WHEN fl.word_id IS NOT NULL OR k.word_id IS NOT NULL
+                    THEN 1 ELSE 0 END AS learned
         FROM word_activities wa
         JOIN words w ON w.id = wa.word_id
-        JOIN (
-            SELECT word_id, MIN(planted_at) AS planted_at
-            FROM swipes WHERE action = 'keep' AND planted_at IS NOT NULL
-            GROUP BY word_id
-        ) p ON p.word_id = w.id
         LEFT JOIN word_srs srs ON srs.word_id = w.id
         LEFT JOIN flashcard_learned fl ON fl.word_id = w.id
+        LEFT JOIN known_words k ON k.word_id = w.id
         WHERE wa.activity_id = ?
+          AND (fl.word_id IS NOT NULL OR k.word_id IS NOT NULL OR EXISTS (
+              SELECT 1 FROM swipes sp WHERE sp.word_id=w.id
+              AND sp.action='keep' AND sp.planted_at IS NOT NULL))
         ORDER BY learned DESC, srs.interval_days DESC, w.lemma COLLATE NOCASE
         """,
         (activity_id,),
@@ -291,6 +273,10 @@ def grade_word(conn: sqlite3.Connection, word_id: str, grade: int) -> dict:
         "INSERT INTO reviews (word_id, grade) VALUES (?, ?)",
         (word_id, grade),
     )
+    # Reviewing a seed is the planting action; save it with its first rating.
+    conn.execute("""UPDATE swipes SET planted_at=datetime('now')
+                    WHERE word_id=? AND action='keep' AND planted_at IS NULL""",
+                 (word_id,))
     conn.commit()
     return {
         "ease": ease, "interval_days": interval, "reps": reps,
@@ -320,12 +306,25 @@ def _review_scope_sql(scope: str, activity_id: str | None) -> tuple[str, dict]:
     )
 
 
+def review_remaining(conn: sqlite3.Connection, scope: str, activity_id: str | None = None) -> int:
+    """Count distinct new or currently due words in this review set."""
+    where, params = _review_scope_sql(scope, activity_id)
+    return conn.execute(f"""
+        SELECT COUNT(DISTINCT w.id)
+        FROM words w JOIN swipes sp ON sp.word_id=w.id
+        LEFT JOIN word_srs srs ON srs.word_id=w.id
+        LEFT JOIN flashcard_learned fl ON fl.word_id=w.id
+        WHERE {where}
+          AND (srs.word_id IS NULL OR srs.due_at <= datetime('now'))
+    """, params).fetchone()[0]
+
+
 def next_review_card(conn: sqlite3.Connection, scope: str,
                      activity_id: str | None = None) -> dict | None:
     """Pick the next word to review in `scope` ∈ {'bag', 'topic', 'all'}.
 
-    Priority: due now (oldest due first), then new (no srs row), then not-
-    yet-due but closest. Returns a dict with the card contents or None.
+    Pick new words first, then due words (oldest due first).
+    Return None when no new or currently due words remain.
     """
     where, params = _review_scope_sql(scope, activity_id)
     row = conn.execute(
@@ -340,6 +339,7 @@ def next_review_card(conn: sqlite3.Connection, scope: str,
         LEFT JOIN word_srs srs ON srs.word_id = w.id
         LEFT JOIN flashcard_learned fl ON fl.word_id = w.id
         WHERE {where}
+          AND (srs.word_id IS NULL OR srs.due_at <= datetime('now'))
         GROUP BY w.id
         ORDER BY
           CASE WHEN srs.word_id IS NULL THEN 0
@@ -446,14 +446,7 @@ def format_duration(seconds: int) -> str:
 def home_summary(conn: sqlite3.Connection, level: str | None) -> dict:
     """Everything the garden template needs in one shot."""
     bag_count = seed_bag_count(conn)
-    due_now = conn.execute(
-        """
-        SELECT COUNT(*) FROM word_srs srs
-        JOIN swipes sp ON sp.word_id = srs.word_id
-        WHERE sp.action = 'keep' AND sp.planted_at IS NOT NULL
-          AND srs.due_at <= datetime('now')
-        """
-    ).fetchone()[0]
+    due_now = review_remaining(conn, 'all')
     new_in_bag = bag_count   # bag words are always reviewable
     planted_total = conn.execute(
         "SELECT COUNT(DISTINCT word_id) FROM swipes "

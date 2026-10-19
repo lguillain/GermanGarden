@@ -6,6 +6,8 @@ const growthNames = ['Just planted', 'Sprout', 'Seedling', 'Sapling', 'Blooming'
 const LAND = 'M0 -82 Q7 -82 14 -78 L142 -8 Q156 0 142 8 L14 78 Q0 86 -14 78 L-142 8 Q-156 0 -142 -8 L-14 -78 Q-7 -82 0 -82Z';
 const hash = (value: string) => [...value].reduce((n, char) => ((n * 31 + char.charCodeAt(0)) >>> 0), 0);
 const wordName = (word: Word) => [word.article, word.lemma].filter(Boolean).join(' ');
+const isWilted = (word: Word) => Boolean(word.review_due && !word.learned);
+const plantLabel = (word: Word) => `${growthNames[word.learned ? 5 : word.growth || 0]}${isWilted(word) ? ' · Needs review' : ''}`;
 
 function Paints({ id }: { id: string }) {
   return <defs>
@@ -17,22 +19,63 @@ function Paints({ id }: { id: string }) {
     <radialGradient id={`${id}-leaf2`} cx=".25" cy=".15" r=".9"><stop stopColor="#9fcf8e" /><stop offset=".45" stopColor="#5b9d76" /><stop offset="1" stopColor="#326453" /></radialGradient>
     <radialGradient id={`${id}-leaf3`} cx=".3" cy=".18" r=".9"><stop stopColor="#d0db87" /><stop offset=".45" stopColor="#8db65f" /><stop offset="1" stopColor="#4a7e48" /></radialGradient>
     <radialGradient id={`${id}-flower`} cx=".3" cy=".25"><stop stopColor="#f7c0b8" /><stop offset="1" stopColor="#d68087" /></radialGradient>
-    <radialGradient id={`${id}-ground`}><stop stopColor="#b5cf9d" /><stop offset="1" stopColor="#94b994" /></radialGradient>
+    <radialGradient id={`${id}-petal`} cx=".35" cy=".2"><stop stopColor="#ffe68b" /><stop offset=".65" stopColor="#edbd43" /><stop offset="1" stopColor="#cf932d" /></radialGradient>
+    <radialGradient id={`${id}-sunflower-center`} cx=".35" cy=".25"><stop stopColor="#997044" /><stop offset="1" stopColor="#654329" /></radialGradient>
+    <radialGradient id={`${id}-ground`}><stop stopColor="#b5cf9d" /><stop offset="1" stopColor="#94b994" stopOpacity="0" /></radialGradient>
     <filter id={`${id}-shadow`} x="-50%" y="-100%" width="200%" height="300%"><feGaussianBlur stdDeviation="5" /></filter>
   </defs>;
 }
 
 /** Rounded volume, highlights and cast shadows give a fixed isometric 3D appearance. */
 function Plant({ word, id }: { word: Word; id: string }) {
+  return <g className={isWilted(word) ? 'plant-wilted' : undefined}
+    transform={isWilted(word) ? 'skewX(-22) scale(1 .72)' : undefined}>
+    <PlantArtwork word={word} id={id} />
+  </g>;
+}
+
+function PlantArtwork({ word, id }: { word: Word; id: string }) {
   const stage = Math.max(0, Math.min(5, word.growth || 0));
   const variant = hash(word.id) % 3;
   const paint = `url(#${id}-${['leaf', 'leaf2', 'leaf3'][variant]})`;
+  if (word.learned || stage === 5) return <g className="sunflower-plant" transform="scale(.78)">
+    <ellipse cx="7" cy="3" rx="18" ry="6" fill="#42603b" opacity=".18" />
+    <path d="M0 0 Q-4 -23 1 -50" fill="none" stroke="#568447" strokeWidth="4" strokeLinecap="round" />
+    <path d="M-1 -19 Q-24 -20 -22 -34 Q-3 -35 -1 -19" fill={`url(#${id}-leaf)`} />
+    <path d="M0 -30 Q21 -27 22 -42 Q5 -44 0 -30" fill={`url(#${id}-leaf)`} />
+    <path d="M-2 -20 L-17 -30 M1 -31 L17 -39" stroke="#7da45b" strokeWidth="1.3" fill="none" />
+    <g transform="translate(1 -56) rotate(-8) scale(1 .9)">
+      {Array.from({ length: 12 }, (_, index) => <ellipse key={index} cy="-17" rx="6.5" ry="12" transform={`rotate(${index * 30})`} fill={`url(#${id}-petal)`} stroke="#d7a33a" strokeWidth=".5" />)}
+      <circle r="13" fill={`url(#${id}-sunflower-center)`} stroke="#bb8b3e" strokeWidth="2" />
+      {[[-5,-5], [2,-6], [7,-1], [-7,2], [-1,0], [0,7], [6,5]].map(([x,y], index) => <circle key={index} cx={x} cy={y} r="1.4" fill="#d4aa63" opacity=".65" />)}
+    </g>
+  </g>;
   if (stage < 2) return <g>
     <ellipse cy="2" rx="11" ry="4" fill="#4b5534" opacity=".2" />
     <ellipse cy="0" rx="7" ry="3.2" fill="#765c3f" />
     <path d={`M0 0 Q-2 -7 0 ${stage ? -20 : -11}`} fill="none" stroke="#608148" strokeWidth="2.8" strokeLinecap="round" />
     <ellipse cx="-5" cy={stage ? -13 : -7} rx={stage ? 8 : 5.5} ry={stage ? 4.5 : 3.3} transform={`rotate(30 -5 ${stage ? -13 : -7})`} fill={paint} />
     <ellipse cx="5" cy={stage ? -19 : -11} rx={stage ? 8 : 5.5} ry={stage ? 4.5 : 3.3} transform={`rotate(-30 5 ${stage ? -19 : -11})`} fill={paint} />
+  </g>;
+  if (stage === 2 || stage === 3) return <g>
+    <ellipse cx="3" cy="2" rx="15" ry="4.5" fill="#42603b" opacity=".18" />
+    <path d={stage === 2 ? 'M0 0 Q-2 -10 0 -19 Q2 -26 0 -33' : 'M0 0 Q-3 -18 0 -31 Q2 -40 0 -47'} fill="none" stroke="#608148" strokeWidth="3" strokeLinecap="round" />
+    <g transform={stage === 2 ? 'translate(0 14)' : undefined}>
+    <g fill={paint}>
+      {stage === 2 && <path d="M0 -23 Q-13 -19 -17 -31 Q-5 -34 0 -23Z" />}
+      {stage === 3 && <>
+        <path d="M-1 -12 Q-19 -10 -21 -25 Q-6 -27 -1 -12Z" />
+        <path d="M-1 -22 Q17 -18 21 -34 Q5 -36 -1 -22Z" />
+      </>}
+      <path d="M1 -33 Q-14 -31 -16 -44 Q-3 -46 1 -33Z" />
+      <path d="M1 -39 Q14 -35 17 -47 Q6 -49 1 -39Z" />
+    </g>
+    <g fill="none" stroke="#b1d77b" strokeWidth="1" strokeLinecap="round" opacity=".65">
+      <path d="M0 -35 L-11 -41 M2 -40 L12 -44" />
+      {stage === 2 && <path d="M-1 -24 L-12 -29" />}
+      {stage === 3 && <path d="M-2 -14 L-15 -22 M1 -24 L15 -31" />}
+    </g>
+    </g>
   </g>;
   const size = [.0, .0, .60, .78, .92, 1.1][stage];
   return <g transform={`scale(${size})`}>
@@ -45,6 +88,27 @@ function Plant({ word, id }: { word: Word; id: string }) {
     <ellipse cx="-8" cy="-58" rx="8" ry="9" fill="#dbefaa" opacity=".15" />
     {stage >= 4 && (variant === 1 ? <g fill="#e5b467"><circle cx="-15" cy="-36" r="3" /><circle cx="12" cy="-45" r="3.5" /><circle cx="-3" cy="-58" r="3" /></g> : <g fill={`url(#${id}-flower)`}><circle cx="-16" cy="-37" r="4" /><circle cx="12" cy="-50" r="4.5" /><circle cx="-4" cy="-63" r="4" />{stage === 5 && <><circle cx="15" cy="-31" r="3.5" /><circle cx="-9" cy="-48" r="3" /></>}</g>)}
   </g>;
+}
+
+export function SeedIcon() {
+  return <svg className="plant-stage-icon" viewBox="0 0 32 32" role="img" aria-label="Seed">
+    <title>Seed</title>
+    <ellipse cx="17" cy="26" rx="9" ry="3" fill="#775034" opacity=".14" />
+    <path d="M23 5 C24 12 27 18 22 24 C18 29 10 27 8 22 C4 15 13 8 23 5Z" fill="#a87543" stroke="#80552f" strokeWidth="1" />
+    <path d="M21 8 C14 12 9 18 12 23 C8 21 8 16 12 12 Q16 9 21 8Z" fill="#d9b27b" />
+    <path d="M21 9 Q13 17 13 24" fill="none" stroke="#80552f" strokeWidth="1.3" strokeLinecap="round" />
+  </svg>;
+}
+
+export function PlantIcon({ word = { id: 'plant', lemma: '', english: '', pos: '', level: '', growth: 1 } }: { word?: Word }) {
+  const id = `plant-icon-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
+  const stage = word.learned ? 5 : Math.max(0, Math.min(5, word.growth || 0));
+  const viewBox = stage < 2 ? '-19 -30 38 38' : '-38 -80 76 88';
+  return <svg className="plant-stage-icon" viewBox={viewBox} role="img" aria-label={plantLabel(word)}>
+    <title>{plantLabel(word)}</title>
+    <Paints id={id} />
+    <Plant word={word} id={id} />
+  </svg>;
 }
 
 function Land({ id, empty }: { id: string; empty: boolean }) {
@@ -66,18 +130,21 @@ function Patch({ plot, id, focused, onPickWord, onPickPlot, selectedWord, connec
   plot: GardenPlot; id: string; focused: boolean;
   onPickWord: (id: string) => void; onPickPlot: () => void; selectedWord: string | null; connected?: boolean;
 }) {
-  // Stable alphabetical slots prevent plants jumping whenever review order changes.
-  const words = [...plot.words].sort((a, b) => a.id.localeCompare(b.id));
+  // Assign grown plants to the backmost isometric slots, with stable IDs
+  // keeping placement consistent within each group.
+  const grown = (word: Word) => Boolean(word.learned) || (word.growth || 0) >= 5;
+  const words = [...plot.words].sort((a, b) => Number(grown(b)) - Number(grown(a)) || a.id.localeCompare(b.id));
   const columns = Math.max(3, Math.ceil(Math.sqrt(words.length)));
   const cell = 96 / columns;
   const scale = Math.min(.85, cell / 38);
-  const plants = words.map((word, index) => {
+  const slots = words.map((_, index) => {
     const col = index % columns;
     const row = Math.floor(index / columns);
     const x = (col + .5) * cell - 48;
     const z = (row + .5) * cell - 48;
-    return { word, x: (x - z) * 1.05, y: (x + z) * .57 };
-  }).sort((a, b) => a.y - b.y);
+    return { x: (x - z) * 1.05, y: (x + z) * .57 };
+  }).sort((a, b) => a.y - b.y || a.x - b.x);
+  const plants = words.map((word, index) => ({ word, ...slots[index] }));
   return <g>
     <g className={focused ? '' : 'land-target'} role={focused ? undefined : 'button'} tabIndex={focused ? undefined : 0}
       aria-label={focused ? undefined : `Open ${plot.name}, ${words.length} planted words`}
@@ -87,11 +154,11 @@ function Patch({ plot, id, focused, onPickWord, onPickPlot, selectedWord, connec
       {connected ? <path d="M0 -82 L148 0 L0 82 L-148 0Z" fill="transparent" /> : <Land id={id} empty={!words.length} />}
       {plants.map(({ word, x, y }) => <g key={word.id} transform={`translate(${x} ${y})`} className={focused ? 'plant-target' : ''}
         role={focused ? 'button' : undefined} tabIndex={focused ? 0 : undefined}
-        aria-label={focused ? `${wordName(word)}, ${growthNames[word.growth || 0]}` : undefined}
+        aria-label={focused ? `${wordName(word)}, ${plantLabel(word)}` : undefined}
         aria-pressed={focused ? selectedWord === word.id : undefined}
         onClick={focused ? () => onPickWord(word.id) : undefined}
         onKeyDown={focused ? e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPickWord(word.id); } } : undefined}>
-        <title>{`${wordName(word)} · ${growthNames[word.growth || 0]}`}</title>
+        <title>{`${wordName(word)} · ${plantLabel(word)}`}</title>
         {focused && <ellipse className="plant-selection" cy="0" rx={Math.max(7, cell * .4)} ry={Math.max(4, cell * .23)} fill={selectedWord === word.id ? '#d6ebad' : 'transparent'} stroke={selectedWord === word.id ? '#edf7d9' : 'transparent'} strokeWidth="1.2" />}
         <g transform={`scale(${scale})`}><Plant word={word} id={id} /></g>
         {focused && <ellipse cx="0" cy="-8" rx={Math.max(8, cell * .35)} ry="13" fill="transparent" />}
@@ -99,6 +166,42 @@ function Patch({ plot, id, focused, onPickWord, onPickPlot, selectedWord, connec
     </g>
 
   </g>;
+}
+
+/** Cancel shared tile edges, then round only the continuous outer boundary. */
+function islandOutline(cells: { x: number; y: number }[]) {
+  type Point = [number, number];
+  const key = (p: Point) => p.join(',');
+  const edges = new Map<string, [Point, Point]>();
+  for (const { x, y } of cells) {
+    const points: Point[] = [[x, y - 82], [x + 148, y], [x, y + 82], [x - 148, y]];
+    points.forEach((a, i) => {
+      const b = points[(i + 1) % 4];
+      const reverse = `${key(b)}:${key(a)}`;
+      if (edges.has(reverse)) edges.delete(reverse);
+      else edges.set(`${key(a)}:${key(b)}`, [a, b]);
+    });
+  }
+  if (!edges.size) return '';
+  const next = new Map([...edges.values()].map(([a, b]) => [key(a), b]));
+  const first = [...edges.values()][0][0];
+  const points: Point[] = [first];
+  let point = next.get(key(first));
+  while (point && key(point) !== key(first) && points.length <= edges.size) {
+    points.push(point);
+    point = next.get(key(point));
+  }
+  const towards = (a: Point, b: Point): Point => {
+    const distance = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const fraction = Math.min(16 / distance, .25);
+    return [a[0] + (b[0] - a[0]) * fraction, a[1] + (b[1] - a[1]) * fraction];
+  };
+  const corners = points.map((p, i) => ({
+    p, before: towards(p, points[(i + points.length - 1) % points.length]),
+    after: towards(p, points[(i + 1) % points.length]),
+  }));
+  return `M${corners[0].before.join(' ')} ${corners.map(({ p, before, after }, i) =>
+    `${i ? `L${before.join(' ')} ` : ''}Q${p.join(' ')} ${after.join(' ')}`).join(' ')}Z`;
 }
 
 export function GardenArtwork({ plots, focused, selectedWord, onPickWord, onPickPlot, id, bagCount = 0, onPickBag, bagOpen = false }: {
@@ -119,16 +222,24 @@ export function GardenArtwork({ plots, focused, selectedWord, onPickWord, onPick
   const scale = Math.min(1.85, 720 / (maxX - minX), 350 / (maxY - minY));
   const offsetX = 560 - (minX + maxX) / 2 * scale;
   const offsetY = 290 - (minY + maxY) / 2 * scale;
+  const outline = islandOutline(cells);
   const hoveredCell = cells.find(cell => cell.plot.id === hovered);
   return <svg viewBox="0 0 1000 560" className="garden-artwork" aria-label={focused ? 'Your topic plot. Select a plant to see its word.' : 'Your garden. Select a topic plot to look closer.'} role="group">
     <Paints id={id} />
-    <ellipse cx="550" cy="320" rx="400" ry="205" fill={`url(#${id}-ground)`} opacity=".5" />
+    {focused ? <ellipse cx="550" cy="320" rx="400" ry="205" fill={`url(#${id}-ground)`} opacity=".5" /> : <g className="garden-water" pointerEvents="none">
+      <defs><radialGradient id={`${id}-water`} cx=".45" cy=".35" r=".7"><stop stopColor="#b9e0dd" /><stop offset=".7" stopColor="#8dc7cc" /><stop offset="1" stopColor="#76b7c2" /></radialGradient></defs>
+      <path d="M175 300 C182 194 345 112 529 102 C706 90 932 198 950 309 C971 410 802 508 612 524 C405 542 162 432 175 300Z" fill={`url(#${id}-water)`} />
+      <path d="M195 320 C190 402 400 511 600 505 M740 154 Q862 200 902 254 M774 460 Q868 423 903 381" fill="none" stroke="#d7efdf" strokeWidth="3" strokeLinecap="round" opacity=".65" />
+      <path d="M220 285 q18 -6 36 0 M802 411 q23 -7 46 0 M362 451 q15 -5 30 0" fill="none" stroke="#e6f5e9" strokeWidth="3" strokeLinecap="round" opacity=".8" />
+    </g>}
     <g transform={`translate(${offsetX} ${offsetY}) scale(${scale})`}>
-      {!focused && cells.map(({ plot, x, y }) => <g key={plot.id} transform={`translate(${x} ${y})`}>
-        <path d="M-148 0 L0 82 L148 0 L148 20 L0 102 L-148 20Z" fill={`url(#${id}-soil)`} />
-        <path d="M0 -82 L148 0 L0 82 L-148 0Z" fill={`url(#${id}-grass)`} stroke="#9fc377" strokeWidth="1" />
-        <path d="M0 -65 L118 0 L0 65 L-118 0Z" fill={`url(#${id}-bed)`} opacity=".8" />
-      </g>)}
+      {!focused && !!cells.length && <g>
+        <defs><clipPath id={`${id}-island-clip`}><path d={outline} /></clipPath></defs>
+        <path d={outline} transform="translate(0 30)" fill="#407c83" opacity=".2" stroke="#407c83" strokeWidth="12" strokeLinejoin="round" />
+        {Array.from({ length: 20 }, (_, i) => <path key={i} d={outline} transform={`translate(0 ${20 - i})`} fill={`url(#${id}-soil)`} />)}
+        <path d={outline} fill={`url(#${id}-grass)`} stroke="#b7d987" strokeWidth="1.5" />
+        <g clipPath={`url(#${id}-island-clip)`}>{cells.map(({ plot, x, y }) => <path key={plot.id} transform={`translate(${x} ${y})`} d="M0 -65 L118 0 L0 65 L-118 0Z" fill={`url(#${id}-bed)`} opacity=".8" />)}</g>
+      </g>}
       {cells.map(({ plot, x, y }) => <g key={plot.id} transform={`translate(${x} ${y})`}
         onMouseEnter={() => setHovered(plot.id)} onMouseLeave={() => setHovered(null)}
         onFocus={() => setHovered(plot.id)} onBlur={() => setHovered(null)}>
@@ -145,12 +256,34 @@ export function GardenArtwork({ plots, focused, selectedWord, onPickWord, onPick
       aria-label={`Seed bag, ${bagCount} of 20 words`} aria-expanded={bagOpen} aria-controls="world-seed-bag"
       onClick={onPickBag} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPickBag(); } }}>
       <title>Open your seed bag</title>
-      <ellipse cy="13" rx="43" ry="14" fill="#42674a" opacity=".22" />
-      <path d="M-17 -42 L-25 -61 Q0 -51 24 -61 L17 -42 Q48 -13 34 9 Q0 29 -34 9 Q-48 -13 -17 -42Z" fill="#af8860" stroke="#846744" strokeWidth="2" />
-      <path d="M-13 -39 Q-34 -9 -22 10 Q-10 18 1 17 Q-16 -5 -4 -39" fill="#cfad79" opacity=".65" />
-      <path d="M-20 -42 Q0 -36 21 -42 M15 -40 Q35 -42 29 -30 Q21 -24 16 -40 L27 -20" fill="none" stroke="#655d3b" strokeWidth="4" strokeLinecap="round" />
-      <ellipse cy="-10" rx="13" ry="15" fill="#e0c694" />
-      <path d="M0 0 L0 -17 M0 -9 Q-14 -20 -10 -11 Q-6 -6 0 -9 M0 -14 Q13 -24 10 -15 Q7 -10 0 -14" fill="#628652" stroke="#628652" strokeWidth="2" />
+      <defs>
+        <radialGradient id={`${id}-sack`} cx=".3" cy=".25" r=".8">
+          <stop stopColor="#e7c591" /><stop offset=".45" stopColor="#c39b65" /><stop offset=".8" stopColor="#9c7146" /><stop offset="1" stopColor="#775335" />
+        </radialGradient>
+        <linearGradient id={`${id}-sack-rim`} x1="0" y1="0" x2=".3" y2="1">
+          <stop stopColor="#ecd0a1" /><stop offset=".5" stopColor="#c6a071" /><stop offset="1" stopColor="#92683f" />
+        </linearGradient>
+        <linearGradient id={`${id}-sack-opening`} x1="0" y1="0" x2="0" y2="1"><stop stopColor="#563d2a" /><stop offset="1" stopColor="#967149" /></linearGradient>
+      </defs>
+      <ellipse cx="7" cy="20" rx="40" ry="12" fill="#554b32" opacity=".18" filter={`url(#${id}-shadow)`} />
+      <ellipse cx="3" cy="18" rx="27" ry="7" fill="#654e32" opacity=".22" />
+      <path d="M-18 -43 Q-37 -27 -39 -4 C-43 23 -14 30 13 25 C40 22 44 7 35 -15 Q30 -32 18 -43Z" fill={`url(#${id}-sack)`} />
+      <path d="M18 -39 Q25 -17 24 4 Q24 17 12 23 C38 19 39 8 33 -12 Q27 -31 18 -39Z" fill="#795133" opacity=".23" />
+      <path d="M-15 -35 Q-29 -21 -30 -5" fill="none" stroke="#f4dbad" strokeWidth="5" strokeLinecap="round" opacity=".3" />
+      <path d="M-10 -40 Q-18 -26 -17 -14 M8 -39 Q14 -28 12 -22 M-30 8 Q-24 17 -12 20" fill="none" stroke="#936d44" strokeWidth="1.8" strokeLinecap="round" opacity=".28" />
+      <path d="M-20 -42 L-26 -61 Q-5 -69 23 -60 L18 -42 Q0 -34 -20 -42Z" fill={`url(#${id}-sack-rim)`} />
+      <ellipse cx="-1" cy="-61" rx="25" ry="8" fill={`url(#${id}-sack-opening)`} stroke="#ddba85" strokeWidth="3" />
+      <path d="M-24 -59 Q-5 -48 22 -58 L18 -47 Q-2 -39 -21 -48Z" fill={`url(#${id}-sack-rim)`} />
+      <path d="M-20 -47 Q0 -39 19 -46" fill="none" stroke="#795936" strokeWidth="5" strokeLinecap="round" />
+      <path d="M-20 -49 Q0 -41 19 -48" fill="none" stroke="#dbc18a" strokeWidth="3" strokeLinecap="round" />
+      <path d="M18 -46 Q35 -57 33 -44 Q31 -37 18 -46 Q19 -30 29 -25 M18 -46 Q17 -32 13 -27" fill="none" stroke="#80633c" strokeWidth="3" strokeLinecap="round" />
+      <circle cx="18" cy="-46" r="3.6" fill="#cfb17a" />
+      <g transform="translate(-4 -4) rotate(-7)">
+        <ellipse rx="15" ry="17" fill="#795636" opacity=".24" transform="translate(1 2)" />
+        <ellipse rx="15" ry="17" fill="#e5d0a1" />
+        <ellipse rx="12" ry="14" fill="none" stroke="#b59869" strokeWidth=".8" strokeDasharray="2 2" />
+        <path d="M0 9 L0 -7 M0 1 Q-12 -9 -10 -1 Q-6 5 0 1 M0 -4 Q11 -14 9 -6 Q6 0 0 -4" fill="#64844b" stroke="#64844b" strokeWidth="1.8" strokeLinecap="round" />
+      </g>
       <text y="43" textAnchor="middle" fill="#244f3c" fontSize="16" fontWeight="600">Seed bag</text>
       <text y="63" textAnchor="middle" fill="#426b50" fontSize="13">{bagCount} / 20</text>
     </g>}
@@ -164,7 +297,7 @@ export function TopicScene({ plot }: { plot: GardenPlot }) {
   const word = plot.words.find(item => item.id === wordId);
   return <section className="topic-scene" aria-label={`${plot.name} garden plot`}>
     <GardenArtwork plots={[plot]} focused selectedWord={wordId} onPickWord={setWordId} onPickPlot={() => {}} id={id} />
-    <div className="topic-plant-caption" aria-live="polite">{word ? <><strong lang="de">{wordName(word)}</strong><span>{word.english} · {growthNames[word.growth || 0]}</span></> : <span>{plot.words.length ? 'Select a plant to see its word' : 'No words planted in this topic yet'}</span>}</div>
+    <div className="topic-plant-caption" aria-live="polite">{word ? <><strong lang="de">{wordName(word)}</strong><span>{word.english} · {plantLabel(word)}</span></> : <span>{plot.words.length ? 'Select a plant to see its word' : 'No planted or learned words in this topic yet'}</span>}</div>
   </section>;
 }
 
@@ -175,7 +308,7 @@ export default function GardenScene({ plots, bagCount = 0, bagContent }: { plots
   return <section className="garden-world" aria-label="Growing garden">
     {!!plots.length && <div className="world-bottom"><span>Hover to see a topic · Select a field to look closer</span></div>}
     <GardenArtwork plots={plots} focused={false} selectedWord={null} onPickWord={() => {}} onPickPlot={topic => navigate(`/topics/${encodeURIComponent(topic)}`)} id={id} bagCount={bagCount} bagOpen={bagOpen} onPickBag={() => setBagOpen(open => !open)} />
-    {!plots.length && <div className="world-empty"><h2>A little land. A fresh start.</h2><p>Plant your seed bag to start growing.</p></div>}
+    {!plots.length && <div className="world-empty"><h2>A little land. A fresh start.</h2><p>Review a seed to start growing.</p></div>}
     {bagOpen && <div id="world-seed-bag" className="plot-inspector world-seed-bag"><button className="bag-close" aria-label="Close seed bag" onClick={() => setBagOpen(false)}>×</button>{bagContent}</div>}
   </section>;
 }

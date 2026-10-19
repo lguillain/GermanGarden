@@ -32,8 +32,12 @@ test('discover, practise, plant, review, and preserve progress', async ({ page }
   await page.getByRole('button', { name: 'Finish deck' }).click();
   await page.getByRole('link', { name: 'Garden', exact: true }).click();
   await page.getByRole('button', { name: 'Seed bag, 1 of 20 words', exact: true }).click();
-  await page.getByRole('button', { name: 'Plant 1 word' }).click();
-  await expect(page.getByRole('complementary', { name: 'Seed bag', exact: true }).getByText('0 / 20')).toBeVisible();
+  await page.getByRole('complementary', { name: 'Seed bag', exact: true }).getByRole('link', { name: 'Plant', exact: true }).click();
+  await page.getByRole('button', { name: 'Show translation' }).click();
+  await page.getByRole('button', { name: /^Again In .* Plants seed$/ }).click();
+  await expect(page.getByText('Your seeds are planted.')).toBeVisible();
+  await page.getByRole('link', { name: 'Garden', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Seed bag, 0 of 20 words', exact: true })).toBeVisible();
   const plot = page.getByRole('button', { name: /^Open .+ planted words$/ }).first();
   await plot.hover();
   await expect(page.locator('.plot-tooltip')).toBeVisible();
@@ -52,7 +56,8 @@ test('discover, practise, plant, review, and preserve progress', async ({ page }
   await page.getByRole('link', { name: 'Review words', exact: true }).click();
   await page.getByRole('button', { name: 'Show translation' }).click();
   await page.getByRole('button', { name: /^Good In .* Plant grows$/ }).click();
-  await expect(page.getByText('1 reviewed this visit')).toBeVisible();
+  await expect(page.getByRole('progressbar', { name: 'Review progress' })).toHaveAttribute('value', '1');
+  await expect(page.getByText('1 reviewed', { exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Review', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Practice', exact: true }).click();
