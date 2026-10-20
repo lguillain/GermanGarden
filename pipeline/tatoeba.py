@@ -22,7 +22,6 @@ from __future__ import annotations
 import csv
 import sqlite3
 from collections import defaultdict
-from pathlib import Path
 
 from .db import ROOT
 

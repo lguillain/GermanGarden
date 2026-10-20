@@ -41,44 +41,6 @@ def _level_rule(level: str) -> str:
     return LEVEL_GUIDANCE.get(level, LEVEL_GUIDANCE["A2"])
 
 
-def kept_sample(conn: sqlite3.Connection, limit: int) -> list[sqlite3.Row]:
-    """Random distinct kept words, up to `limit`. Empty when nothing kept."""
-    return conn.execute(
-        """
-        SELECT w.id, w.lemma, w.article, w.plural, w.pos, w.english, w.level
-        FROM swipes s JOIN words w ON w.id = s.word_id
-        WHERE s.action = 'keep'
-        GROUP BY w.id
-        ORDER BY RANDOM()
-        LIMIT ?
-        """,
-        (limit,),
-    ).fetchall()
-
-
-# ---------------------------- flashcards ----------------------------
-
-
-def flashcard_deck(conn: sqlite3.Connection, limit: int) -> list[sqlite3.Row]:
-    """Random kept words not yet marked learned, each with the sentence it
-    was kept on (from its most recent keep swipe)."""
-    return conn.execute(
-        """
-        SELECT w.id, w.lemma, w.article, w.plural, w.pos, w.english, w.level,
-               se.text AS de, se.english AS en
-        FROM words w
-        JOIN swipes s ON s.id = (
-            SELECT MAX(id) FROM swipes WHERE word_id = w.id AND action = 'keep'
-        )
-        LEFT JOIN sentences se ON se.id = s.sentence_id
-        WHERE w.id NOT IN (SELECT word_id FROM flashcard_learned)
-        ORDER BY RANDOM()
-        LIMIT ?
-        """,
-        (limit,),
-    ).fetchall()
-
-
 def mark_learned(conn: sqlite3.Connection, word_id: str) -> None:
     conn.execute(
         "INSERT OR IGNORE INTO flashcard_learned (word_id) VALUES (?)", (word_id,)
@@ -258,19 +220,6 @@ GRAMMAR_CONFIG_OPTIONS: dict[str, dict[str, list[str]]] = {
                         "gemischt (ein/kein/mein)"],
     },
 }
-
-
-def kept_all(conn: sqlite3.Connection) -> list[sqlite3.Row]:
-    """Every distinct kept word with the metadata the picker needs."""
-    return conn.execute(
-        """
-        SELECT w.id, w.lemma, w.article, w.plural, w.pos, w.english, w.level
-        FROM swipes s JOIN words w ON w.id = s.word_id
-        WHERE s.action = 'keep'
-        GROUP BY w.id
-        ORDER BY w.lemma COLLATE NOCASE
-        """
-    ).fetchall()
 
 
 def kept_word(conn: sqlite3.Connection, word_id: str) -> sqlite3.Row | None:

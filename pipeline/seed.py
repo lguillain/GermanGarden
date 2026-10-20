@@ -8,7 +8,6 @@ Idempotent: safe to re-run; uses INSERT OR REPLACE / IGNORE semantics.
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
 from .db import ROOT, session
 

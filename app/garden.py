@@ -429,17 +429,6 @@ def time_stats(conn: sqlite3.Connection) -> dict:
     }
 
 
-def format_duration(seconds: int) -> str:
-    """'1h 23m' / '12m' / '45s' — compact human string."""
-    if seconds >= 3600:
-        h, rem = divmod(seconds, 3600)
-        m = rem // 60
-        return f"{h}h {m}m" if m else f"{h}h"
-    if seconds >= 60:
-        return f"{seconds // 60}m"
-    return f"{seconds}s"
-
-
 # ---------------------------- summary for the home ----------------------------
 
 

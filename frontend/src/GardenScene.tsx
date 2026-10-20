@@ -86,7 +86,7 @@ function PlantArtwork({ word, id }: { word: Word; id: string }) {
     <ellipse cx="13" cy="-38" rx="16" ry="18" fill={paint} />
     <ellipse cx="0" cy="-51" rx={variant === 1 ? 18 : 22} ry={variant === 1 ? 29 : 24} fill={paint} />
     <ellipse cx="-8" cy="-58" rx="8" ry="9" fill="#dbefaa" opacity=".15" />
-    {stage >= 4 && (variant === 1 ? <g fill="#e5b467"><circle cx="-15" cy="-36" r="3" /><circle cx="12" cy="-45" r="3.5" /><circle cx="-3" cy="-58" r="3" /></g> : <g fill={`url(#${id}-flower)`}><circle cx="-16" cy="-37" r="4" /><circle cx="12" cy="-50" r="4.5" /><circle cx="-4" cy="-63" r="4" />{stage === 5 && <><circle cx="15" cy="-31" r="3.5" /><circle cx="-9" cy="-48" r="3" /></>}</g>)}
+    {stage >= 4 && (variant === 1 ? <g fill="#e5b467"><circle cx="-15" cy="-36" r="3" /><circle cx="12" cy="-45" r="3.5" /><circle cx="-3" cy="-58" r="3" /></g> : <g fill={`url(#${id}-flower)`}><circle cx="-16" cy="-37" r="4" /><circle cx="12" cy="-50" r="4.5" /><circle cx="-4" cy="-63" r="4" /></g>)}
   </g>;
 }
 
@@ -126,9 +126,9 @@ function Land({ id, empty }: { id: string; empty: boolean }) {
   </g>;
 }
 
-function Patch({ plot, id, focused, onPickWord, onPickPlot, selectedWord, connected = false }: {
+function Patch({ plot, id, focused, onPickWord, onPickPlot, selectedWord }: {
   plot: GardenPlot; id: string; focused: boolean;
-  onPickWord: (id: string) => void; onPickPlot: () => void; selectedWord: string | null; connected?: boolean;
+  onPickWord: (id: string) => void; onPickPlot: () => void; selectedWord: string | null;
 }) {
   // Assign grown plants to the backmost isometric slots, with stable IDs
   // keeping placement consistent within each group.
@@ -151,7 +151,7 @@ function Patch({ plot, id, focused, onPickWord, onPickPlot, selectedWord, connec
       onClick={focused ? undefined : onPickPlot}
       onKeyDown={focused ? undefined : e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPickPlot(); } }}>
       <title>{`${plot.name} · ${words.length} planted words`}</title>
-      {connected ? <path d="M0 -82 L148 0 L0 82 L-148 0Z" fill="transparent" /> : <Land id={id} empty={!words.length} />}
+      {!focused ? <path d="M0 -82 L148 0 L0 82 L-148 0Z" fill="transparent" /> : <Land id={id} empty={!words.length} />}
       {plants.map(({ word, x, y }) => <g key={word.id} transform={`translate(${x} ${y})`} className={focused ? 'plant-target' : ''}
         role={focused ? 'button' : undefined} tabIndex={focused ? 0 : undefined}
         aria-label={focused ? `${wordName(word)}, ${plantLabel(word)}` : undefined}
@@ -204,7 +204,7 @@ function islandOutline(cells: { x: number; y: number }[]) {
     `${i ? `L${before.join(' ')} ` : ''}Q${p.join(' ')} ${after.join(' ')}`).join(' ')}Z`;
 }
 
-export function GardenArtwork({ plots, focused, selectedWord, onPickWord, onPickPlot, id, bagCount = 0, onPickBag, bagOpen = false }: {
+function GardenArtwork({ plots, focused, selectedWord, onPickWord, onPickPlot, id, bagCount = 0, onPickBag, bagOpen = false }: {
   plots: GardenPlot[]; focused: boolean; selectedWord: string | null;
   onPickWord: (id: string) => void; onPickPlot: (id: string) => void; id: string; bagCount?: number; onPickBag?: () => void; bagOpen?: boolean;
 }) {
@@ -243,7 +243,7 @@ export function GardenArtwork({ plots, focused, selectedWord, onPickWord, onPick
       {cells.map(({ plot, x, y }) => <g key={plot.id} transform={`translate(${x} ${y})`}
         onMouseEnter={() => setHovered(plot.id)} onMouseLeave={() => setHovered(null)}
         onFocus={() => setHovered(plot.id)} onBlur={() => setHovered(null)}>
-        <Patch plot={plot} id={id} focused={focused} connected={!focused} selectedWord={selectedWord} onPickWord={onPickWord} onPickPlot={() => onPickPlot(plot.id)} />
+        <Patch plot={plot} id={id} focused={focused} selectedWord={selectedWord} onPickWord={onPickWord} onPickPlot={() => onPickPlot(plot.id)} />
       </g>)}
     </g>
     {!plots.length && <g transform="translate(560 285) scale(1.85)"><Land id={id} empty /></g>}

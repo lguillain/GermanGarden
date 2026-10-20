@@ -10,7 +10,6 @@ import { supabase } from './supabase';
 import { CloudLogin } from './CloudLogin';
 
 const client = new QueryClient({ defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false }, mutations: { retry: false } } });
-const labels = ['Seed', 'Sprout', 'Seedling', 'Sapling', 'Bloom', 'Fully grown'];
 const grammarLabels: Record<string, string> = { Nominativ: 'Nominative', Akkusativ: 'Accusative', Dativ: 'Dative', Genitiv: 'Genitive', Singular: 'Singular', Plural: 'Plural', Präsens: 'Present', Perfekt: 'Conversational past', Präteritum: 'Simple past', Plusquamperfekt: 'Past perfect', 'Futur I': 'Future', 'Konjunktiv II': 'Subjunctive II', Imperativ: 'Imperative', Positiv: 'Positive', Komparativ: 'Comparative', Superlativ: 'Superlative', 'stark (no article)': 'Strong (no article)', 'schwach (der/die/das)': 'Weak (definite article)', 'gemischt (ein/kein/mein)': 'Mixed (indefinite article)', ich: 'I (ich)', du: 'You (du)', 'er/sie/es': 'He / she / it', wir: 'We (wir)', ihr: 'You, plural (ihr)', 'sie/Sie': 'They / formal you' };
 
 const errorText = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong. Please try again.';
@@ -40,8 +39,8 @@ function ScopeLinks({ scope = 'all', topic = '', disabled = false }: { scope?: s
   return disabled ? <span className="muted">Plant words to practise and review</span> : <div className="actions"><Link className="button" to={`/practice${query}`}>Practice</Link><Link className="button" to={`/review${query}`}>Review</Link></div>;
 }
 function WordTitle({ word, showArticle = true }: { word: Word; showArticle?: boolean }) { return <span lang="de">{showArticle && word.article && <span className="article">{word.article} </span>}{word.lemma}</span>; }
-function WordCard({ word, revealed, onReveal, hideArticleUntilRevealed = false }: { word: Word; revealed: boolean; onReveal: () => void; hideArticleUntilRevealed?: boolean }) {
-  return <article className="panel word-card"><div className="word-meta">{word.level} <span>·</span> {word.pos}</div><h2><WordTitle word={word} showArticle={!hideArticleUntilRevealed || revealed} /></h2>
+function WordCard({ word, revealed, onReveal }: { word: Word; revealed: boolean; onReveal: () => void }) {
+  return <article className="panel word-card"><div className="word-meta">{word.level} <span>·</span> {word.pos}</div><h2><WordTitle word={word} showArticle={revealed} /></h2>
     {word.plural && <p className="muted" lang="de">Plural: {word.plural}</p>}
     {word.de && <p className="sentence" lang="de">{word.de}</p>}
     {revealed ? <div className="translation"><strong>{word.english}</strong>{word.en && <p>{word.en}</p>}</div> : <button className="button" onClick={onReveal}>Show translation</button>}
@@ -97,14 +96,10 @@ function Shell() {
 </div>
   </>;
 }
-function Bag({ words, collapsed = false, concise = false }: { words: Word[]; collapsed?: boolean; concise?: boolean }) {
-  const content = <>
-    {!concise && <p className="muted small">Review a seed to plant it in your garden.</p>}
-    {words.length ? <><ul className="bag-words">{words.map(w => <li key={w.id}><WordTitle word={w} />{!concise && <span className="muted small">{w.english}</span>}</li>)}</ul><div className="actions"><Link className="button" to="/practice?scope=bag">Practice</Link><Link className="button primary" to="/review?scope=bag">Plant</Link></div></> : <><p className="muted">Your seed bag is empty.</p><Link className="button primary" to="/matcher">Find words</Link></>}
-  </>;
-  const count = <span className="badge">{words.length} / 20</span>;
-  return <aside className={collapsed ? 'garden-bag' : 'panel bag'} aria-label="Seed bag">
-    {collapsed ? <details className="disclosure"><summary><span>Seed bag</span>{count}</summary><div className="disclosure-body">{content}</div></details> : <><div className="section-heading"><h2>Seed bag</h2>{count}</div>{content}</>}
+function Bag({ words }: { words: Word[] }) {
+  return <aside className="panel bag" aria-label="Seed bag">
+    <div className="section-heading"><h2>Seed bag</h2><span className="badge">{words.length} / 20</span></div>
+    {words.length ? <><ul className="bag-words">{words.map(w => <li key={w.id}><WordTitle word={w} /></li>)}</ul><div className="actions"><Link className="button" to="/practice?scope=bag">Practice</Link><Link className="button primary" to="/review?scope=bag">Plant</Link></div></> : <><p className="muted">Your seed bag is empty.</p><Link className="button primary" to="/matcher">Find words</Link></>}
   </aside>;
 }
 const topicStages = [
@@ -114,11 +109,11 @@ const topicStages = [
   ['due', 'Review due'],
   ['grown', 'Grown / Learned'],
 ] as const;
-function TopicProgress({ counts, labelled = false }: { counts: Topic['overview']; labelled?: boolean }) {
+function TopicProgress({ counts }: { counts: Topic['overview'] }) {
   const description = topicStages.map(([key, label]) => `${label}: ${counts[key]} words`).join(', ');
-  return <span className={`topic-distribution${labelled ? ' topic-distribution-full' : ''}`} role="img" aria-label={description}>
+  return <span className="topic-distribution" role="img" aria-label={description}>
     <span className="topic-bar" aria-hidden="true">{topicStages.map(([key, label]) => <span key={key} className={`stage-${key}`} style={{ flexGrow: counts[key] }} title={`${label}: ${counts[key]} words`} />)}</span>
-    <span className="topic-counts" aria-hidden="true">{topicStages.map(([key, label]) => <span key={key} title={`${label}: ${counts[key]} words`}><i className={`stage-${key}`} />{labelled && <span>{label}</span>}{counts[key]}</span>)}</span>
+    <span className="topic-counts" aria-hidden="true">{topicStages.map(([key, label]) => <span key={key} title={`${label}: ${counts[key]} words`}><i className={`stage-${key}`} />{counts[key]}</span>)}</span>
   </span>;
 }
 function TopicList({ topics }: { topics: Topic[] }) {
@@ -149,7 +144,7 @@ function Home() {
         <div><dt>Total time</dt><dd>{duration(summary.time.total_seconds)}</dd></div>
       </dl>
     </section>
-    <GardenScene plots={plots} bagCount={bag.length} bagContent={<Bag words={bag} concise />} />
+    <GardenScene plots={plots} bagCount={bag.length} bagContent={<Bag words={bag} />} />
   </div>;
 }
 function ExplorePage() {
@@ -246,7 +241,7 @@ function MatcherPage() {
     <div className="matcher-layout">
       <section className="panel matcher-selection" aria-label="Word selection">
         <label htmlFor="matcher-topic">Topic</label>
-        <select id="matcher-topic" value={topic} disabled={busy || result.isPending} onChange={e => {
+        <select id="matcher-topic" value={topic} disabled={busy} onChange={e => {
           setTopic(e.target.value);
           guide.mutate({ topic: e.target.value });
         }}>
@@ -273,7 +268,7 @@ function MatcherPage() {
         {loading ? <Loading /> : result.error ? <ErrorNotice error={result.error} /> : card ? <>
           <div className="panel matcher-card">
           <p className="eyebrow">{card.activity_name || 'Core vocabulary'}</p>
-          <WordCard key={card.word_id} word={card} hideArticleUntilRevealed revealed={revealed} onReveal={() => setRevealed(true)} />
+          <WordCard key={card.word_id} word={card} revealed={revealed} onReveal={() => setRevealed(true)} />
           <div className="card-actions">
             <button disabled={busy} onClick={() => swipe.mutate('not_now')}>Not now</button>
             <button disabled={busy} onClick={() => swipe.mutate('learned')}>Already learned</button>
@@ -285,7 +280,7 @@ function MatcherPage() {
         <ErrorNotice error={swipe.error} />
         {swipe.error && <button onClick={() => result.refetch()}>Refresh card</button>}
       </section>
-      <Bag words={result.data?.bag || []} concise />
+      <Bag words={result.data?.bag || []} />
     </div>
   </>;
 }
@@ -309,7 +304,7 @@ function ReviewPage() {
     {result.data && <div className="review-progress">
       <div className="review-progress-counts"><span>{reviewed.size} reviewed</span><span>{result.data.remaining} to review</span></div>
       <progress aria-label="Review progress" aria-valuetext={`${reviewed.size} words reviewed this visit, ${result.data.remaining} words to review`} value={reviewed.size} max={Math.max(1, reviewed.size + result.data.remaining)} />
-    </div>}{result.isPending ? <Loading /> : result.error ? <ErrorNotice error={result.error} /> : card ? <><WordCard key={card.word_id} word={card} hideArticleUntilRevealed revealed={revealed} onReveal={() => setRevealed(true)} />{revealed && <div className="grade-actions">{card.rating_options?.map(option => <button key={option.grade} disabled={grade.isPending} className={option.grade === 3 ? 'primary' : ''} onClick={() => grade.mutate(option.grade)}>
+    </div>}{result.isPending ? <Loading /> : result.error ? <ErrorNotice error={result.error} /> : card ? <><WordCard key={card.word_id} word={card} revealed={revealed} onReveal={() => setRevealed(true)} />{revealed && <div className="grade-actions">{card.rating_options?.map(option => <button key={option.grade} disabled={grade.isPending} className={option.grade === 3 ? 'primary' : ''} onClick={() => grade.mutate(option.grade)}>
   <strong>{['Again', 'Hard', 'Good', 'Easy'][option.grade - 1]}</strong>
   <span className="rating-delay">In {reviewDelay(option.next_review_seconds)}</span>
   <span className="rating-growth">{scope === 'bag' ? 'Plants seed' : option.grade === 1 ? 'Needs more care' : option.growth > (card.growth ?? 0) ? 'Plant grows' : 'Waters plant'}</span>
@@ -323,7 +318,7 @@ function PracticePage() {
   return <><div className="practice-heading-row"><Heading title="Practice">{scope === 'topic' ? label : undefined}</Heading>
     <WordSetSwitch page="/practice" counts={result.data?.counts} /></div>
     {result.isPending ? <Loading /> : result.error ? <ErrorNotice error={result.error} /> : !result.data?.words.length ? <Empty>No words in this set yet. <Link to="/matcher">Find new words</Link> or practise your <Link to="/practice?scope=bag">seed bag</Link>.</Empty> : <div className="practice-grid">
-    {!!result.data?.words.length && modes.map(([path, title, description]) => <article className="panel" key={path}><h2>{title}</h2><p className="muted">{description}</p>{path === 'flashcards' || ai_available ? <Link className="button" to={`/practice/${path}${query}`}>Start {title.toLowerCase()} →</Link> : <p className="muted small">Needs ANTHROPIC_API_KEY in your local .env file.</p>}</article>)}</div>}</>;
+    {modes.map(([path, title, description]) => <article className="panel" key={path}><h2>{title}</h2><p className="muted">{description}</p>{path === 'flashcards' || ai_available ? <Link className="button" to={`/practice/${path}${query}`}>Start {title.toLowerCase()} →</Link> : <p className="muted small">Needs ANTHROPIC_API_KEY in your local .env file.</p>}</article>)}</div>}</>;
 }
 function Flashcards() {
   const { query, label } = useScope();
@@ -335,7 +330,7 @@ function Flashcards() {
   const move = (next: number) => { setIndex(next); setRevealed(false); };
   return <><Link className="back" to={`/practice${query}`}>← Practice</Link><Heading title="Flashcards">{label}{cards.length && index < cards.length ? ` · ${index + 1} / ${cards.length}` : ''}</Heading>
     <div className="study">{result.isPending ? <Loading /> : result.error ? <ErrorNotice error={result.error} /> : !cards.length ? <Empty>No words in this deck yet.</Empty> : index < cards.length ? <>
-      <WordCard word={cards[index]} hideArticleUntilRevealed revealed={revealed} onReveal={() => setRevealed(true)} />
+      <WordCard word={cards[index]} revealed={revealed} onReveal={() => setRevealed(true)} />
       <div className="card-actions"><button disabled={index === 0} onClick={() => move(index - 1)}>Previous</button><button className="primary" onClick={() => move(index + 1)}>{index === cards.length - 1 ? 'Finish deck' : 'Next'}</button></div>
     </> : <Empty><h2>Deck complete</h2><div className="actions"><button onClick={() => move(0)}>Go through again</button><Link className="button" to={`/practice${query}`}>Back to practice</Link></div></Empty>}</div>
   </>;

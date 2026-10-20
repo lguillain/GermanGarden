@@ -37,7 +37,6 @@ import re
 import sqlite3
 import sys
 import unicodedata
-from pathlib import Path
 
 from .db import ROOT, session
 
