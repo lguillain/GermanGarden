@@ -1,9 +1,11 @@
+import { matcherPreview } from './matcher-preview.ts';
 import { Garden } from './domain.ts';
 import { Body, Complete, text, aiPractice, guidance } from './ai.ts';
 import { Catalog, Learner, HttpError, requireThat, shuffle } from './model.ts';
 export interface Store {
   load(): Promise<{ version: number; data: Learner }>;
   save(version: number, data: Learner): Promise<boolean>;
+  profile?(): Promise<{ name: string; level: string | null; swipe_count: number }>;
   heartbeat?(): Promise<NonNullable<Learner['time_summary']>>;
 }
 type Snapshot = Awaited<ReturnType<Store['load']>>;
@@ -17,6 +19,10 @@ export async function transact<T>(store: Store, catalog: Catalog, operation: (ga
   throw new HttpError(409, 'Progress changed in another tab. Please try again.');
 }
 export async function dispatch(path: string, method: string, query: URLSearchParams, body: Body, store: Store, catalog: Catalog, complete?: Complete, initial?: Snapshot) {
+  if (path === '/session' && method === 'GET' && store.profile) {
+    const profile = await store.profile();
+    return { user: { name: profile.name, level: profile.level, swipes: profile.swipe_count }, ai_available: !!complete, activities: catalog.activities };
+  }
   if (path === '/heartbeat' && method === 'POST' && store.heartbeat) return store.heartbeat();
   const scope = method === 'GET' ? query.get('scope') || 'all' : text(body, 'scope', 'all');
   const topic = method === 'GET' ? query.get('topic') || '' : text(body, 'topic');
@@ -28,7 +34,7 @@ export async function dispatch(path: string, method: string, query: URLSearchPar
       case '/review': return garden.review(scope, topic);
       case '/practice': return garden.practice(scope, topic);
       case '/flashcards': return { cards: shuffle(garden.scope(scope, topic)).slice(0, 10).map(w => garden.sentence(w, topic)) };
-      case '/matcher': return transact(store, catalog, g => { if (topic) g.setTopic(topic); return g.matcher(); }, snapshot);
+      case '/matcher': return transact(store, catalog, g => { if (topic) g.setTopic(topic); return matcherPreview(g, g.matcher()); }, snapshot);
     }
     const match = path.match(/^\/topics\/([^/]+)$/); if (match) return garden.topicDetail(decodeURIComponent(match[1]));
   }
@@ -44,12 +50,12 @@ export async function dispatch(path: string, method: string, query: URLSearchPar
       return transact(store, catalog, g => {
         if (weights) g.state.weights = weights;
         if (path === '/onboarding') { g.state.user.level = level === 'unsure' ? 'A1' : level; return g.state.user; }
-        g.setTopic(topic || (weights ? Object.entries(weights).sort((a, b) => b[1] - a[1])[0]?.[0] : null) || g.bestTopic()); return g.matcher();
+        g.setTopic(topic || (weights ? Object.entries(weights).sort((a, b) => b[1] - a[1])[0]?.[0] : null) || g.bestTopic()); return matcherPreview(g, g.matcher());
       }, snapshot);
     }
     if (path === '/heartbeat') return transact(store, catalog, g => g.heartbeat(), snapshot);
     if (path === '/review') return transact(store, catalog, g => g.grade(text(body, 'word_id'), Number(body.grade), scope, topic), snapshot);
-    if (path === '/matcher') return transact(store, catalog, g => g.swipe(text(body, 'word_id'), text(body, 'action'), text(body, 'activity_id') || null, Number(body.sentence_id)), snapshot);
+    if (path === '/matcher') return transact(store, catalog, g => matcherPreview(g, g.swipe(text(body, 'word_id'), text(body, 'action'), text(body, 'activity_id') || null, Number(body.sentence_id))), snapshot);
     const match = path.match(/^\/topics\/([^/]+)\/words\/([^/]+)\/keep$/);
     if (match) return transact(store, catalog, g => g.add(decodeURIComponent(match[2]), decodeURIComponent(match[1])), snapshot);
   }

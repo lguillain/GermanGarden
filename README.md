@@ -127,7 +127,7 @@ SQL and account mapping are saved under ignored `data/` for recovery.
 
 For optional local AI, copy `supabase/.env.example` to `supabase/.env`, fill in the
 Anthropic key and run `supabase functions serve garden --env-file supabase/.env`.
-Keep this file private. The Edge Function caches vocabulary for up to one minute
+Keep this file private. The Edge Function caches vocabulary for up to five minutes
 after imports.
 
 ### Create the hosted backend
@@ -198,7 +198,7 @@ the backend. Apply pending database migrations first with `supabase db push`.
 4. Run **Deploy GitHub Pages** from the Actions tab. Deployment is deliberately
    manual so code pushes do not publish unfinished changes.
 
-The workflow tests the cloud logic, builds with the correct repository base path,
+The workflow tests the cloud logic and browser login/loading flows, builds with the correct repository base path,
 and publishes `dist/`. Routes use `/#/…` so direct navigation and refresh work on
 GitHub Pages. No Python server is needed in production. Supabase functions and
 migrations are deployed separately with the CLI commands above.
@@ -276,3 +276,22 @@ validation rolls back the entire migration. No JSON archive remains in the datab
 If migration fails, keep the old backend and inspect the validation error. If the
 backend deployment fails after migration, retry deployment of this version; do not
 reset the database or re-import progress. Keep the independent backups private.
+
+### Matcher latency upgrade
+
+`202610200004_matcher_progress.sql` adds compact matcher reads and atomic,
+append-only decision writes. Existing full-progress readers and writers remain
+compatible. Apply this migration before deploying the updated garden function:
+
+```bash
+supabase db push --linked
+supabase functions deploy garden
+```
+
+Publish the frontend through the existing GitHub Pages workflow to enable next-card
+previews. Each response includes a preview for each available decision. The browser
+shows that card while saving, disables further decisions until confirmation, and
+restores the previous card on failure. Seed bag changes appear only after confirmation.
+Older frontends can still use the updated API, and the updated frontend tolerates
+responses without previews. Server-Timing exposes `auth`, `progress`, `catalog`,
+`dispatch`, and `save` durations for checking actual request latency.

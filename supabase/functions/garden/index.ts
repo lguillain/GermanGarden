@@ -16,11 +16,17 @@ const catalog = createCatalogLoader(async request => {
 });
 type Measure = <T>(name: string, operation: () => PromiseLike<T>) => Promise<T>;
 const emptyCatalog: Catalog = { words: [], activities: [], word_activities: [], sentences: [] };
-function storeFor(userId: string, name: string, measure: Measure): Store {
+function storeFor(userId: string, name: string, measure: Measure, matcher = false): Store {
   let snapshot: { version: number; data: Learner } | undefined;
   return {
+    async profile() {
+      const { data, error } = await measure('profile', () => admin.from('learner_profiles')
+        .select('name, level, swipe_count').eq('user_id', userId).maybeSingle());
+      if (error) throw error;
+      return data ?? { name, level: null, swipe_count: 0 };
+    },
     async load() {
-      const { data, error } = await measure('progress', () => admin.rpc('load_learner_progress', { p_user_id: userId, p_name: name }));
+      const { data, error } = await measure('progress', () => admin.rpc(matcher ? 'load_matcher_progress' : 'load_learner_progress', { p_user_id: userId, p_name: name }));
       if (error) throw error;
       snapshot = data as { version: number; data: Learner };
       // Keep the comparison baseline separate from mutable domain state.
@@ -28,6 +34,15 @@ function storeFor(userId: string, name: string, measure: Measure): Store {
     },
     async save(version, data) {
       requireThat(snapshot && snapshot.version === version, 'Progress must be loaded before saving.', 500);
+      if (matcher) {
+        const result = await measure('save', () => admin.rpc('save_matcher_progress', {
+          p_user_id: userId, p_version: version, p_user: data.user,
+          p_swipes: data.swipes.slice(snapshot!.data.swipes.length),
+          p_known: data.known.slice(snapshot!.data.known.length),
+        }));
+        if (result.error) throw result.error;
+        return result.data === true;
+      }
       const changes = progressChanges(snapshot.data, data);
       const result = await measure('save', () => admin.rpc('save_learner_progress', {
         p_user_id: userId, p_version: version, p_changes: changes,
@@ -91,8 +106,12 @@ export async function handler(request: Request): Promise<Response> {
     }
     const requestUrl = new URL(request.url);
     const path = requestUrl.pathname.replace(/^\/(?:functions\/v1\/)?garden(?=\/|$)/, '') || '/';
-    const store = storeFor(user.id, String(user.user_metadata?.name || user.email?.split('@')[0] || 'Learner'), measure);
+    const store = storeFor(user.id, String(user.user_metadata?.name || user.email?.split('@')[0] || 'Learner'), measure, path === '/matcher');
     if (path === '/heartbeat') return respond(await dispatch(path, request.method, requestUrl.searchParams, body, store, emptyCatalog));
+    if (path === '/session' && request.method === 'GET') {
+      const [profile, vocabulary] = await Promise.all([store.profile!(), measure('catalog', () => catalog(path, request.method))]);
+      return respond(await dispatch(path, request.method, requestUrl.searchParams, body, { ...store, profile: async () => profile }, vocabulary, complete));
+    }
     const [vocabulary, snapshot] = path === '/practice' && request.method === 'GET'
       ? await loadPracticeData(() => store.load(), wordIds => measure('catalog', async () => {
         const { data, error } = await admin.rpc('load_practice_catalog', { p_word_ids: wordIds });

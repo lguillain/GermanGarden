@@ -26,3 +26,12 @@ test('cloud heartbeat skips loading and saving learner progress', async () => {
   }, { words: [], activities: [], word_activities: [], sentences: [] });
   assert.equal(result, summary);
 });
+
+test('cloud session reads only the profile, without loading or saving progress', async () => {
+  const result = await dispatch('/session', 'GET', new URLSearchParams(), {}, {
+    async load() { throw new Error('Must not load progress'); },
+    async save() { throw new Error('Must not save progress'); },
+    async profile() { return { name: 'Test', level: 'A2', swipe_count: 12000 }; },
+  }, { words: [], activities: [], word_activities: [], sentences: [] });
+  assert.deepEqual(result, { user: { name: 'Test', level: 'A2', swipes: 12000 }, ai_available: false, activities: [] });
+});

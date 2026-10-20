@@ -20,8 +20,10 @@ A German vocabulary web app. Users discover words they care about, practise them
 - Two users for now (the author and her husband), possibly more later.
 - The hosted app uses private email/password accounts created by the garden owner. Each account has its own progress, shared across devices; there is no public signup.
 - Imported accounts can sign in using their profile username (for example, `leo`) and password. Full email addresses are also accepted.
+- Sign-in submits the current field values, including browser/password-manager autofill.
 - Clicking the farmer icon signs out the current browser session and returns to sign-in. Other devices stay signed in, and the learner can immediately sign in again or switch accounts.
 - The local Python version retains its on-device profile chooser.
+- The signed-in sidebar appears from browser login state while profile and page data load. Session bootstrap reads only the small learner profile and cached topic list, never learning progress. Server requests still verify authentication.
 - Used on a laptop, so desktop layout comes first.
 - Not in scope: social features and adding your own vocabulary.
 
@@ -68,6 +70,7 @@ A German vocabulary web app. Users discover words they care about, practise them
 - Opening Find words, choosing a topic, and moving between cards use the normal vocabulary selection rules immediately. They do not wait for automatic AI recommendations. AI guidance runs only when the learner submits a free-text request without choosing a specific topic.
 - **Word card:** topic, the word with article, part of speech, CEFR level, an example sentence, and the English translation on tap.
 - Returning to Find words keeps the current card when its cached state is still valid. Reconnecting must not replace it. If progress changed elsewhere in the app and the selection needs refreshing, show a loading state until the fresh card is ready rather than flashing an outdated card first.
+- The next card is preloaded for each possible choice and shown while that choice saves. A saving indicator remains visible and further choices stay disabled until confirmation. Failed saves restore the previous card; concurrent changes use the server’s fresh selection. The seed bag shows confirmed progress only.
 - **Actions per card:** Not now, Learned, Keep.
 - **Side panel:** the seed bag as a list of kept words, with actions to practise or review seeds.
 

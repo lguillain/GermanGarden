@@ -134,3 +134,66 @@ test('normalized persistence retries concurrent additions without overfilling th
     assert.equal(new Garden(catalog,(await load(db)).data).bag().length, 19);
   } finally { await db.close(); }
 });
+
+test('compact matcher reads preserve history and atomically append decisions without overwriting reviews', async () => {
+  const db = await setup();
+  try {
+    await db.exec(migration);
+    await db.exec(readFileSync('supabase/migrations/202610200004_matcher_progress.sql', 'utf8'));
+    const state = source();
+    state.swipes.push({ ...state.swipes[0], word_id: 'planted', planted_at: '2026-10-01T10:00:00Z' });
+    state.srs.planted = initialSrs();
+    await db.query('select import_learner_progress($1,$2)', [userA, JSON.stringify(state)]);
+    const read = async (id = userA) => (await db.query<{ snapshot: { version: number; data: Learner } }>('select load_matcher_progress($1,$2) snapshot', [id, 'Test'])).rows[0].snapshot;
+    const original = (await load(db)).data;
+    const before = await read();
+    assert.deepEqual(before.data.swipes.map(s => s.word_id), ['word']);
+    assert.deepEqual(new Set(before.data.seen_ids), new Set(['word', 'planted']));
+    assert.deepEqual(Object.keys(before.data.srs), ['word']);
+    assert.deepEqual(before.data.weights, {});
+    assert.equal(before.data.time_summary, undefined);
+    assert.deepEqual((await read(userB)).data.seen_ids, []);
+    const decision = { ...state.swipes[0], word_id: 'next', action: 'drop', drop_reason: 'known' };
+    const write = async (version: number) => (await db.query<{ ok: boolean }>('select save_matcher_progress($1,$2,$3,$4,$5) ok', [userA, version, JSON.stringify(before.data.user), JSON.stringify([decision]), JSON.stringify(['next'])])).rows[0].ok;
+    assert.equal(await write(before.version), true);
+    assert.equal(await write(before.version), false);
+    const after = (await load(db)).data;
+    assert.deepEqual(after.swipes.slice(0, 2), original.swipes);
+    assert.equal(after.swipes[2].word_id, 'next');
+    assert.deepEqual(after.known, ['known', 'next']);
+    assert.deepEqual(after.learned, state.learned);
+    assert.deepEqual(after.srs, original.srs);
+    assert.deepEqual(after.weights, state.weights);
+    assert.equal((await db.query<{ n: number }>('select count(*)::int n from learner_reviews')).rows[0].n, 1);
+    await assert.rejects(write((await read()).version), /already handled/);
+    // All learner reads/writes remain service-only, including forged user IDs.
+    await db.exec('set role authenticated');
+    await assert.rejects(read(userA), /permission denied/);
+    await db.exec('reset role');
+  } finally { await db.close(); }
+});
+
+test('compact matcher retries competing final-slot keeps and rejects duplicate decisions', async () => {
+  const db = await setup();
+  try {
+    await db.exec(migration);
+    await db.exec(readFileSync('supabase/migrations/202610200004_matcher_progress.sql', 'utf8'));
+    const catalog = { words: Array.from({ length: 23 }, (_, i) => ({ id: `w${i}`, lemma: `W${i}`, pos: 'noun', english: 'word', level: 'A2' })), activities: [{ id: 'home', name: 'Home' }], word_activities: Array.from({ length: 23 }, (_, i) => ({ word_id: `w${i}`, activity_id: 'home', relevance: 3 })), sentences: Array.from({ length: 23 }, (_, i) => ({ id: i, word_id: `w${i}`, activity_id: 'home', text: 'Example', english: 'Example' })) };
+    const garden = new Garden(catalog, freshLearner('Test')); garden.state.user.level = 'A2';
+    for (let i = 0; i < 19; i++) garden.add(`w${i}`, 'home');
+    await db.query('select import_learner_progress($1,$2)', [userA, JSON.stringify(garden.state)]);
+    function store(): Store {
+      let snapshot: Awaited<ReturnType<typeof load>>;
+      return {
+        async load() { snapshot = (await db.query<{ snapshot: typeof snapshot }>('select load_matcher_progress($1,$2) snapshot', [userA, 'Test'])).rows[0].snapshot; return structuredClone(snapshot); },
+        async save(version, data) { return (await db.query<{ ok: boolean }>('select save_matcher_progress($1,$2,$3,$4,$5) ok', [userA, version, JSON.stringify(data.user), JSON.stringify(data.swipes.slice(snapshot.data.swipes.length)), JSON.stringify(data.known.slice(snapshot.data.known.length))])).rows[0].ok; },
+      };
+    }
+    const results = await Promise.allSettled([19,20].map(i => dispatch('/matcher', 'POST', new URLSearchParams(), { action: 'keep', word_id: `w${i}`, activity_id: 'home', sentence_id: i }, store(), catalog)));
+    assert.equal(results.filter(r => r.status === 'fulfilled').length, 1);
+    assert.equal(new Garden(catalog, (await load(db)).data).bag().length, 20);
+    const duplicates = await Promise.allSettled([1,2].map(() => dispatch('/matcher', 'POST', new URLSearchParams(), { action: 'learned', word_id: 'w21', activity_id: 'home', sentence_id: 21 }, store(), catalog)));
+    assert.equal(duplicates.filter(r => r.status === 'fulfilled').length, 1);
+    assert.deepEqual((await load(db)).data.known, ['w21']);
+  } finally { await db.close(); }
+});

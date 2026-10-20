@@ -20,6 +20,8 @@ jobs:
       - run: npm ci
       - run: npm run test:cloud
       - run: npm run check:cloud
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --config playwright.cloud.config.ts
       - uses: actions/configure-pages@v5
         id: pages
       - name: Build

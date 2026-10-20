@@ -1,5 +1,19 @@
 import { test, expect } from '@playwright/test';
 
+test('sign-in submits the visible values when autofill does not dispatch input events', async ({ page }) => {
+  await page.route('https://auth-test.supabase.co/auth/v1/token**', route =>
+    route.fulfill({ status: 400, json: { error_code: 'invalid_credentials', msg: 'Invalid login credentials' } }));
+  await page.goto('/#/profile');
+  // Simulate autofill updating DOM values without notifying React.
+  await page.getByLabel('Username', { exact: true }).evaluate((input: HTMLInputElement) => { input.value = 'leo'; });
+  await page.getByLabel('Password', { exact: true }).evaluate((input: HTMLInputElement) => { input.value = 'test-password'; });
+  const submitted = page.waitForRequest('**/auth/v1/token?grant_type=password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  expect((await submitted).postDataJSON()).toMatchObject({
+    email: 'leo@vocab-garden.test', password: 'test-password',
+  });
+});
+
 test('farmer signs out only this session and allows signing back in or switching accounts', async ({ page }) => {
   const logoutScopes: (string | null)[] = [];
   let username = '';
@@ -30,9 +44,15 @@ test('farmer signs out only this session and allows signing back in or switching
     }
   });
   await page.goto('/#/profile');
-  for (const name of ['first', 'first', 'second']) {
-    await page.getByLabel('Username', { exact: true }).fill(name);
-    await page.getByLabel('Password', { exact: true }).fill('test-password');
+  for (const [index, name] of ['first', 'first', 'second'].entries()) {
+    if (index === 1) {
+      // Re-login after farmer logout with autofill that emits no change events.
+      await page.getByLabel('Username', { exact: true }).evaluate((input: HTMLInputElement, value) => { input.value = value; }, name);
+      await page.getByLabel('Password', { exact: true }).evaluate((input: HTMLInputElement) => { input.value = 'test-password'; });
+    } else {
+      await page.getByLabel('Username', { exact: true }).fill(name);
+      await page.getByLabel('Password', { exact: true }).fill('test-password');
+    }
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Your garden', exact: true })).toBeVisible();
     await expect(page.locator('.profile-identity')).toContainText(name);

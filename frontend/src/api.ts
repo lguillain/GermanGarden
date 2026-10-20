@@ -53,7 +53,7 @@ export interface Time { today_seconds: number; total_seconds: number; current_se
 export interface Topic extends Activity { overview: Record<'unseen' | 'seeds' | 'planted' | 'due' | 'grown', number>; total: number; planted: number; grown_pct: number; planted_pct: number; seed_bag_here: number }
 export interface GardenPlot { id: string; name: string; words: Word[] }
 export interface Garden { plots: GardenPlot[]; topics: Topic[]; bag: Word[]; summary: { bag_count: number; bag_cap: number; due_now: number; planted_total: number; time: Time } }
-export interface Matcher { card: Card | null; bag: Word[] }
+export interface Matcher { card: Card | null; bag: Word[]; previews?: Partial<Record<string, { card: Card | null; bag: Word[] }>> }
 export interface Correction { original: string; corrected: string; note: string }
 export interface Message { role: 'user' | 'assistant'; content: string; corrections?: Correction[] }
 export interface Chat { targets: Word[]; history: Message[]; used: string[] }

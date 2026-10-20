@@ -1,5 +1,12 @@
 import { Catalog, Learner, Word, Sentence, requireThat, initialSrs, growth, reviewOutcome, shuffle } from './model.ts';
 
+// Stable per decision so a preview and its later confirmed response select the
+// same card. Concurrent progress changes still cause selection to be recomputed.
+function decisionRandom(seed: string) {
+  let value = 2166136261;
+  for (const char of seed) value = Math.imul(value ^ char.charCodeAt(0), 16777619);
+  return () => { value += 0x6D2B79F5; let t = Math.imul(value ^ value >>> 15, 1 | value); t ^= t + Math.imul(t ^ t >>> 7, 61 | t); return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
 function buildCatalogIndex(catalog: Catalog) {
   const topics = new Map<string, Set<string>>();
   const sentences = new Map<string, Sentence[]>();
@@ -27,6 +34,7 @@ export const grammarOptions: Record<string, Record<string, string[]>> = {
 };
 export class Garden {
   constructor(public catalog: Catalog, public state: Learner, public now = Date.now()) {}
+  private random = Math.random;
   iso() { return new Date(this.now).toISOString(); }
   topic(id: string) { const topic = this.catalog.activities.find(a => a.id === id); requireThat(topic, 'Unknown topic.'); return topic; }
   word(id: string) { const word = catalogIndex(this.catalog).words.get(id); requireThat(word, 'Unknown word.', 404); return word; }
@@ -44,11 +52,15 @@ export class Garden {
   sentence(word: Word, topic = '') {
     const sentences = catalogIndex(this.catalog).sentences.get(word.id) || [];
     const preferred = topic ? sentences.filter(s => s.activity_id === topic) : [];
-    const sentence = shuffle(preferred.length ? preferred : sentences)[0];
+    const sentence = shuffle(preferred.length ? preferred : sentences, this.random)[0];
     return { ...this.details(word), word_id: word.id, sentence_id: sentence?.id ?? null, de: sentence?.text || '', en: sentence?.english || '', activity_id: topic || sentence?.activity_id || null,
       activity_name: this.catalog.activities.find(a => a.id === (topic || sentence?.activity_id))?.name || '' };
   }
-  bag() { return this.catalog.words.filter(w => { const s = this.kept(w.id); return s && !s.planted_at; }).map(w => this.details(w)); }
+  bag() {
+    const kept = new Map<string, typeof this.state.swipes[number]>();
+    for (const swipe of this.state.swipes) if (swipe.action === 'keep' && !kept.has(swipe.word_id)) kept.set(swipe.word_id, swipe);
+    return this.catalog.words.filter(w => kept.has(w.id) && !kept.get(w.id)!.planted_at).map(w => this.details(w));
+  }
   scope(scope = 'all', topic = '') {
     requireThat(['all', 'topic', 'bag'].includes(scope), 'Unknown word set.');
     if (scope === 'topic') this.topic(topic);
@@ -84,10 +96,10 @@ export class Garden {
     return { added: true };
   }
   setTopic(topic: string | null) { if (topic) this.topic(topic); Object.assign(this.state.user, { current_topic: topic, cards_in_bucket: 0, drop_streak: 0 }); }
-  unseen(word: Word) { return !this.learned(word.id) && !this.state.swipes.some(s => s.word_id === word.id); }
+  unseen(word: Word) { return !this.state.seen_ids?.includes(word.id) && !this.learned(word.id) && !this.state.swipes.some(s => s.word_id === word.id); }
   bestTopic(exclude = '') {
     const level = this.state.user.level || 'A2';
-    const seen = new Set([...this.state.known, ...this.state.learned, ...this.state.swipes.map(s => s.word_id)]);
+    const seen = new Set([...(this.state.seen_ids || []), ...this.state.known, ...this.state.learned, ...this.state.swipes.map(s => s.word_id)]);
     const unseenTopics = new Set<string>(), seenCounts = new Map<string, number>();
     for (const word of this.catalog.words) {
       if (word.level !== level) continue;
@@ -96,25 +108,27 @@ export class Garden {
         else unseenTopics.add(topic);
       }
     }
-    return shuffle(this.catalog.activities).filter(a => a.id !== exclude && unseenTopics.has(a.id))
+    return shuffle(this.catalog.activities, this.random).filter(a => a.id !== exclude && unseenTopics.has(a.id))
       .sort((a, b) => (seenCounts.get(a.id) || 0) - (seenCounts.get(b.id) || 0))[0]?.id || null;
   }
   matcher() {
     const u = this.state.user;
     if (!u.current_topic) this.setTopic(this.bestTopic());
     if (u.cards_in_bucket >= 5 && u.drop_streak >= 7) { const next = this.bestTopic(u.current_topic || ''); if (next) this.setTopic(next); }
+    const seen = new Set([...(this.state.seen_ids || []), ...this.state.known, ...this.state.learned, ...this.state.swipes.map(s => s.word_id)]);
     const pick = () => {
-      const levels = ['A1', 'A2', 'B1'], level = u.level || 'A2', index = levels.indexOf(level), roll = Math.random();
+      const levels = ['A1', 'A2', 'B1'], level = u.level || 'A2', index = levels.indexOf(level), roll = this.random();
       const below = index > 0 ? .15 * u.affinity_below : 0, above = index < 2 ? .15 * u.affinity_above : 0;
       const chosen = roll < below ? levels[index - 1] : roll < below + above ? levels[index + 1] : level;
-      const pool = this.catalog.words.filter(w => this.unseen(w) && this.inTopic(w.id, u.current_topic || '') && catalogIndex(this.catalog).sentences.get(w.id)?.some(s => s.activity_id === u.current_topic));
-      return shuffle(pool.filter(w => w.level === chosen))[0] || shuffle(pool.filter(w => w.level === level))[0];
+      const pool = this.catalog.words.filter(w => !seen.has(w.id) && this.inTopic(w.id, u.current_topic || '') && catalogIndex(this.catalog).sentences.get(w.id)?.some(s => s.activity_id === u.current_topic));
+      return shuffle(pool.filter(w => w.level === chosen), this.random)[0] || shuffle(pool.filter(w => w.level === level), this.random)[0];
     };
     let word = u.current_topic ? pick() : undefined;
     if (!word) { this.setTopic(this.bestTopic(u.current_topic || '')); if (u.current_topic) word = pick(); }
     return { card: word ? this.sentence(word, u.current_topic || '') : null, bag: this.bag() };
   }
   swipe(id: string, action: string, topic: string | null, sentenceId: number) {
+    this.random = decisionRandom(`${id}:${action}:${this.state.user.swipe_count}`);
     const word = this.word(id), u = this.state.user;
     requireThat(['keep', 'not_now', 'learned'].includes(action), 'Unknown action.');
     requireThat(this.unseen(word), 'This word has already been handled. Refresh to continue.', 409);
