@@ -13,6 +13,7 @@ Use the domain terms seed bank, seed bag, garden, practice, and review consisten
 - `app/`: original Python/FastAPI backend, retained for local use and parity checks.
 - `pipeline/`, `schema.sql`: offline SQLite vocabulary pipeline.
 - `scripts/export-supabase.py`: read-only SQLite-to-PostgreSQL export.
+- `scripts/import-local.ts`: bulk local import, including automatic login accounts.
 - `tests/cloud/`: TypeScript domain, PostgreSQL and local Supabase integration tests.
 - `tests/test_*.py`: original API and migration tests; `tests/browser/`: Playwright.
 - `.github/workflows/pages.yml`: manually triggered GitHub Pages deployment.
@@ -24,6 +25,8 @@ Use the domain terms seed bank, seed bag, garden, practice, and review consisten
 - Install legacy backend: `python3 -m venv .venv`, then `.venv/bin/pip install -r requirements.txt`.
 - Legacy development: `./scripts/dev.sh`.
 - Cloud development: `supabase start`, `supabase functions serve garden`, then `npm run dev` with `.env.local` configured as described in README.
+- Configure local frontend environment: `npm run configure:local` (requires the local Supabase stack).
+- Import all local profiles and vocabulary: `npm run import:local` (requires the local Supabase stack; credentials are saved privately under `data/`).
 - Build and frontend typecheck: `npm run build`.
 - Cloud typecheck: `npm run check:cloud`.
 - Cloud tests: `npm run test:cloud` (Node 22+ and Python 3; no Docker required).

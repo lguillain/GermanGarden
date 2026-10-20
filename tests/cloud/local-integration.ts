@@ -22,7 +22,7 @@ async function api(client: typeof admin, path: string, body?: unknown) {
 }
 try {
   for (let i = 0; i < 2; i++) {
-    const email = `${fixtureId}-${i}@example.com`, password = crypto.randomUUID();
+    const email = `${fixtureId}-${i}@vocab-garden.test`, password = crypto.randomUUID();
     const result = await admin.auth.admin.createUser({ email, password, email_confirm: true });
     if (result.error) throw result.error;
     userIds.push(result.data.user.id); accounts.push({ email, password });
@@ -67,7 +67,7 @@ try {
       const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
       await page.goto('http://127.0.0.1:4174/garden-test/#/review');
       await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
-      await page.getByLabel('Email').fill(accounts[0].email); await page.getByLabel('Password', { exact: true }).fill(accounts[0].password);
+      await page.getByLabel('Username').fill(` ${accounts[0].email.split('@')[0].toUpperCase()} `); await page.getByLabel('Password', { exact: true }).fill(accounts[0].password);
       await page.getByRole('button', { name: 'Sign in', exact: true }).click();
       await expect(page.getByRole('heading', { name: 'Your garden' })).toBeVisible();
       await page.goto('http://127.0.0.1:4174/garden-test/#/review'); await page.reload();
@@ -89,6 +89,10 @@ try {
       await page.screenshot({ path: 'test-results/cloud-garden.png', fullPage: true });
       await page.locator('.profile-button').click();
       await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+      await page.getByLabel('Username').fill(accounts[0].email);
+      await page.getByLabel('Password', { exact: true }).fill(accounts[0].password);
+      await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+      await expect(page.getByRole('heading', { name: 'Your garden' })).toBeVisible();
       assert.deepEqual(errors, []);
       console.log('Cloud browser checks passed: repository subpath, sign-in, page refresh, hidden articles, review completion and sign-out.');
     } finally { await browser?.close(); server.kill(); }

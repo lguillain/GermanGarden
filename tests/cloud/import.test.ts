@@ -48,3 +48,57 @@ with tempfile.TemporaryDirectory() as directory:
     const count = await db.query<{ n: number }>('select count(*)::int as n from learner_state'); assert.equal(count.rows[0].n, 1);
   } finally { await db.close(); }
 });
+
+test('bulk import keeps profiles separate and reruns preserve newer progress', async () => {
+  const ids = ['00000000-0000-4000-8000-000000000011', '00000000-0000-4000-8000-000000000012'];
+  const sql = execFileSync('python3', ['-c', `
+import runpy, sqlite3, tempfile
+from pathlib import Path
+exporter = runpy.run_path('scripts/export-supabase.py')
+with tempfile.TemporaryDirectory() as directory:
+    profiles = []
+    for i, user_id in enumerate(${JSON.stringify(ids)}):
+        path = Path(directory) / f'profile-{i}.sqlite'
+        with sqlite3.connect(path) as conn:
+            conn.executescript(Path('schema.sql').read_text())
+            conn.execute("INSERT INTO words VALUES (?,?,?,?,?,?,?)", ('word', 'Baum', 'der', 'Bäume', 'noun', 'tree', 'A2'))
+            conn.execute("INSERT INTO user_state(id,name,level) VALUES (1,?,'A2')", (f'Learner {i}',))
+            if i == 0:
+                conn.execute("INSERT INTO swipes(word_id,action) VALUES ('word','keep')")
+            else:
+                conn.execute("INSERT INTO known_words(word_id) VALUES ('word')")
+            conn.commit()
+        profiles.append((path,user_id))
+    original = [p.read_bytes() for p,_ in profiles]
+    print(exporter['export_many'](profiles[0][0], profiles, skip_existing=True))
+    assert original == [p.read_bytes() for p,_ in profiles]
+    try:
+        exporter['export_many'](profiles[0][0], [(p,profiles[0][1]) for p,_ in profiles])
+        raise AssertionError('duplicate account UUID was accepted')
+    except ValueError:
+        pass
+`], { encoding: 'utf8' });
+  const db = new PGlite();
+  try {
+    await db.exec(`create role anon; create role authenticated; create role service_role;
+      create schema auth; create table auth.users(id uuid primary key);
+      create function auth.uid() returns uuid language sql as $$ select null::uuid $$;
+      insert into auth.users values ('${ids[0]}'), ('${ids[1]}');`);
+    await db.exec(readFileSync('supabase/migrations/202610190001_garden.sql', 'utf8'));
+    await db.exec(sql);
+    const result = await db.query<{ user_id: string; data: { user: { name: string }; swipes: unknown[]; known: string[] } }>('select user_id,data from learner_state order by user_id');
+    assert.equal(result.rows.length, 2);
+    assert.equal(result.rows[0].data.user.name, 'Learner 0');
+    assert.equal(result.rows[0].data.swipes.length, 1);
+    assert.deepEqual(result.rows[0].data.known, []);
+    assert.equal(result.rows[1].data.user.name, 'Learner 1');
+    assert.equal(result.rows[1].data.swipes.length, 0);
+    assert.deepEqual(result.rows[1].data.known, ['word']);
+    await db.exec(`update learner_state set data = data || '{"new_progress":true}'::jsonb, version=1 where user_id='${ids[0]}';`);
+    await db.exec(sql);
+    const preserved = await db.query<{ data: { new_progress: boolean }; version: number }>(`select data,version from learner_state where user_id='${ids[0]}'`);
+    assert.equal(preserved.rows[0].data.new_progress, true);
+    assert.equal(Number(preserved.rows[0].version), 1);
+    const counts = await db.query<{ n: number }>('select count(*)::int as n from learner_state'); assert.equal(counts.rows[0].n, 2);
+  } finally { await db.close(); }
+});

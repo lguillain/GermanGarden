@@ -95,23 +95,40 @@ supabase functions serve garden
 
 The project uses its own ports to coexist with other local Supabase projects:
 API `http://127.0.0.1:55321`, database `55322`, Studio `55323`.
-In another terminal, copy `.env.cloud.example` to `.env.local`, set the URL to the
-local API URL, and set the publishable key to the local **anon** key from
-`supabase status`. Never use the service-role key in the frontend. Then run
-`npm run dev`. Restart Vite when changing these settings.
-
-Import vocabulary before using the app:
+Configure the frontend automatically in another terminal:
 
 ```bash
-python3 scripts/export-supabase.py --output data/supabase-content.sql
-psql 'postgresql://postgres:postgres@127.0.0.1:55322/postgres' -v ON_ERROR_STOP=1 -f data/supabase-content.sql
+npm run configure:local
 ```
 
-Create a test account in local Studio → Authentication → Users (email confirmed,
-with a password). Use that account on the sign-in screen. For optional local AI,
-copy `supabase/.env.example` to `supabase/.env`, fill in the Anthropic key and run
-`supabase functions serve garden --env-file supabase/.env`. Keep this file private.
-The Edge Function caches vocabulary for up to one minute after imports.
+This creates `.env.local` using the local Supabase URL and public key, preserving
+unrelated settings. It never copies the service-role key. Then run `npm run dev`.
+Restart Vite if it was already running.
+
+Import **all local profiles, vocabulary and progress** in one command:
+
+```bash
+npm run import:local
+```
+
+This reads every `data/profiles/*.sqlite` database, creates a local login account
+for each profile, and imports all data in one transaction. No manual UUID mapping
+or account creation is needed. Accounts use addresses such as
+`leo@vocab-garden.test`. Their generated passwords are saved in
+`data/local-supabase-accounts.json` (private and ignored by Git). No email is sent.
+Sign in with the profile username (for example, `leo`) and its password; you do not
+need to type the full address. Full email addresses are also accepted.
+
+The importer only connects to this project's **local** Supabase instance. It does
+not change your SQLite files. Rerunning it reuses accounts and preserves existing
+Supabase progress and passwords, so later reviews are not overwritten. New
+profiles are added. If a run is interrupted, rerun the same command. The generated
+SQL and account mapping are saved under ignored `data/` for recovery.
+
+For optional local AI, copy `supabase/.env.example` to `supabase/.env`, fill in the
+Anthropic key and run `supabase functions serve garden --env-file supabase/.env`.
+Keep this file private. The Edge Function caches vocabulary for up to one minute
+after imports.
 
 ### Create the hosted backend
 
