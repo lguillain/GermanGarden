@@ -24,7 +24,7 @@ test('discover, practise, plant, review, and preserve progress', async ({ page }
   const wordWithArticle = await card.getByRole('heading').innerText();
   await page.getByRole('button', { name: 'Keep word' }).click();
   const bag = page.getByRole('complementary', { name: 'Seed bag', exact: true });
-  await expect(bag.getByText('1 / 20')).toBeVisible();
+  await expect(bag.getByText('1 / 20', { exact: true })).toBeVisible();
   await expect(bag.getByText(wordWithArticle, { exact: true })).toBeVisible();
   await bag.getByRole('link', { name: 'Practice', exact: true }).click();
   await page.getByRole('link', { name: 'Start flashcards' }).click();

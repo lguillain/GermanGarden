@@ -1,11 +1,33 @@
 import { Link } from 'react-router-dom';
+import { useState } from 'react';
 import type { Word } from '../api';
 import { ErrorNotice, Loading } from './feedback';
 import { WordTitle } from './word-card';
 
-export function SeedBag({ words, error }: { words?: Word[]; error?: unknown }) {
+export function SeedBag({
+  words,
+  error,
+  collapsible = false,
+}: {
+  words?: Word[];
+  error?: unknown;
+  collapsible?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
   return (
-    <aside className="panel bag" aria-label="Seed bag">
+    <aside
+      className={`panel bag${collapsible ? ' collapsible-bag' : ''}${open ? ' bag-open' : ''}`}
+      aria-label="Seed bag"
+    >
+      {collapsible && (
+        <button
+          className="mobile-bag-toggle"
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+        >
+          Seed bag · {words ? words.length : '…'} / 20 · {open ? 'Close' : 'Open'}
+        </button>
+      )}
       <div className="section-heading">
         <h2>Seed bag</h2>
         <span className="badge">{words ? words.length : '…'} / 20</span>

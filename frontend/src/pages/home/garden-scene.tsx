@@ -1,5 +1,5 @@
 import { type ReactNode, useId, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import type { GardenPlot } from '../../api';
 import { GardenArtwork } from '../../components/garden-artwork';
 
@@ -19,7 +19,7 @@ export default function GardenScene({
     <section className="garden-world" aria-label="Growing garden">
       {!!plots.length && (
         <div className="world-bottom">
-          <span>Hover to see a topic · Select a field to look closer</span>
+          <span>Select a field to look closer</span>
         </div>
       )}
       <GardenArtwork
@@ -33,6 +33,22 @@ export default function GardenScene({
         bagOpen={bagOpen}
         onPickBag={() => setBagOpen((open) => !open)}
       />
+      {!!plots.length && (
+        <nav className="mobile-garden-topics" aria-label="Garden topics">
+          {plots.map((plot) => (
+            <Link className="button" key={plot.id} to={`/topics/${encodeURIComponent(plot.id)}`}>
+              {plot.name}
+            </Link>
+          ))}
+        </nav>
+      )}
+      <button
+        className="mobile-bag-button"
+        aria-expanded={bagOpen}
+        onClick={() => setBagOpen((open) => !open)}
+      >
+        {bagOpen ? 'Close seed bag' : `Open seed bag (${bagCount} / 20)`}
+      </button>
       {!plots.length && (
         <div className="world-empty">
           <h2>A little land. A fresh start.</h2>

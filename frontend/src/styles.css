@@ -352,3 +352,76 @@ input::placeholder, textarea::placeholder { color: #637d67; opacity: 1; }
 .word-set-count { padding: 2px 6px; border-radius: 8px; background: #ffffff38; font-size: 12px; font-variant-numeric: tabular-nums; }
 
 .plant-wilted { filter: saturate(.45) brightness(.88); }
+
+/* Phone layouts keep navigation and study controls within the available width. */
+.mobile-menu, .mobile-garden-topics, .mobile-bag-button, .mobile-selection-toggle { display: none; }
+.matcher-selection > div > label { margin-bottom: 16px; }
+@media (max-width: 760px) {
+  .app-sidebar { position: static; width: 100%; padding: 12px 16px; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; border-right: 0; border-bottom: 1px solid var(--border); }
+  .app-sidebar .brand { font-size: 19px; padding: 0; }
+  .app-sidebar .mobile-menu { display: inline-flex; min-height: 44px; }
+  .app-sidebar nav, .app-sidebar .profile-button { display: none; }
+  .app-sidebar.menu-open nav { display: flex; }
+  .app-sidebar.menu-open .profile-button { display: flex; margin-top: 0; }
+  .app-sidebar nav a { min-height: 44px; }
+  .app-content { margin-left: 0; min-height: calc(100svh - 69px); }
+  .app-content .container { padding: 24px 16px max(32px, env(safe-area-inset-bottom)); min-width: 0; }
+  button, .button { min-height: 44px; }
+  input, select, textarea, .matcher-layout select, .matcher-guidance textarea { font-size: 16px; }
+  .page-heading h1, .garden-intro h1 { font-size: 28px; overflow-wrap: anywhere; }
+  .panel { padding: 20px; }
+  .word-card { padding: 28px 16px; min-height: 260px; }
+  .word-card h2 { overflow-wrap: anywhere; }
+  .sentence, .message, .reading { overflow-wrap: anywhere; }
+  .grade-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .card-actions { flex-wrap: wrap; }
+  .grammar-layout { grid-template-columns: minmax(0, 1fr); }
+  .grammar-word-picker { position: static; }
+  .grammar-word-list { max-height: 180px; }
+  .practice-grid .panel { padding: 22px; }
+  .topic-page-heading { flex-wrap: wrap; gap: 12px; }
+  .topic-word-controls { align-items: stretch; gap: 10px; }
+  .topic-word-controls label:first-child { flex-basis: 100%; max-width: none; }
+  .topic-back-links { flex-wrap: wrap; gap: 16px; }
+  .topic-list { padding: 0 16px; }
+  .topic-overview-row { flex-wrap: wrap; gap: 12px; }
+  .topic-overview-row .topic-name { flex-basis: calc(100% - 36px); }
+  .topic-overview-row .topic-arrow { order: 1; }
+  .topic-overview-row .topic-distribution { width: 100%; max-width: none; order: 2; }
+  .topic-counts { flex-wrap: wrap; }
+  .topic-words, .topic-words thead, .topic-words tbody { display: block; }
+  .topic-words thead tr { display: flex; flex-wrap: wrap; padding: 8px 12px; background: #eee9d9; }
+  .topic-words th { padding: 0 8px; border: 0; }
+  .topic-words th:last-child { display: none; }
+  .topic-words tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 16px; border-bottom: 1px solid var(--border); }
+  .topic-words tbody tr:last-child { border-bottom: 0; }
+  .topic-words td { padding: 0; border: 0; overflow-wrap: anywhere; }
+  .topic-words td:nth-child(1) { grid-column: 1; grid-row: 1; }
+  .topic-words td:nth-child(2) { grid-column: 1 / -1; grid-row: 2; }
+  .topic-words td:nth-child(3) { grid-column: 2; grid-row: 1; font-size: 13px; }
+  .topic-words td:nth-child(4) { grid-column: 1 / -1; grid-row: 3; }
+  .topic-words td:nth-child(5) { grid-column: 1 / -1; grid-row: 4; text-align: left; }
+  .topic-words td:empty { display: none; }
+  .garden-intro { gap: 16px; }
+  .garden-actions { gap: 8px; }
+  .world-bottom { text-align: center; padding: 0; }
+  .mobile-garden-topics { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .mobile-bag-button { display: inline-flex; margin-bottom: 16px; }
+  .plot-inspector { margin: 0 0 16px; }
+  .topic-plant-caption { flex-wrap: wrap; gap: 4px 12px; }
+  .welcome { padding: 32px 16px; }
+  .matcher-layout { grid-template-columns: minmax(0, 1fr); }
+  .matcher-layout > .bag { grid-column: auto; }
+  .mobile-selection-toggle { display: flex; width: 100%; text-align: left; }
+  .matcher-selection:not(.selection-open) > div { display: none; }
+  .matcher-selection.selection-open > div { margin-top: 16px; }
+  .matcher-card .word-card { min-height: 240px; }
+  .matcher-layout .bag-words { max-height: 220px; }
+}
+.mobile-bag-toggle { display: none; }
+@media (max-width: 760px) {
+  .collapsible-bag > .mobile-bag-toggle { display: flex; width: 100%; }
+  .collapsible-bag > .section-heading { display: none; }
+  .collapsible-bag:not(.bag-open) > :not(.mobile-bag-toggle) { display: none; }
+  .collapsible-bag.bag-open > .mobile-bag-toggle { margin-bottom: 16px; }
+}

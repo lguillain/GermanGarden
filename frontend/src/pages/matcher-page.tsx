@@ -16,6 +16,7 @@ export function MatcherPage() {
   const [topic, setTopic] = useState(initialTopic);
   const [guidance, setGuidance] = useState('');
   const [revealed, setRevealed] = useState(false);
+  const [selectionOpen, setSelectionOpen] = useState(false);
   const cache = useQueryClient();
   const key = ['matcher', initialTopic];
   const result = useQuery({
@@ -63,61 +64,75 @@ export function MatcherPage() {
     <>
       <Heading title="Find new words" />
       <div className="matcher-layout">
-        <section className="panel matcher-selection" aria-label="Word selection">
-          <label htmlFor="matcher-topic">Topic</label>
-          <select
-            id="matcher-topic"
-            value={topic}
-            disabled={busy || activities.isPending}
-            onChange={(e) => {
-              setTopic(e.target.value);
-              guide.mutate({ topic: e.target.value });
-            }}
+        <section
+          className={`panel matcher-selection${selectionOpen ? ' selection-open' : ''}`}
+          aria-label="Word selection"
+        >
+          <button
+            className="mobile-selection-toggle"
+            aria-expanded={selectionOpen}
+            aria-controls="matcher-selection-content"
+            onClick={() => setSelectionOpen((open) => !open)}
           >
-            <option value="">Choose for me</option>
-            {activities.data?.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-          {aiAvailable !== false && (
-            <details className="disclosure matcher-guidance">
-              <summary>Help me choose a topic</summary>
-              <form
-                className="disclosure-body"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  setTopic('');
-                  guide.mutate({ topic: '', guidance });
-                }}
-              >
-                <label htmlFor="matcher-guidance">Where will you use German?</label>
-                <p id="matcher-guidance-help" className="muted small">
-                  We’ll match your description to a topic and show related words.
-                </p>
-                <textarea
-                  id="matcher-guidance"
-                  aria-describedby="matcher-guidance-help"
-                  value={guidance}
-                  onChange={(e) => setGuidance(e.target.value)}
-                  placeholder="A wine evening with friends"
-                  maxLength={3000}
-                  required
-                />
-                <button disabled={busy || aiAvailable !== true || !guidance.trim()}>
-                  {guide.isPending ? 'Matching…' : 'Match a topic'}
-                </button>
-              </form>
-            </details>
-          )}
-          {guide.isPending && (
-            <p className="muted small" role="status">
-              Finding words…
-            </p>
-          )}
-          <ErrorNotice error={activities.error} />
-          <ErrorNotice error={guide.error} />
+            Topic: {activities.data?.find((a) => a.id === topic)?.name ?? 'Choose for me'} ·{' '}
+            {selectionOpen ? 'Close' : 'Change'}
+          </button>
+          <div id="matcher-selection-content">
+            <label htmlFor="matcher-topic">Topic</label>
+            <select
+              id="matcher-topic"
+              value={topic}
+              disabled={busy || activities.isPending}
+              onChange={(e) => {
+                setTopic(e.target.value);
+                guide.mutate({ topic: e.target.value });
+              }}
+            >
+              <option value="">Choose for me</option>
+              {activities.data?.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+            {aiAvailable !== false && (
+              <details className="disclosure matcher-guidance">
+                <summary>Help me choose a topic</summary>
+                <form
+                  className="disclosure-body"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    setTopic('');
+                    guide.mutate({ topic: '', guidance });
+                  }}
+                >
+                  <label htmlFor="matcher-guidance">Where will you use German?</label>
+                  <p id="matcher-guidance-help" className="muted small">
+                    We’ll match your description to a topic and show related words.
+                  </p>
+                  <textarea
+                    id="matcher-guidance"
+                    aria-describedby="matcher-guidance-help"
+                    value={guidance}
+                    onChange={(e) => setGuidance(e.target.value)}
+                    placeholder="A wine evening with friends"
+                    maxLength={3000}
+                    required
+                  />
+                  <button disabled={busy || aiAvailable !== true || !guidance.trim()}>
+                    {guide.isPending ? 'Matching…' : 'Match a topic'}
+                  </button>
+                </form>
+              </details>
+            )}
+            {guide.isPending && (
+              <p className="muted small" role="status">
+                Finding words…
+              </p>
+            )}
+            <ErrorNotice error={activities.error} />
+            <ErrorNotice error={guide.error} />
+          </div>
         </section>
         <section className="matcher-study" aria-label="Current word" aria-busy={busy}>
           {loading ? (
@@ -161,7 +176,7 @@ export function MatcherPage() {
           <ErrorNotice error={swipe.error} />
           {swipe.error && <button onClick={() => result.refetch()}>Refresh card</button>}
         </section>
-        <SeedBag words={result.data?.bag} error={result.error} />
+        <SeedBag words={result.data?.bag} error={result.error} collapsible />
       </div>
     </>
   );

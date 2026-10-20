@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import type { Session, Time } from './api';
 import { api, ApiError } from './api';
@@ -20,6 +20,7 @@ export function AppShell() {
   });
   const session = useQuery({ queryKey: ['session'], queryFn: () => api<Session>('/session') });
   const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
   const ready = !!session.data?.user.level;
   useQuery({
@@ -29,6 +30,7 @@ export function AppShell() {
     refetchInterval: () => (document.visibilityState === 'visible' ? 15000 : false),
   });
   useEffect(() => {
+    setMenuOpen(false);
     const heading = document.querySelector('h1');
     if (heading) {
       heading.setAttribute('tabindex', '-1');
@@ -73,11 +75,19 @@ export function AppShell() {
       >
         Skip to content
       </a>
-      <aside className="app-sidebar" aria-label="App navigation">
+      <aside className={`app-sidebar${menuOpen ? ' menu-open' : ''}`} aria-label="App navigation">
         <Link className="brand" to="/">
           Vocab Garden
         </Link>
-        <nav aria-label="Main navigation">
+        <button
+          className="mobile-menu"
+          aria-expanded={menuOpen}
+          aria-controls="main-navigation"
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          {menuOpen ? 'Close menu' : 'Menu'}
+        </button>
+        <nav id="main-navigation" aria-label="Main navigation">
           <NavLink end to="/">
             Garden
           </NavLink>
