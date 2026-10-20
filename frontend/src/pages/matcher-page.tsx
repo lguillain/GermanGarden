@@ -4,11 +4,13 @@ import { useOutletContext, useSearchParams } from 'react-router-dom';
 import type { Matcher, Session } from '../api';
 import { api } from '../api';
 import { Empty, ErrorNotice, Heading, Loading } from '../components/feedback';
+import { useActivities } from '../hooks/use-activities';
 import { SeedBag } from '../components/seed-bag';
 import { WordCard } from '../components/word-card';
 
 export function MatcherPage() {
-  const { activities, ai_available } = useOutletContext<Session>();
+  const { ai_available } = useOutletContext<Session>();
+  const activities = useActivities();
   const [params] = useSearchParams();
   const initialTopic = params.get('topic') || '';
   const [topic, setTopic] = useState(initialTopic);
@@ -26,6 +28,7 @@ export function MatcherPage() {
   const update = (data: Matcher) => {
     cache.setQueryData(key, data);
     cache.invalidateQueries({ queryKey: ['garden'] });
+    cache.invalidateQueries({ queryKey: ['practice'] });
     setRevealed(false);
   };
   const guide = useMutation({
@@ -65,14 +68,14 @@ export function MatcherPage() {
           <select
             id="matcher-topic"
             value={topic}
-            disabled={busy}
+            disabled={busy || activities.isPending}
             onChange={(e) => {
               setTopic(e.target.value);
               guide.mutate({ topic: e.target.value });
             }}
           >
             <option value="">Choose for me</option>
-            {activities.map((a) => (
+            {activities.data?.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
               </option>
@@ -114,6 +117,7 @@ export function MatcherPage() {
               Finding words…
             </p>
           )}
+          <ErrorNotice error={activities.error} />
           <ErrorNotice error={guide.error} />
         </section>
         <section className="matcher-study" aria-label="Current word" aria-busy={busy}>

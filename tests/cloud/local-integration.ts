@@ -20,6 +20,9 @@ async function api(client: typeof admin, path: string, body?: unknown) {
   const result = await response.json();
   assert.equal(response.status, 200, JSON.stringify(result));
   assert.match(response.headers.get('server-timing') || '', /auth;dur=/);
+  if (body === undefined && ['/session', '/practice/summary'].includes(path.split('?')[0])) {
+    assert.doesNotMatch(response.headers.get('server-timing') || '', /(?:catalog|progress);dur=/);
+  }
   if (body === undefined && path.split('?')[0] === '/review') {
     assert.match(response.headers.get('server-timing') || '', /review;dur=/);
     assert.doesNotMatch(response.headers.get('server-timing') || '', /(?:catalog|progress);dur=/);
@@ -44,7 +47,13 @@ try {
   const forged = await fetch(`${url}/functions/v1/garden/session`, { headers: { Authorization: 'Bearer invalid' } }); assert.equal(forged.status, 401);
   const crossOrigin = await fetch(`${url}/functions/v1/garden/session`, { headers: { Origin: 'https://example.org' } }); assert.equal(crossOrigin.status, 403);
   const preflight = await fetch(`${url}/functions/v1/garden/session`, { method: 'OPTIONS', headers: { Origin: 'http://localhost:5173' } }); assert.equal(preflight.status, 204);
-  await api(clients[0], '/session'); await api(clients[0], '/onboarding', { level: 'A2' });
+  const session = await api(clients[0], '/session');
+  assert.deepEqual(Object.keys(session).sort(), ['ai_available', 'user']);
+  assert.deepEqual(Object.keys(session.user).sort(), ['level', 'name']);
+  const activities = await api(clients[0], '/activities');
+  assert.ok(activities.some((activity: { id: string }) => activity.id === fixtureId));
+  assert.ok(activities.every((activity: object) => Object.keys(activity).sort().join(',') === 'id,name'));
+  await api(clients[0], '/onboarding', { level: 'A2' });
   const topicWords = await api(clients[0], `/topics/${fixtureId}`);
   assert.deepEqual(topicWords.words.map((word: { id: string }) => word.id), [fixtureId]);
   const matcher = await api(clients[0], `/matcher?topic=${encodeURIComponent(fixtureId)}`);
@@ -52,6 +61,8 @@ try {
   assert.equal(typeof matcher.card.de, 'string');
   await api(clients[0], `/topics/${fixtureId}/words/${fixtureId}/keep`, {});
   assert.equal((await api(clients[0], '/practice?scope=bag')).words.length, 1);
+  assert.deepEqual(await api(clients[0], '/practice/summary?scope=bag'), { word_count: 1, counts: { plants: 0, seeds: 1 } });
+  assert.deepEqual(await api(clients[1], '/practice/summary?scope=bag'), { word_count: 0, counts: { plants: 0, seeds: 0 } });
   const seedReview = await api(clients[0], '/review?scope=bag');
   assert.equal(seedReview.card.word_id, fixtureId);
   assert.equal(seedReview.card.rating_options.length, 4);
@@ -61,12 +72,14 @@ try {
   assert.equal(reviewed.remaining, 0); assert.equal(reviewed.card, null);
   assert.equal((await api(clients[0], '/review')).card, null);
   assert.equal((await api(clients[0], '/garden')).summary.planted_total, 1);
+  assert.deepEqual(await api(clients[0], `/practice/summary?scope=topic&topic=${fixtureId}`), { word_count: 1, counts: { plants: 1, seeds: 0 } });
   assert.equal((await api(clients[1], '/garden')).summary.planted_total, 0);
   const foreign = await clients[1].from('learner_profiles').select('*').eq('user_id', userIds[0]);
   assert.deepEqual(foreign.data, []);
   const write = await clients[0].from('learner_profiles').update({ name: 'Forbidden' }).eq('user_id', userIds[0]); assert.ok(write.error);
   const rpc = await clients[0].rpc('save_learner_progress', { p_user_id: userIds[1], p_version: 0, p_changes: {} }); assert.ok(rpc.error);
   const reviewRpc = await clients[0].rpc('load_review_selection', { p_user_id: userIds[1] }); assert.ok(reviewRpc.error);
+  const practiceRpc = await clients[0].rpc('load_practice_summary', { p_user_id: userIds[1] }); assert.ok(practiceRpc.error);
   if (process.argv.includes('--browser')) {
     execFileSync('npm', ['run', 'build', '--', '--outDir', '../dist-cloud'], {
       env: { ...process.env, VITE_SUPABASE_URL: url, VITE_SUPABASE_PUBLISHABLE_KEY: status.ANON_KEY, VITE_BASE_PATH: '/garden-test/' },

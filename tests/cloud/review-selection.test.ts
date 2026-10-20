@@ -27,14 +27,14 @@ test('review GET bypasses full progress and catalogue; validates scope before re
   assert.equal(reads, 1);
 });
 
-test('compact review query matches full domain selection, counts, card details and rating previews', async t => {
+test('compact review and practice queries match domain counts, selection and rating previews', async t => {
   const db = new PGlite();
   try {
     await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
       create schema auth; create table auth.users(id uuid primary key);
       create function auth.uid() returns uuid language sql as $$ select null::uuid $$;
       insert into auth.users values ('${userA}'),('${userB}');`);
-    for (const migration of ['202610190001_garden', '202610200001_normalize_learners', '202610200002_catalog_reads', '202610200005_review_selection']) {
+    for (const migration of ['202610190001_garden', '202610200001_normalize_learners', '202610200002_catalog_reads', '202610200005_review_selection', '202610200007_practice_summary']) {
       await db.exec(readFileSync(`supabase/migrations/${migration}.sql`, 'utf8'));
     }
     await db.exec(`insert into activities values ('home','Home',null),('work','Work',null),('empty','Empty',null);
@@ -73,6 +73,12 @@ test('compact review query matches full domain selection, counts, card details a
       const snapshot = (await db.query<{ data: { data: Learner } }>('select load_learner_progress($1,$2) data', [user, 'Test'])).rows[0].data;
       const garden = new Garden(catalog, snapshot.data, now);
       for (const [scope, topic] of [['all', ''], ['bag', ''], ['topic', 'home'], ['topic', 'work'], ['topic', 'empty'], ['all', 'work'], ['bag', 'work']]) {
+        const summary = (await db.query<{ data: { counts: { plants: number; seeds: number }; all_plants: number; topic_exists: boolean } }>(
+          'select load_practice_summary($1,$2) data', [user, topic])).rows[0].data;
+        assert.deepEqual(summary.counts, garden.counts(topic));
+        assert.equal(summary.all_plants, garden.scope('all').length);
+        assert.equal(summary.topic_exists, Boolean(topic));
+        assert.ok(JSON.stringify(summary).length < 150, 'Practice summary stays bounded');
         const compact = await selection(user, scope, topic);
         assert.deepEqual(reviewSelectionResponse(compact, scope, topic), garden.review(scope, topic), `${user}: ${scope}/${topic}`);
         assert.ok(JSON.stringify(compact).length < 2000, 'Response must stay bounded to one card');

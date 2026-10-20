@@ -32,16 +32,19 @@ export function createStore(admin: SupabaseClient, options: StoreOptions): Store
       if (error) throw error;
       return data as ReviewSelection;
     },
-    async profile() {
-      const { data, error } = await measure('profile', () =>
-        admin
-          .from('learner_profiles')
-          .select('name, level, swipe_count')
-          .eq('user_id', userId)
-          .maybeSingle(),
+    async practiceSummary(topic) {
+      const { data, error } = await measure('practice_summary', () =>
+        admin.rpc('load_practice_summary', { p_user_id: userId, p_topic: topic }),
       );
       if (error) throw error;
-      return data ?? { name, level: null, swipe_count: 0 };
+      return data;
+    },
+    async profile() {
+      const { data, error } = await measure('profile', () =>
+        admin.from('learner_profiles').select('name, level').eq('user_id', userId).maybeSingle(),
+      );
+      if (error) throw error;
+      return data ?? { name, level: null };
     },
     async load() {
       const { data, error } = await measure('progress', () =>

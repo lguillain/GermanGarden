@@ -60,7 +60,9 @@ class ApiTests(unittest.TestCase):
         session = self.client.get('/api/session').json()
         self.assertEqual(session['user']['level'], 'A2')
         self.assertEqual(session['user']['name'], 'Test Learner')
-        self.assertGreater(len(session['activities']), 10)
+        self.assertNotIn('activities', session)
+        self.assertEqual(set(session['user']), {'name', 'level'})
+        self.assertGreater(len(self.client.get('/api/activities').json()), 10)
         self.assertEqual(self.client.post('/api/profile', json={'existing': '../vocab'}).status_code, 404)
         self.assertEqual(self.client.delete('/api/profile').status_code, 200)
         self.assertEqual(self.client.get('/api/session').status_code, 401)
@@ -331,12 +333,17 @@ class ApiTests(unittest.TestCase):
         practice = self.client.get('/api/practice').json()
         self.assertEqual(practice['words'], [])
         self.assertEqual(practice['counts'], {'plants': 0, 'seeds': 1})
+        self.assertEqual(self.client.get('/api/practice/summary?scope=bag').json(),
+                         {'word_count': 1, 'counts': {'plants': 0, 'seeds': 1}})
+        self.assertEqual(self.client.get('/api/practice/summary').json()['word_count'], 0)
         self.assertEqual(len(self.client.get('/api/practice?scope=bag').json()['words']), 1)
         self.client.post('/api/review', json={'word_id': seed['word_id'], 'scope': 'bag', 'grade': 3})
         practice = self.client.get('/api/practice').json()
         self.assertEqual(self.client.get('/api/practice?scope=bag').json()['words'], [])
         self.assertEqual(len(practice['words']), 1)
         self.assertEqual(practice['counts'], {'plants': 1, 'seeds': 0})
+        self.assertEqual(self.client.get('/api/practice/summary').json(),
+                         {'word_count': 1, 'counts': {'plants': 1, 'seeds': 0}})
 
     def test_full_bag_does_not_plant_without_review(self):
         self.login()

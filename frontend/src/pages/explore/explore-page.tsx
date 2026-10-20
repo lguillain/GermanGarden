@@ -1,14 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import type { Garden } from '../../api';
-import { api } from '../../api';
+import { gardenQuery } from '../../queries/garden-query';
 import { Empty, ErrorNotice, Heading, Loading } from '../../components/feedback';
 import { TopicList } from './topic-list';
 import { topicStages } from '../../components/topic-progress';
 
 export function ExplorePage() {
   const [filter, setFilter] = useState('');
-  const result = useQuery({ queryKey: ['garden'], queryFn: () => api<Garden>('/garden') });
+  const result = useQuery(gardenQuery());
   if (result.isPending) return <Loading />;
   if (result.error) return <ErrorNotice error={result.error} />;
   const topics = result.data!.topics;

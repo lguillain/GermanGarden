@@ -2,13 +2,13 @@ import { Link, useOutletContext } from 'react-router-dom';
 import type { Session } from '../../api';
 import { Empty, ErrorNotice, Heading, Loading } from '../../components/feedback';
 import { WordSetSwitch } from '../../components/word-set-switch';
-import { usePracticeWords } from './use-practice-words';
+import { usePracticeSummary } from './use-practice-summary';
 import { useScope } from '../../hooks/use-scope';
 
 export function PracticePage() {
   const { scope, query, label } = useScope();
   const { ai_available } = useOutletContext<Session>();
-  const result = usePracticeWords(query);
+  const result = usePracticeSummary(query);
   const modes = [
     ['flashcards', 'Flashcards', 'Browse your words and reveal their translations.'],
     ['chat', 'Conversation', 'Practise your words in a short German conversation.'],
@@ -25,7 +25,7 @@ export function PracticePage() {
         <Loading />
       ) : result.error ? (
         <ErrorNotice error={result.error} />
-      ) : !result.data?.words.length ? (
+      ) : !result.data?.word_count ? (
         <Empty>
           No words in this set yet. <Link to="/matcher">Find new words</Link> or practise your{' '}
           <Link to="/practice?scope=bag">seed bag</Link>.

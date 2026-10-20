@@ -47,7 +47,12 @@ export function GrammarPage() {
       api<Grammar>('/grammar', { word_id: selected?.id, config, sentence, action }),
   });
   return (
-    <AiPracticeLayout title="Grammar playground" words={words} grammar={true}>
+    <AiPracticeLayout
+      title="Grammar playground"
+      result={words}
+      wordCount={words.data?.words.length ?? 0}
+      grammar={true}
+    >
       {words.data && (
         <div className="grammar-layout">
           <aside className="grammar-word-picker" aria-label="Practice words">

@@ -34,7 +34,7 @@ test('farmer signs out only this session and allows signing back in or switching
       logoutScopes.push(url.searchParams.get('scope'));
       await route.fulfill({ status: 204 });
     } else if (url.pathname === '/functions/v1/garden/session') {
-      await route.fulfill({ json: { user: { name: username, level: 'A2', swipes: 0 }, ai_available: false, activities: [] } });
+      await route.fulfill({ json: { user: { name: username, level: 'A2' }, ai_available: false } });
     } else if (url.pathname === '/functions/v1/garden/heartbeat') {
       await route.fulfill({ json: time });
     } else if (url.pathname === '/functions/v1/garden/garden') {

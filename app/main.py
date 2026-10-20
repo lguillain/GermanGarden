@@ -95,8 +95,13 @@ def sign_out():
 
 @app.get('/api/session')
 def session(conn: sqlite3.Connection = Db):
-    return {'user': user(conn), 'ai_available': available(),
-            'activities': [dict(r) for r in conn.execute('SELECT id, name FROM activities ORDER BY name')]}
+    profile = user(conn)
+    return {'user': {'name': profile['name'], 'level': profile['level']}, 'ai_available': available()}
+
+
+@app.get('/api/activities')
+def activities(conn: sqlite3.Connection = Db):
+    return [dict(r) for r in conn.execute('SELECT id, name FROM activities ORDER BY name')]
 
 
 class OnboardingInput(BaseModel):
@@ -276,6 +281,22 @@ def grade(body: GradeInput, conn: sqlite3.Connection = Db):
         raise HTTPException(422, 'This word is not in the selected review set.')
     garden.grade_word(conn, body.word_id, body.grade)
     return review_data(conn, body.scope, body.topic)
+
+
+@app.get('/api/practice/summary')
+def practice_summary(scope: Scope = 'all', topic: str = '', conn: sqlite3.Connection = Db):
+    validate_scope(conn, scope, topic)
+    counts = conn.execute("""WITH kept AS (
+        SELECT s.word_id, s.planted_at FROM swipes s JOIN words w ON w.id=s.word_id
+        WHERE s.action='keep' AND s.id=(SELECT MIN(first.id) FROM swipes first
+            WHERE first.word_id=s.word_id AND first.action='keep')
+    ) SELECT COUNT(CASE WHEN planted_at IS NULL THEN 1 END) seeds,
+        COUNT(CASE WHEN planted_at IS NOT NULL THEN 1 END) all_plants,
+        COUNT(CASE WHEN planted_at IS NOT NULL AND (?='' OR EXISTS (
+            SELECT 1 FROM word_activities wa WHERE wa.word_id=kept.word_id AND wa.activity_id=?))
+            THEN 1 END) plants FROM kept""", (topic, topic)).fetchone()
+    word_count = counts['seeds' if scope == 'bag' else 'plants' if scope == 'topic' else 'all_plants']
+    return {'word_count': word_count, 'counts': {'plants': counts['plants'], 'seeds': counts['seeds']}}
 
 
 @app.get('/api/practice')

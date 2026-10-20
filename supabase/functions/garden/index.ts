@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { Catalog, HttpError, requireThat } from './model.ts';
 import { Complete } from './ai.ts';
 import { dispatch } from './service.ts';
+import { catalogCache } from './catalog-cache.ts';
 import { createCatalogLoader } from './catalog-loader.ts';
 import { createStore } from './store.ts';
 import { createCompletion } from './anthropic.ts';
@@ -23,6 +24,11 @@ const catalog = createCatalogLoader(async (request) => {
   const { data, error } = await admin.rpc('load_garden_catalog', { ...request });
   if (error) throw error;
   return data as Catalog;
+});
+const activities = catalogCache(async () => {
+  const { data, error } = await admin.from('activities').select('id, name').order('name');
+  if (error) throw error;
+  return data;
 });
 const emptyCatalog: Catalog = { words: [], activities: [], word_activities: [], sentences: [] };
 const complete = createCompletion(
@@ -96,7 +102,9 @@ export async function handler(request: Request): Promise<Response> {
       return respond(
         await dispatch(path, request.method, requestUrl.searchParams, body, store, emptyCatalog),
       );
-    if (path === '/review' && request.method === 'GET') {
+    if (path === '/activities' && request.method === 'GET')
+      return respond(await measure('activities', activities));
+    if ((path === '/review' || path === '/practice/summary') && request.method === 'GET') {
       return respond(
         await measure('dispatch', () =>
           dispatch(path, request.method, requestUrl.searchParams, body, store, emptyCatalog),
@@ -104,18 +112,14 @@ export async function handler(request: Request): Promise<Response> {
       );
     }
     if (path === '/session' && request.method === 'GET') {
-      const [profile, vocabulary] = await Promise.all([
-        store.profile!(),
-        measure('catalog', () => catalog(path, request.method)),
-      ]);
       return respond(
         await dispatch(
           path,
           request.method,
           requestUrl.searchParams,
           body,
-          { ...store, profile: async () => profile },
-          vocabulary,
+          store,
+          emptyCatalog,
           complete,
         ),
       );

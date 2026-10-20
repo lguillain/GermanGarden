@@ -4,12 +4,12 @@ import { api, type Word } from '../../api';
 import { AiPracticeLayout } from './ai-practice-layout';
 import { ErrorNotice } from '../../components/feedback';
 import { TargetWords } from './target-words';
-import { usePracticeWords } from './use-practice-words';
+import { usePracticeSummary } from './use-practice-summary';
 import { useScope } from '../../hooks/use-scope';
 
 export function ReadingPage() {
   const { scope, topic, query } = useScope();
-  const words = usePracticeWords(query);
+  const summary = usePracticeSummary(query);
   const [showTranslation, setShowTranslation] = useState(false);
   const reading = useMutation({
     mutationFn: () =>
@@ -20,8 +20,13 @@ export function ReadingPage() {
     onSuccess: () => setShowTranslation(false),
   });
   return (
-    <AiPracticeLayout title="Reading" words={words} grammar={false}>
-      {words.data && (
+    <AiPracticeLayout
+      title="Reading"
+      result={summary}
+      wordCount={summary.data?.word_count ?? 0}
+      grammar={false}
+    >
+      {summary.data && (
         <>
           <button className="primary" disabled={reading.isPending} onClick={() => reading.mutate()}>
             {reading.isPending

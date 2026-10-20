@@ -81,9 +81,8 @@ export interface Activity {
   description?: string;
 }
 export interface Session {
-  user: { name: string; level: string | null; swipes: number };
+  user: { name: string; level: string | null };
   ai_available: boolean;
-  activities: Activity[];
 }
 export interface Time {
   today_seconds: number;

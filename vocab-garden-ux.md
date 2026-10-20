@@ -23,7 +23,7 @@ A German vocabulary web app. Users discover words they care about, practise them
 - Sign-in submits the current field values, including browser/password-manager autofill.
 - Clicking the farmer icon signs out the current browser session and returns to sign-in. Other devices stay signed in, and the learner can immediately sign in again or switch accounts.
 - The local Python version retains its on-device profile chooser.
-- The signed-in sidebar appears from browser login state while profile and page data load. Session bootstrap reads only the small learner profile and cached topic list, never learning progress. Server requests still verify authentication.
+- The signed-in sidebar appears from browser login state while profile and page data load. Session bootstrap reads only the learner name, level, and AI availability, never vocabulary or learning progress. Topic names load separately when needed. Garden and practice data requests start alongside session bootstrap for signed-in users. Server requests still verify authentication.
 - Used on a laptop, so desktop layout comes first.
 - Not in scope: social features and adding your own vocabulary.
 
@@ -75,6 +75,7 @@ A German vocabulary web app. Users discover words they care about, practise them
 - **Side panel:** the seed bag as a list of kept words, with actions to practise or review seeds.
 
 ## Practice and review
+- The practice menu, Reading, and Conversation load only word counts before starting. Grammar loads its word list and form options; generated exercises fetch their own target words.
 - Both work on either the seed bag or one topic.
 - Practising a topic includes all of its words that aren't fully grown.
 - Each word's growth stage is shown during practice.

@@ -12,8 +12,8 @@ export function catalogRequest(path: string, method: string): CatalogRequest {
   const topic = method === 'GET' ? path.match(/^\/topics\/([^/]+)$/) : null;
   return {
     p_topic: topic ? decodeURIComponent(topic[1]) : null,
-    p_include_sentences: !topic && !['/session', '/garden', '/onboarding'].includes(path),
-    p_activities_only: path === '/session' || path === '/onboarding',
+    p_include_sentences: !topic && !['/garden', '/onboarding'].includes(path),
+    p_activities_only: path === '/onboarding',
   };
 }
 export function createCatalogLoader(fetchCatalog: (request: CatalogRequest) => Promise<Catalog>) {

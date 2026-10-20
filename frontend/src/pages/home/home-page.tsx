@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import type { Garden } from '../../api';
-import { api } from '../../api';
+import { gardenQuery } from '../../queries/garden-query';
 import { ErrorNotice, Heading, Loading } from '../../components/feedback';
 import GardenScene from './garden-scene';
 import { SeedBag } from '../../components/seed-bag';
@@ -14,7 +13,7 @@ const duration = (seconds: number) =>
       : `${seconds}s`;
 
 export function HomePage() {
-  const result = useQuery({ queryKey: ['garden'], queryFn: () => api<Garden>('/garden') });
+  const result = useQuery(gardenQuery());
   if (result.isPending) return <Loading />;
   if (result.error) return <ErrorNotice error={result.error} />;
   const { summary, bag, plots } = result.data!;

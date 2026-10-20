@@ -5,7 +5,12 @@ import { Catalog, Learner, ReviewSelection, HttpError, requireThat, shuffle } fr
 export interface Store {
   load(): Promise<{ version: number; data: Learner }>;
   save(version: number, data: Learner): Promise<boolean>;
-  profile?(): Promise<{ name: string; level: string | null; swipe_count: number }>;
+  profile?(): Promise<{ name: string; level: string | null }>;
+  practiceSummary?(topic: string): Promise<{
+    counts: { plants: number; seeds: number };
+    all_plants: number;
+    topic_exists: boolean;
+  }>;
   heartbeat?(): Promise<NonNullable<Learner['time_summary']>>;
   review?(scope: string, topic: string): Promise<ReviewSelection>;
 }
@@ -40,14 +45,27 @@ export async function dispatch(
   if (path === '/session' && method === 'GET' && store.profile) {
     const profile = await store.profile();
     return {
-      user: { name: profile.name, level: profile.level, swipes: profile.swipe_count },
+      user: { name: profile.name, level: profile.level },
       ai_available: !!complete,
-      activities: catalog.activities,
     };
   }
   if (path === '/heartbeat' && method === 'POST' && store.heartbeat) return store.heartbeat();
   const scope = method === 'GET' ? query.get('scope') || 'all' : text(body, 'scope', 'all');
   const topic = method === 'GET' ? query.get('topic') || '' : text(body, 'topic');
+  if (path === '/practice/summary' && method === 'GET' && store.practiceSummary) {
+    requireThat(['all', 'topic', 'bag'].includes(scope), 'Unknown word set.');
+    const summary = await store.practiceSummary(topic);
+    requireThat(!(topic || scope === 'topic') || summary.topic_exists, 'Unknown topic.');
+    return {
+      counts: summary.counts,
+      word_count:
+        scope === 'bag'
+          ? summary.counts.seeds
+          : scope === 'topic'
+            ? summary.counts.plants
+            : summary.all_plants,
+    };
+  }
   if (path === '/review' && method === 'GET' && store.review) {
     requireThat(['all', 'topic', 'bag'].includes(scope), 'Unknown word set.');
     return reviewSelectionResponse(await store.review(scope, topic), scope, topic);
@@ -58,14 +76,15 @@ export async function dispatch(
     switch (path) {
       case '/session':
         return {
-          user: { ...garden.state.user, swipes: garden.state.user.swipe_count },
+          user: { name: garden.state.user.name, level: garden.state.user.level },
           ai_available: !!complete,
-          activities: catalog.activities,
         };
       case '/garden':
         return garden.home();
       case '/review':
         return garden.review(scope, topic);
+      case '/practice/summary':
+        return { word_count: garden.scope(scope, topic).length, counts: garden.counts(topic) };
       case '/practice':
         return garden.practice(scope, topic);
       case '/flashcards':

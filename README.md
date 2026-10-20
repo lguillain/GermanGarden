@@ -85,7 +85,8 @@ Product behavior is documented in `vocab-garden-ux.md`; repository commands and 
 - Other `pages/` files: self-contained discovery, review, login, and profile flows.
 - `components/`: UI used across page groups—word cards, seed bag, topic progress,
   feedback, word-set switch, and the shared SVG artwork.
-- `hooks/`: word-set selection shared by practice and review.
+- `hooks/`: shared word-set selection, topic-name queries, and startup prefetching.
+- `queries/`: query options shared by garden pages and startup prefetching.
 - `api.ts`, `supabase.ts`, `query-client.ts`: HTTP/auth clients and query configuration.
 
 Keep page-specific state, components, and hooks alongside their page. Promote
@@ -218,11 +219,17 @@ any data, including when gateway JWT verification is disabled in the config.
 Vocabulary is cached for five minutes per function instance; concurrent requests
 share a catalogue load. Instance reuse is an optimization, not a requirement:
 each cold load uses one `load_garden_catalog` database call. Topic lists fetch only
-their topic's words and no sentences; session checks fetch only activities. The
-garden skips sentences too. Vocabulary and learner progress load concurrently
-after authentication, except the practice menu, which first reads progress and
-then fetches only its kept words and topic memberships from `load_practice_catalog`.
-That small catalogue is not cached between learners and includes no sentences.
+their topic's words and no sentences. Session reads only the learner name and
+level, plus the AI availability flag; `/activities` separately returns cached
+topic IDs and names when a page needs them. The garden skips sentences too.
+The practice menu, Reading, and Conversation call `/practice/summary`, backed by
+`load_practice_summary`, which counts seeds/plants without loading word details
+or scheduling history. Grammar uses `/practice`: it reads kept progress and
+then only those words from `load_practice_catalog`, without sentences. That
+learner-specific catalogue is never cached between accounts. Signed-in garden
+and practice pages prefetch their data alongside session bootstrap and reuse
+the same query on mount. Browser queries stay fresh for 30 seconds; keep/review
+mutations invalidate the affected counts and word lists.
 Flashcards still load example sentences when opened.
 Review GET requests use `load_review_selection` instead: one database snapshot
 selects the next eligible word, one example sentence, and review counts. They
@@ -300,6 +307,12 @@ tables enforce per-account reads, and only the backend can call write functions.
 JSON is used for RPC transport, not persisted as a learner document.
 
 ### Upgrade an existing JSON-based deployment
+
+For the slim session and practice startup, apply
+`202610200007_practice_summary.sql`, deploy the garden function, and publish the
+matching frontend. This change requires both backend and frontend updates:
+topic names now come from `/activities`, and practice counts from
+`/practice/summary`.
 
 For the scoped topic/practice reads, apply
 `202610200006_scoped_progress.sql` with `supabase db push` before running

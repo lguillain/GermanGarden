@@ -5,12 +5,12 @@ import { AiPracticeLayout } from './ai-practice-layout';
 import { Corrections } from './corrections';
 import { ErrorNotice } from '../../components/feedback';
 import { TargetWords } from './target-words';
-import { usePracticeWords } from './use-practice-words';
+import { usePracticeSummary } from './use-practice-summary';
 import { useScope } from '../../hooks/use-scope';
 
 export function ConversationPage() {
   const { scope, topic, query } = useScope();
-  const words = usePracticeWords(query);
+  const summary = usePracticeSummary(query);
   const [chat, setChat] = useState<Chat | null>(null);
   const [message, setMessage] = useState('');
   const chatCall = useMutation({
@@ -28,8 +28,13 @@ export function ConversationPage() {
     },
   });
   return (
-    <AiPracticeLayout title="Conversation" words={words} grammar={false}>
-      {words.data && (
+    <AiPracticeLayout
+      title="Conversation"
+      result={summary}
+      wordCount={summary.data?.word_count ?? 0}
+      grammar={false}
+    >
+      {summary.data && (
         <>
           {chat && <TargetWords words={chat.targets} used={chat.used} />}
           {chat && (

@@ -4,6 +4,7 @@ import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react
 import type { Session, Time } from './api';
 import { api, ApiError } from './api';
 import { ErrorNotice, Loading } from './components/feedback';
+import { useStartupData } from './hooks/use-startup-data';
 import { SetupPage } from './pages/setup-page';
 import { supabase } from './supabase';
 
@@ -20,6 +21,7 @@ export function AppShell() {
   });
   const session = useQuery({ queryKey: ['session'], queryFn: () => api<Session>('/session') });
   const location = useLocation();
+  useStartupData(Boolean(auth.data || session.data));
   const navigate = useNavigate();
   const ready = !!session.data?.user.level;
   useQuery({

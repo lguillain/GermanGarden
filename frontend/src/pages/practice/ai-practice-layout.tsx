@@ -1,17 +1,18 @@
 import type { ReactNode } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import type { Session } from '../../api';
-import type { usePracticeWords } from './use-practice-words';
 import { useScope } from '../../hooks/use-scope';
 import { Empty, ErrorNotice, Heading, Loading } from '../../components/feedback';
 export function AiPracticeLayout({
   title,
-  words,
+  result,
+  wordCount,
   grammar,
   children,
 }: {
   title: string;
-  words: ReturnType<typeof usePracticeWords>;
+  result: { isPending: boolean; error: unknown };
+  wordCount: number;
   grammar: boolean;
   children: ReactNode;
 }) {
@@ -25,11 +26,11 @@ export function AiPracticeLayout({
       <Heading title={title}>{scope === 'all' ? undefined : label}</Heading>
       {!ai_available ? (
         <Empty>AI practice is not configured yet. Ask the garden owner to enable it.</Empty>
-      ) : words.isPending ? (
+      ) : result.isPending ? (
         <Loading />
-      ) : words.error ? (
-        <ErrorNotice error={words.error} />
-      ) : !words.data?.words.length ? (
+      ) : result.error ? (
+        <ErrorNotice error={result.error} />
+      ) : !wordCount ? (
         <Empty>
           No words in this practice set yet. <Link to="/matcher">Find words</Link>.
         </Empty>

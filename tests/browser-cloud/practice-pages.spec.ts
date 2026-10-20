@@ -23,8 +23,7 @@ test.beforeEach(async ({ page }) => {
     if (path.endsWith('/session'))
       return route.fulfill({
         json: {
-          user: { name: 'Test', level: 'A2', swipes: 0 },
-          activities: [],
+          user: { name: 'Test', level: 'A2' },
           ai_available: true,
         },
       });
@@ -37,6 +36,8 @@ test.beforeEach(async ({ page }) => {
           timer_seconds: 300,
         },
       });
+    if (path.endsWith('/practice/summary')) return route.fulfill({ json: { word_count: words.length, counts: { plants: 2, seeds: 0 } } });
+    if (path.endsWith('/activities')) return route.fulfill({ json: [] });
     if (path.endsWith('/practice'))
       return route.fulfill({
         json: {
@@ -61,10 +62,10 @@ for (const mode of ['chat', 'read', 'grammar']) {
     const pending = new Promise<void>((resolve) => {
       release = resolve;
     });
-    await page.route('**/functions/v1/garden/practice?*', async (route) => {
+    await page.route(mode === 'grammar' ? '**/functions/v1/garden/practice?*' : '**/functions/v1/garden/practice/summary?*', async (route) => {
       await pending;
       await route.fulfill({
-        json: { words: [], counts: { plants: 0, seeds: 0 }, grammar_options: {} },
+        json: { word_count: 0, words: [], counts: { plants: 0, seeds: 0 }, grammar_options: {} },
       });
     });
     await page.goto(`/#/practice/${mode}?scope=bag`);
@@ -158,3 +159,32 @@ test('practice pages keep their own state and reset it when the word set changes
   });
   expect(errors).toEqual([]);
 });
+
+for (const path of ['/practice', '/practice/read', '/practice/chat']) {
+  test(`${path} starts a counts-only request before session completes and reuses it`, async ({ page }) => {
+    let release!: () => void;
+    const pending = new Promise<void>(resolve => { release = resolve; });
+    let summaryReads = 0;
+    const unexpected: string[] = [];
+    page.on('request', request => {
+      const pathname = new URL(request.url()).pathname;
+      if (pathname.endsWith('/garden/practice') || pathname.endsWith('/activities')) unexpected.push(pathname);
+    });
+    await page.route('**/functions/v1/garden/session', async route => {
+      await pending;
+      await route.fulfill({ json: { user: { name: 'Test', level: 'A2' }, ai_available: true } });
+    });
+    await page.route('**/functions/v1/garden/practice/summary?*', async route => {
+      summaryReads++;
+      await route.fulfill({ json: { word_count: 2, counts: { plants: 2, seeds: 0 } } });
+    });
+    await page.goto(`/#${path}`);
+    try {
+      await expect.poll(() => summaryReads).toBe(1);
+      await expect(page.getByRole('status')).toHaveText('Loading…');
+    } finally { release(); }
+    await expect(page.getByRole('heading', { name: path === '/practice' ? 'Practice' : path.endsWith('/read') ? 'Reading' : 'Conversation', exact: true })).toBeVisible();
+    expect(summaryReads).toBe(1);
+    expect(unexpected).toEqual([]);
+  });
+}

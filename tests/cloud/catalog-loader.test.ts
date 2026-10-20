@@ -11,7 +11,7 @@ test('list screens request only needed vocabulary; mutations retain the full see
   assert.deepEqual(catalogRequest('/topics/at%20home', 'GET'), {
     p_topic: 'at home', p_include_sentences: false, p_activities_only: false,
   });
-  for (const path of ['/session', '/onboarding']) assert.equal(catalogRequest(path, 'GET').p_activities_only, true);
+  for (const path of ['/onboarding']) assert.equal(catalogRequest(path, 'GET').p_activities_only, true);
   assert.equal(catalogRequest('/garden', 'GET').p_include_sentences, false);
   for (const path of ['/matcher', '/guide', '/review', '/practice', '/topics/home/words/word/keep']) {
     assert.deepEqual(catalogRequest(path, 'POST'), {
@@ -34,7 +34,7 @@ test('catalogue caches separate scopes and share concurrent requests', async () 
   assert.equal(first, second); assert.equal(loads, 1);
   const full = await load('/matcher', 'GET');
   assert.notEqual(full, first); assert.equal(full.words[0].id, 'all');
-  assert.equal((await load('/session', 'GET')).words.length, 0);
+  assert.equal((await load('/onboarding', 'GET')).words.length, 0);
   assert.equal(loads, 3);
 });
 
