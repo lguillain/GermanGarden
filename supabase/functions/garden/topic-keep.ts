@@ -2,7 +2,7 @@ import { Garden } from './domain.ts';
 import { freshLearner, HttpError, type Word, type Swipe, type Srs } from './model.ts';
 
 export type TopicKeepResult =
-  | { error: 'unknown_word' | 'unknown_topic' | 'wrong_topic' | 'bag_full' }
+  | { error: 'unknown_word' | 'unknown_topic' | 'wrong_topic' | 'bag_full' | 'learned' }
   | { added: boolean; word: Word; swipe: Swipe; srs: Srs | null; learned: boolean };
 
 export function topicKeepRequest(path: string, method: string) {
@@ -17,6 +17,7 @@ export function topicKeepRequest(path: string, method: string) {
 export function topicKeepResponse(result: TopicKeepResult) {
   if ('error' in result) {
     const errors = {
+      learned: [409, 'Learned words are permanently complete.'],
       unknown_word: [404, 'Unknown word.'],
       unknown_topic: [422, 'Unknown topic.'],
       wrong_topic: [422, 'This word does not belong to this topic.'],

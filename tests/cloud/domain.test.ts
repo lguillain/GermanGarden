@@ -51,7 +51,8 @@ test('scope isolation and duplicate discovery actions', () => {
   const g = fixture(); g.swipe('word-0', 'learned', 'home', 1);
   assert.throws(() => g.swipe('word-0', 'keep', 'home', 1), /already been handled/);
   g.add('word-22', 'work'); g.grade('word-22', 3, 'bag');
-  assert.equal(g.scope('topic', 'home').length, 0);
+  assert.equal(g.scope('topic', 'home').length, 1); // Learned words remain available for practice.
+  assert.equal(g.review('topic', 'home').remaining, 0);
   assert.equal(g.scope('topic', 'work').length, 1);
   assert.throws(() => g.scope('topic', 'unknown'), /Unknown topic/);
   assert.equal(g.home().plots.find(p => p.id === 'home')?.words[0].growth, 5);

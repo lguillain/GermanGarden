@@ -25,7 +25,9 @@ export interface Catalog {
   word_activities: { word_id: string; activity_id: string; relevance: number }[];
   sentences: Sentence[];
 }
+export type ReviewTrack = 'recognition' | 'production';
 export interface Srs {
+  production?: Srs | null;
   ease: number;
   interval_days: number;
   reps: number;
@@ -74,7 +76,7 @@ export interface Learner {
   known: string[];
   learned: string[];
   srs: Record<string, Srs>;
-  reviews: { word_id: string; grade: number; reviewed_at: string }[];
+  reviews: { word_id: string; grade: number; reviewed_at: string; track?: ReviewTrack }[];
   sessions: { started_at: string; last_beat_at: string; seconds: number }[];
   weights: Record<string, number>;
   time_summary?: {

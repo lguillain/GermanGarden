@@ -73,7 +73,7 @@ test('catalogue RPC returns more than 1000 rows, scopes lists, and preserves top
     garden.grade('word-2', 3, 'bag');
     garden.state.known.push('word-3');
     const practice = await db.query<{ data: Catalog }>('select load_practice_catalog($1) data', [practiceWordIds(garden.state)]);
-    assert.equal(practice.rows[0].data.words.length, 2);
+    assert.equal(practice.rows[0].data.words.length, 3);
     assert.equal(practice.rows[0].data.sentences.length, 0);
     const small = new Garden(practice.rows[0].data, structuredClone(garden.state), garden.now);
     for (const [scope, topic] of [['bag', ''], ['all', ''], ['topic', 'home'], ['topic', 'work']]) {

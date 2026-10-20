@@ -31,11 +31,19 @@ def learner(conn):
         swipe['planted_at'] = timestamp(swipe.get('planted_at'))
     srs = {}
     for row in rows(conn, 'word_srs'):
+        if row.get('production'):
+            row['production'] = json.loads(row['production'])
+            for field in ('due_at', 'last_review_at'):
+                row['production'][field] = timestamp(row['production'].get(field))
+        if row.get('production') is None:
+            row.pop('production', None)
         row['due_at'] = timestamp(row['due_at'])
         row['last_review_at'] = timestamp(row.get('last_review_at'))
         srs[row.pop('word_id')] = row
     reviews = rows(conn, 'reviews')
     for review in reviews:
+        if review.get('track') == 'recognition':
+            review.pop('track')
         review['reviewed_at'] = timestamp(review['reviewed_at'])
     sessions = rows(conn, 'sessions')
     for session in sessions:

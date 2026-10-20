@@ -1,4 +1,5 @@
 """Exercise real learning transitions against isolated database copies."""
+import json
 import shutil
 import sqlite3
 import tempfile
@@ -100,7 +101,12 @@ class ApiTests(unittest.TestCase):
             self.assertEqual(conn.execute('SELECT COUNT(*) FROM reviews').fetchone()[0], 1)
             self.assertEqual(conn.execute('SELECT reps FROM word_srs').fetchone()[0], 1)
         learned = self.client.post('/api/flashcards/learned', json={'word_id': card['word_id']})
-        self.assertEqual(learned.status_code, 200)
+        self.assertEqual(learned.status_code, 410)
+        self.assertEqual(self.client.post('/api/review/learned', json={'word_id': card['word_id']}).status_code, 409)
+        with db.open_app_db('test_learner') as conn:
+            conn.execute("UPDATE word_srs SET interval_days=60,state='graduated',production=? WHERE word_id=?", (json.dumps(dict(ease=2.5,interval_days=60,reps=8,lapses=0,state='graduated',due_at='2099-01-01')),card['word_id']))
+            conn.commit()
+        self.assertEqual(self.client.post('/api/review/learned', json={'word_id': card['word_id']}).status_code, 200)
         self.assertEqual([w['id'] for w in self.client.get('/api/flashcards').json()['cards']], [card['word_id']])
         self.assertIsNone(self.client.get('/api/review').json()['card'])
         self.assertEqual(self.client.get('/api/practice').json()['words'][0]['growth'], 5)
@@ -135,8 +141,8 @@ class ApiTests(unittest.TestCase):
             conn.commit()
         words = self.client.get(url).json()['words']
         self.assertEqual(next(w for w in words if w['id'] == learned_id)['status'], 'learned')
-        self.assertTrue(self.client.post(url + '/words/' + learned_id + '/keep', json={}).json()['added'])
-        # History is preserved when a skipped or known word is added manually.
+        self.assertEqual(self.client.post(url + '/words/' + learned_id + '/keep', json={}).status_code, 409)
+        # History is preserved; learned words cannot return to the seed bag.
         with db.open_app_db('test_learner') as conn:
             self.assertEqual(conn.execute("SELECT COUNT(*) FROM swipes WHERE word_id=? AND action='drop'", (card['word_id'],)).fetchone()[0], 1)
             self.assertIsNotNone(conn.execute('SELECT 1 FROM known_words WHERE word_id=?', (learned_id,)).fetchone())
@@ -293,9 +299,9 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(result.json()['remaining'], 1)
         self.assertEqual(result.json()['counts'], {'plants': 1, 'seeds': 0})
         self.assertEqual(self.client.get('/api/garden').json()['summary']['due_now'], 1)
-        # An early repeat doesn't count a second word as completed.
+        # An early repeat is rejected without changing either schedule.
         result = self.client.post('/api/review', json={'word_id': first['word_id'], 'grade': 3})
-        self.assertEqual(result.json()['remaining'], 1)
+        self.assertEqual(result.status_code, 409)
         self.assertEqual(self.client.get('/api/garden').json()['summary']['due_now'], 1)
         with db.open_app_db('test_learner') as conn:
             conn.execute("UPDATE word_srs SET due_at=datetime('now', '-1 minute')")
@@ -372,7 +378,7 @@ class ApiTests(unittest.TestCase):
             if grade == 4:
                 self.assertIsNone(response.json()['card'])
             # A retry cannot grade the now-planted word as a bag seed again.
-            self.assertEqual(self.client.post('/api/review', json={'word_id': seed['word_id'], 'grade': grade, 'scope': 'bag'}).status_code, 422)
+            self.assertEqual(self.client.post('/api/review', json={'word_id': seed['word_id'], 'grade': grade, 'scope': 'bag'}).status_code, 409)
         self.assertIn(self.client.post('/api/plant', json={}).status_code, (404, 405))
 
     def test_discovery_actions_and_validation(self):

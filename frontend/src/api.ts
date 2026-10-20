@@ -61,6 +61,10 @@ export interface Word {
   de?: string;
   en?: string;
   growth?: number;
+  production_unlocked?: boolean;
+  production_growth?: number;
+  can_mark_learned?: boolean;
+  track?: 'recognition' | 'production';
   review_due?: boolean;
   visual_stage?: 'unseen' | 'seeds' | 'planted' | 'due' | 'grown';
   status?: 'new' | 'not_now' | 'learned' | 'bag' | 'planted';

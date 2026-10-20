@@ -136,7 +136,7 @@ export function TopicPage() {
         <ScopeLinks
           scope="topic"
           topic={topic}
-          disabled={Boolean(result.data) && !words.some((w) => w.status === 'planted')}
+          disabled={Boolean(result.data) && !words.some((w) => w.status === 'planted' || w.learned)}
         />
       </div>
       {result.data && user && (
@@ -264,15 +264,18 @@ export function TopicPage() {
                         Review
                       </Link>
                     )}
-                    {w.status !== 'bag' && w.status !== 'planted' && (
-                      <button
-                        disabled={add.isPending}
-                        aria-label={`Add ${w.lemma} to seed bag`}
-                        onClick={() => add.mutate(w)}
-                      >
-                        {add.isPending && add.variables?.id === w.id ? 'Adding…' : 'Add to bag'}
-                      </button>
-                    )}
+                    {!w.learned &&
+                      w.status !== 'learned' &&
+                      w.status !== 'bag' &&
+                      w.status !== 'planted' && (
+                        <button
+                          disabled={add.isPending}
+                          aria-label={`Add ${w.lemma} to seed bag`}
+                          onClick={() => add.mutate(w)}
+                        >
+                          {add.isPending && add.variables?.id === w.id ? 'Adding…' : 'Add to bag'}
+                        </button>
+                      )}
                   </td>
                 </tr>
               ))}

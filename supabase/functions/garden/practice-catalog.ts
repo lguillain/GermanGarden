@@ -4,9 +4,11 @@ import { Catalog, Learner } from './model.ts';
 // independent progress query which could race with a keep/review in another tab.
 export function practiceWordIds(learner: Learner): string[] {
   return [
-    ...new Set(
-      learner.swipes.filter((swipe) => swipe.action === 'keep').map((swipe) => swipe.word_id),
-    ),
+    ...new Set([
+      ...learner.swipes.filter((swipe) => swipe.action === 'keep').map((swipe) => swipe.word_id),
+      ...learner.known,
+      ...learner.learned,
+    ]),
   ];
 }
 export async function loadPracticeData(

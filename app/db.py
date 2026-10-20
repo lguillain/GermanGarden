@@ -41,6 +41,14 @@ def _migrate_user_state(conn: sqlite3.Connection) -> None:
     swipe_cols = {r["name"] for r in conn.execute("PRAGMA table_info(swipes)")}
     if "planted_at" not in swipe_cols:
         conn.execute("ALTER TABLE swipes ADD COLUMN planted_at TEXT")
+    srs_cols = {r['name'] for r in conn.execute('PRAGMA table_info(word_srs)')}
+    if 'production' not in srs_cols:
+        conn.execute('ALTER TABLE word_srs ADD COLUMN production TEXT')
+        conn.execute("""UPDATE word_srs SET production=json_object('ease',2.5,'interval_days',0,'reps',0,'lapses',0,'state','learning','due_at',datetime('now'))
+          WHERE (interval_days >= 7 OR state='graduated') AND word_id NOT IN (SELECT word_id FROM known_words UNION SELECT word_id FROM flashcard_learned)""")
+    review_cols = {r['name'] for r in conn.execute('PRAGMA table_info(reviews)')}
+    if 'track' not in review_cols:
+        conn.execute("ALTER TABLE reviews ADD COLUMN track TEXT NOT NULL DEFAULT 'recognition'")
     conn.commit()
 
 

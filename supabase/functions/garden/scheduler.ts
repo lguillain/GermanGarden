@@ -12,7 +12,7 @@ export const initialSrs = (): Srs => ({
   state: 'learning',
 });
 export function growth(srs: Partial<Srs> = {}, learned = false) {
-  if (learned || srs.state === 'graduated' || (srs.interval_days || 0) >= 45) return 5;
+  if (learned || srs.state === 'graduated' || (srs.interval_days || 0) >= 60) return 5;
   if ((srs.interval_days || 0) >= 21) return 4;
   if ((srs.interval_days || 0) >= 7) return 3;
   if ((srs.reps || 0) >= 2) return 2;
@@ -23,7 +23,7 @@ export function reviewOutcome(previous: Srs, grade: number): Srs {
   let { ease, interval_days: interval, reps, lapses, state } = previous;
   // A lapse always schedules a one-minute retry.
   if (grade === RATING.again) {
-    state = state === 'review' ? 'relearning' : 'learning';
+    state = state === 'review' || state === 'graduated' ? 'relearning' : 'learning';
     reps = 0;
     lapses++;
     ease = Math.max(1.3, ease - 0.2);
@@ -50,4 +50,19 @@ export function reviewOutcome(previous: Srs, grade: number): Srs {
   }
   if (state === 'review' && interval >= 60) state = 'graduated';
   return { ease, interval_days: interval, reps, lapses, state };
+}
+
+// Recognition controls the stem; both tracks must mature before the flower opens fully.
+export function plantGrowth(srs: Partial<Srs> = {}, learned = false) {
+  if (learned) return 5;
+  return growth(srs) === 5 && growth(srs.production || {}) === 5 ? 5 : Math.min(4, growth(srs));
+}
+export function scheduledOutcome(previous: Srs, grade: number, now: number): Srs {
+  const outcome = reviewOutcome(previous, grade);
+  return {
+    ...outcome,
+    due_at: new Date(now + Math.trunc(outcome.interval_days * 86400) * 1000).toISOString(),
+    last_grade: grade,
+    last_review_at: new Date(now).toISOString(),
+  };
 }

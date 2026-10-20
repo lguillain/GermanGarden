@@ -37,6 +37,7 @@ def seed_bag(conn: sqlite3.Connection) -> list[sqlite3.Row]:
                MAX(s.swiped_at) AS kept_at
         FROM swipes s JOIN words w ON w.id = s.word_id
         WHERE s.action = 'keep' AND s.planted_at IS NULL
+          AND s.word_id NOT IN (SELECT word_id FROM known_words UNION SELECT word_id FROM flashcard_learned)
         GROUP BY w.id
         ORDER BY kept_at DESC
         LIMIT ?
@@ -50,6 +51,7 @@ def seed_bag_count(conn: sqlite3.Connection) -> int:
         """
         SELECT COUNT(DISTINCT word_id) FROM swipes
         WHERE action = 'keep' AND planted_at IS NULL
+          AND word_id NOT IN (SELECT word_id FROM known_words UNION SELECT word_id FROM flashcard_learned)
         """
     ).fetchone()[0])
 
@@ -102,8 +104,7 @@ def garden_topics(conn: sqlite3.Connection, level: str | None) -> list[TopicCard
                    WHEN sp.planted_at IS NOT NULL THEN
                      CASE
                        WHEN fl.word_id IS NOT NULL THEN 1.0
-                       WHEN srs.state = 'graduated' THEN 1.0
-                       WHEN srs.interval_days >= 45 THEN 1.0
+                       WHEN (srs.state = 'graduated' OR srs.interval_days >= 60) AND json_extract(srs.production, '$.interval_days') >= 60 THEN 1.0
                        WHEN srs.interval_days >= 21 THEN 0.8
                        WHEN srs.interval_days >= 7  THEN 0.6
                        WHEN srs.reps >= 2 THEN 0.4
@@ -177,7 +178,7 @@ def growth_stage(row: sqlite3.Row | dict) -> int:
         return MAX_GROWTH
     iv = float(r.get("interval_days") or 0)
     reps = int(r.get("reps") or 0)
-    if iv >= 45: return 5
+    if iv >= 60: return 5
     if iv >= 21: return 4
     if iv >= 7:  return 3
     if reps >= 2: return 2
@@ -215,7 +216,7 @@ def review_outcome(srs: dict, grade: int) -> dict:
     state = srs["state"] or "learning"
 
     if grade == 1:                              # again: lapse
-        state = "relearning" if state == "review" else "learning"
+        state = "relearning" if state in ("review", "graduated") else "learning"
         reps = 0
         lapses += 1
         ease = max(MIN_EASE, ease - 0.2)
@@ -307,16 +308,8 @@ def _review_scope_sql(scope: str, activity_id: str | None) -> tuple[str, dict]:
 
 
 def review_remaining(conn: sqlite3.Connection, scope: str, activity_id: str | None = None) -> int:
-    """Count distinct new or currently due words in this review set."""
-    where, params = _review_scope_sql(scope, activity_id)
-    return conn.execute(f"""
-        SELECT COUNT(DISTINCT w.id)
-        FROM words w JOIN swipes sp ON sp.word_id=w.id
-        LEFT JOIN word_srs srs ON srs.word_id=w.id
-        LEFT JOIN flashcard_learned fl ON fl.word_id=w.id
-        WHERE {where}
-          AND (srs.word_id IS NULL OR srs.due_at <= datetime('now'))
-    """, params).fetchone()[0]
+    from app.review_tracks import eligible
+    return len(eligible(conn, scope, activity_id or ''))
 
 
 def next_review_card(conn: sqlite3.Connection, scope: str,
@@ -463,9 +456,9 @@ def topic_overview(conn: sqlite3.Connection, level: str | None = None) -> dict:
               WHEN EXISTS(SELECT 1 FROM swipes s WHERE s.word_id=wa.word_id
                           AND s.action='keep' AND s.planted_at IS NOT NULL)
                 AND EXISTS(SELECT 1 FROM word_srs r WHERE r.word_id=wa.word_id
-                           AND r.due_at <= datetime('now')) THEN 'due'
+                           AND (r.due_at <= datetime('now') OR json_extract(r.production, '$.due_at') <= datetime('now'))) THEN 'due'
               WHEN EXISTS(SELECT 1 FROM word_srs r WHERE r.word_id=wa.word_id
-                          AND (r.state='graduated' OR r.interval_days>=45)) THEN 'grown'
+                          AND (r.state='graduated' OR r.interval_days>=60) AND json_extract(r.production, '$.interval_days') >= 60) THEN 'grown'
               WHEN EXISTS(SELECT 1 FROM swipes s WHERE s.word_id=wa.word_id
                           AND s.action='keep' AND s.planted_at IS NOT NULL) THEN 'planted'
               WHEN EXISTS(SELECT 1 FROM swipes s WHERE s.word_id=wa.word_id

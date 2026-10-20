@@ -14,7 +14,7 @@ export interface Store {
     topic_exists: boolean;
   }>;
   heartbeat?(): Promise<NonNullable<Learner['time_summary']>>;
-  review?(scope: string, topic: string): Promise<ReviewSelection>;
+  review?(scope: string, topic: string, excluded?: string[]): Promise<ReviewSelection>;
 }
 export type Snapshot = Awaited<ReturnType<Store['load']>>;
 const MAX_WRITE_ATTEMPTS = 5;
@@ -68,9 +68,17 @@ export async function dispatch(
             : summary.all_plants,
     };
   }
+  const excludedValue = method === 'GET' ? query.getAll('exclude') : body.excluded || [];
+  requireThat(
+    Array.isArray(excludedValue) &&
+      excludedValue.length <= 10000 &&
+      excludedValue.every((id) => typeof id === 'string'),
+    'Invalid review session.',
+  );
+  const excluded = excludedValue as string[];
   if (path === '/review' && method === 'GET' && store.review) {
     requireThat(['all', 'topic', 'bag'].includes(scope), 'Unknown word set.');
-    return reviewSelectionResponse(await store.review(scope, topic), scope, topic);
+    return reviewSelectionResponse(await store.review(scope, topic, excluded), scope, topic);
   }
   const keep = topicKeepRequest(path, method);
   if (keep && store.keepTopicWord)
@@ -87,7 +95,7 @@ export async function dispatch(
       case '/garden':
         return garden.home();
       case '/review':
-        return garden.review(scope, topic);
+        return garden.review(scope, topic, excluded);
       case '/practice/summary':
         return { word_count: garden.scope(scope, topic).length, counts: garden.counts(topic) };
       case '/practice':
@@ -150,12 +158,26 @@ export async function dispatch(
     }
     if (path === '/heartbeat')
       return transact(store, catalog, (currentGarden) => currentGarden.heartbeat(), snapshot);
+    if (path === '/review/learned')
+      return transact(
+        store,
+        catalog,
+        (currentGarden) => currentGarden.markLearned(text(body, 'word_id')),
+        snapshot,
+      );
     if (path === '/review')
       return transact(
         store,
         catalog,
         (currentGarden) =>
-          currentGarden.grade(text(body, 'word_id'), Number(body.grade), scope, topic),
+          currentGarden.grade(
+            text(body, 'word_id'),
+            Number(body.grade),
+            scope,
+            topic,
+            text(body, 'track', 'recognition') as 'recognition' | 'production',
+            excluded,
+          ),
         snapshot,
       );
     if (path === '/matcher')

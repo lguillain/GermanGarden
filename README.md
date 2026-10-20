@@ -394,3 +394,26 @@ The migration adds a backend-only read function and preserves existing data and
 write functions. No frontend deployment is needed. Compare the GET `/review`
 request's total duration and `Server-Timing` header before and after deployment;
 the new path reports `review` instead of full `catalog` and `progress` reads.
+
+### Upgrade to recognition and production review tracks
+
+Apply `202610200009_review_tracks.sql`, deploy the matching garden function, then
+publish the frontend. Existing schedules are preserved as recognition; words at
+sapling or beyond receive fresh production schedules. Learned words stay complete.
+This changes the review RPC signature, so deploy migration and backend together:
+
+```sh
+supabase db push --linked
+supabase functions deploy garden
+```
+
+Both tracks mature at a 60-day interval. Review offers **Mark as Learned** immediately
+after both mature; choosing it permanently ends reviews. Session exclusions survive
+refresh in the same tab and reset when leaving Review or changing the word set.
+The local Python backend uses additive SQLite columns on opening a profile. Exports
+preserve production schedules and review direction; import into the upgraded schema.
+
+Run the graduation browser test with
+`npx playwright test --config playwright.cloud.config.ts tests/browser-cloud/review-tracks.spec.ts`.
+It uses the real domain and PostgreSQL migration/write functions in PGlite, with
+simulated authentication and HTTP transport; it does not use live accounts.

@@ -9,7 +9,7 @@ const hash = (value: string) =>
 export const wordName = (word: Word) => [word.article, word.lemma].filter(Boolean).join(' ');
 const isWilted = (word: Word) => Boolean(word.review_due && !word.learned);
 export const plantLabel = (word: Word) =>
-  `${growthNames[word.learned ? 5 : word.growth || 0]}${isWilted(word) ? ' · Needs review' : ''}`;
+  `${growthNames[word.learned ? 5 : word.growth || 0]}${word.production_unlocked ? ` · Production ${word.production_growth || 0}/5` : ' · Production locked'}${isWilted(word) ? ' · Needs review' : ''}`;
 
 function Paints({ id }: { id: string }) {
   return (
@@ -87,6 +87,34 @@ function PlantArtwork({ word, id }: { word: Word; id: string }) {
   const stage = Math.max(0, Math.min(5, word.growth || 0));
   const variant = hash(word.id) % 3;
   const paint = `url(#${id}-${['leaf', 'leaf2', 'leaf3'][variant]})`;
+  if (word.production_unlocked && !word.learned && stage !== 5) {
+    const opening = Math.min(4, word.production_growth || 0) / 4;
+    return (
+      <g className="production-flower" data-production-growth={word.production_growth || 0}>
+        <ellipse cy="2" rx="16" ry="5" fill="#42603b" opacity=".18" />
+        <path d="M0 0 Q-3 -22 0 -49" fill="none" stroke="#608148" strokeWidth="3" />
+        <path
+          d="M0 -15 Q-22 -14 -19 -31 Q-4 -32 0 -15 M0 -28 Q21 -25 19 -42 Q4 -41 0 -28"
+          fill={paint}
+        />
+        <g transform="translate(0 -53)">
+          {[-1, 0, 1].map((side) => (
+            <ellipse
+              key={side}
+              cy="-5"
+              rx={5 + opening * 2}
+              ry="12"
+              transform={`rotate(${side * (12 + opening * 46)})`}
+              fill={`url(#${id}-petal)`}
+              stroke="#d7a33a"
+              strokeWidth=".6"
+            />
+          ))}
+          <path d="M-8 0 Q0 9 8 0 L4 7 L-4 7Z" fill={paint} />
+        </g>
+      </g>
+    );
+  }
   if (word.learned || stage === 5)
     return (
       <g className="sunflower-plant" transform="scale(.78)">
@@ -259,7 +287,7 @@ export function PlantIcon({
 }) {
   const id = `plant-icon-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const stage = word.learned ? 5 : Math.max(0, Math.min(5, word.growth || 0));
-  const viewBox = stage < 2 ? '-19 -30 38 38' : '-38 -80 76 88';
+  const viewBox = stage < 2 && !word.production_unlocked ? '-19 -30 38 38' : '-38 -80 76 88';
   return (
     <svg className="plant-stage-icon" viewBox={viewBox} role="img" aria-label={plantLabel(word)}>
       <title>{plantLabel(word)}</title>

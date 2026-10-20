@@ -1,5 +1,6 @@
 """Local JSON API for the React interface; learning logic comes from GermanMatch."""
 from __future__ import annotations
+from app import review_tracks
 
 import random
 import sqlite3
@@ -7,7 +8,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Dict, List, Literal, Optional
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Query, Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -125,7 +126,7 @@ def home(conn: sqlite3.Connection = Db):
     # Show planted and learned words, including those outside the discovery level.
     plots = []
     for topic in topics:
-        words = [{**dict(w), 'growth': garden.growth_stage(w)}
+        words = [{**dict(w), **review_tracks.details(conn, w['id'])}
                  for w in garden.topic_words(conn, topic.id)]
         if words:
             plots.append({'id': topic.id, 'name': topic.name, 'words': words})
@@ -161,7 +162,7 @@ def topic_detail(topic: str, conn: sqlite3.Connection = Db):
         word['growth'] = growth.get(word['id'], 0)
         word['status'] = ('bag' if word['in_bag'] else 'planted' if word['planted']
                           else 'learned' if word['learned'] else 'not_now' if word['not_now'] else 'new')
-        word['review_due'] = bool(word['planted'] and word['scheduled_due'] and not word['learned'])
+        word.update(review_tracks.details(conn, word['id']))
         word['visual_stage'] = ('due' if word['review_due'] else 'grown' if word['learned'] or word['growth'] == 5
                                 else 'planted' if word['planted'] else 'seeds' if word['in_bag'] else 'unseen')
         words.append(word)
@@ -177,6 +178,9 @@ def add_topic_word(topic: str, word_id: str, conn: sqlite3.Connection = Db):
         raise HTTPException(422, 'This word does not belong to this topic.')
     # Serialize duplicate clicks and preserve previous discovery / learning history.
     conn.execute('BEGIN IMMEDIATE')
+    if review_tracks.learned(conn, word_id):
+        conn.rollback()
+        raise HTTPException(409, 'Learned words are permanently complete.')
     existing = conn.execute("SELECT 1 FROM swipes WHERE word_id=? AND action='keep'",
                             (word_id,)).fetchone()
     if existing:
@@ -250,20 +254,14 @@ def swipe(body: SwipeInput, conn: sqlite3.Connection = Db):
     return matcher_data(conn)
 
 
-def review_data(conn: sqlite3.Connection, scope: str, topic: str):
-    counts = {
-        'plants': garden.review_remaining(conn, 'topic' if topic else 'all', topic or None),
-        'seeds': garden.review_remaining(conn, 'bag'),
-    }
-    return {'card': garden.next_review_card(conn, scope, topic or None),
-            'remaining': counts['seeds' if scope == 'bag' else 'plants'],
-            'counts': counts}
+def review_data(conn, scope, topic, excluded=()):
+    return review_tracks.review(conn, scope, topic, excluded)
 
 
 @app.get('/api/review')
-def review(scope: Scope = 'all', topic: str = '', conn: sqlite3.Connection = Db):
+def review(scope: Scope = 'all', topic: str = '', exclude: List[str] = Query(default=[]), conn: sqlite3.Connection = Db):
     validate_scope(conn, scope, topic)
-    return review_data(conn, scope, topic)
+    return review_data(conn, scope, topic, exclude)
 
 
 class GradeInput(BaseModel):
@@ -271,25 +269,46 @@ class GradeInput(BaseModel):
     grade: int = Field(ge=1, le=4)
     scope: Scope = 'all'
     topic: str = ''
+    track: Literal['recognition', 'production'] = 'recognition'
+    excluded: List[str] = Field(default_factory=list)
 
 
 @app.post('/api/review')
 def grade(body: GradeInput, conn: sqlite3.Connection = Db):
     validate_scope(conn, body.scope, body.topic)
-    words = _practice_scope_words(conn, body.scope, body.topic or None)
-    if body.word_id not in {w['id'] for w in words}:
-        raise HTTPException(422, 'This word is not in the selected review set.')
-    garden.grade_word(conn, body.word_id, body.grade)
-    return review_data(conn, body.scope, body.topic)
+    conn.execute('BEGIN IMMEDIATE')
+    try:
+        return review_tracks.grade(conn, body.word_id, body.grade, body.scope, body.topic, body.track, body.excluded)
+    except ValueError as error:
+        conn.rollback()
+        raise HTTPException(409, str(error))
+
+
+class GraduateInput(BaseModel):
+    word_id: str
+
+
+@app.post('/api/review/learned')
+def graduate(body: GraduateInput, conn: sqlite3.Connection = Db):
+    conn.execute('BEGIN IMMEDIATE')
+    if not review_tracks.learned(conn, body.word_id) and not review_tracks.details(conn, body.word_id)['can_mark_learned']:
+        conn.rollback()
+        raise HTTPException(409, 'Both tracks must reach a 60-day interval first.')
+    conn.execute('INSERT OR IGNORE INTO flashcard_learned(word_id) VALUES (?)', (body.word_id,))
+    conn.commit()
+    return review_tracks.details(conn, body.word_id)
 
 
 @app.get('/api/practice/summary')
 def practice_summary(scope: Scope = 'all', topic: str = '', conn: sqlite3.Connection = Db):
     validate_scope(conn, scope, topic)
-    counts = conn.execute("""WITH kept AS (
+    counts = conn.execute("""WITH decisions AS (
         SELECT s.word_id, s.planted_at FROM swipes s JOIN words w ON w.id=s.word_id
         WHERE s.action='keep' AND s.id=(SELECT MIN(first.id) FROM swipes first
             WHERE first.word_id=s.word_id AND first.action='keep')
+    ), marks AS (SELECT word_id FROM known_words UNION SELECT word_id FROM flashcard_learned), kept AS (
+        SELECT d.word_id,d.planted_at FROM decisions d WHERE d.word_id NOT IN (SELECT word_id FROM marks)
+        UNION SELECT m.word_id,'1970-01-01' FROM marks m JOIN words w ON w.id=m.word_id
     ) SELECT COUNT(CASE WHEN planted_at IS NULL THEN 1 END) seeds,
         COUNT(CASE WHEN planted_at IS NOT NULL THEN 1 END) all_plants,
         COUNT(CASE WHEN planted_at IS NOT NULL AND (?='' OR EXISTS (
@@ -304,22 +323,16 @@ def practice(scope: Scope = 'all', topic: str = '', conn: sqlite3.Connection = D
     validate_scope(conn, scope, topic)
     words = _practice_scope_words(conn, scope, topic or None)
     for word in words:
-        srs = conn.execute('SELECT * FROM word_srs WHERE word_id = ?', (word['id'],)).fetchone()
-        learned = conn.execute('SELECT 1 FROM flashcard_learned WHERE word_id = ?', (word['id'],)).fetchone()
-        word['growth'] = garden.growth_stage({**(dict(srs) if srs else {}), 'learned': bool(learned)})
-    plant_count = conn.execute('''SELECT COUNT(DISTINCT s.word_id) FROM swipes s
-        WHERE s.action='keep' AND s.planted_at IS NOT NULL
-          AND (?='' OR EXISTS(SELECT 1 FROM word_activities wa
-                              WHERE wa.word_id=s.word_id AND wa.activity_id=?))''',
-        (topic, topic)).fetchone()[0]
+        word.update(review_tracks.details(conn, word['id']))
     return {'words': words, 'grammar_options': learn.GRAMMAR_CONFIG_OPTIONS,
-            'counts': {'plants': plant_count, 'seeds': garden.seed_bag_count(conn)}}
+            'counts': practice_summary(scope, topic, conn)['counts']}
 
 
 @app.get('/api/flashcards')
 def flashcards(scope: Scope = 'all', topic: str = '', conn: sqlite3.Connection = Db):
     validate_scope(conn, scope, topic)
-    return {'cards': _flashcard_rows(conn, scope, topic or None, learn.FLASHCARDS_N)}
+    cards = _flashcard_rows(conn, scope, topic or None, learn.FLASHCARDS_N)
+    return {'cards': [{**w, **review_tracks.details(conn, w['id'])} for w in cards]}
 
 
 class LearnedInput(BaseModel):
@@ -328,10 +341,7 @@ class LearnedInput(BaseModel):
 
 @app.post('/api/flashcards/learned')
 def flashcard_learned(body: LearnedInput, conn: sqlite3.Connection = Db):
-    if learn.kept_word(conn, body.word_id) is None:
-        raise HTTPException(422, 'Only kept words can be marked learned.')
-    learn.mark_learned(conn, body.word_id)
-    return {'ok': True}
+    raise HTTPException(410, 'Practice does not change growth. Mark mature words as Learned in review.')
 
 
 class PracticeInput(BaseModel):

@@ -4,11 +4,12 @@ import {
   Word,
   Sentence,
   ReviewSelection,
+  ReviewTrack,
   freshLearner,
   requireThat,
   shuffle,
 } from './model.ts';
-import { initialSrs, growth, reviewOutcome, REVIEW_GRADES } from './scheduler.ts';
+import { initialSrs, growth, plantGrowth, scheduledOutcome, REVIEW_GRADES } from './scheduler.ts';
 
 // Stable per decision so a preview and its later confirmed response select the
 // same card. Concurrent progress changes still cause selection to be recomputed.
@@ -103,13 +104,20 @@ export class Garden {
   }
   due(id: string) {
     const srs = this.state.srs[id];
-    return !srs || Date.parse(srs.due_at || '') <= this.now;
+    return !srs || Date.parse(srs.due_at || '') <= this.now || this.productionDue(id);
+  }
+  productionDue(id: string) {
+    const production = this.state.srs[id]?.production;
+    return Boolean(production && Date.parse(production.due_at || '') <= this.now);
+  }
+  reviewTrack(id: string): ReviewTrack {
+    return this.productionDue(id) ? 'production' : 'recognition';
   }
   details(word: Word) {
     const kept = this.kept(word.id);
     const learned = this.learned(word.id);
     const srs = this.state.srs[word.id];
-    const stage = growth(srs, learned);
+    const stage = plantGrowth(srs, learned);
     // Only scheduled plants wilt. Learned words stay fully grown permanently.
     const reviewDue = Boolean(kept?.planted_at && srs && this.due(word.id) && !learned);
 
@@ -129,6 +137,9 @@ export class Garden {
     return {
       ...word,
       growth: stage,
+      production_unlocked: learned || Boolean(srs?.production),
+      production_growth: learned ? 5 : growth(srs?.production || {}),
+      can_mark_learned: !learned && stage === 5,
       learned,
       review_due: reviewDue,
       status,
@@ -157,7 +168,9 @@ export class Garden {
     for (const swipe of this.state.swipes)
       if (swipe.action === 'keep' && !kept.has(swipe.word_id)) kept.set(swipe.word_id, swipe);
     return this.catalog.words
-      .filter((word) => kept.has(word.id) && !kept.get(word.id)!.planted_at)
+      .filter(
+        (word) => !this.learned(word.id) && kept.has(word.id) && !kept.get(word.id)!.planted_at,
+      )
       .map((word) => this.details(word));
   }
   // "all" means planted words across topics. Seeds always have their own set.
@@ -167,6 +180,8 @@ export class Garden {
 
     return this.catalog.words.filter((word) => {
       const kept = this.kept(word.id);
+      if (this.learned(word.id))
+        return scope !== 'bag' && (scope !== 'topic' || this.inTopic(word.id, topic));
       if (!kept) return false;
       if (scope === 'bag') return !kept.planted_at;
       if (!kept.planted_at) return false;
@@ -174,8 +189,11 @@ export class Garden {
     });
   }
 
-  reviewWords(scope = 'all', topic = '') {
-    return this.scope(scope, topic).filter((word) => !this.learned(word.id) && this.due(word.id));
+  reviewWords(scope = 'all', topic = '', excluded: string[] = []) {
+    const seen = new Set(excluded);
+    return this.scope(scope, topic).filter(
+      (word) => !seen.has(word.id) && !this.learned(word.id) && this.due(word.id),
+    );
   }
 
   counts(topic = '', review = false) {
@@ -191,10 +209,10 @@ export class Garden {
     };
   }
 
-  review(scope = 'all', topic = '') {
+  review(scope = 'all', topic = '', excluded: string[] = []) {
     // Unscheduled words come first, then the earliest due date. Keep catalogue
     // order for ties, matching load_review_selection's word-ID ordering.
-    const words = this.reviewWords(scope, topic).sort((first, second) => {
+    const words = this.reviewWords(scope, topic, excluded).sort((first, second) => {
       const firstSchedule = this.state.srs[first.id];
       const secondSchedule = this.state.srs[second.id];
       const scheduledOrder = Number(Boolean(firstSchedule)) - Number(Boolean(secondSchedule));
@@ -208,35 +226,49 @@ export class Garden {
     return { card, remaining: words.length, counts: this.counts(topic, true) };
   }
   reviewCard(word: Word, topic = '') {
-    const srs = this.state.srs[word.id] || initialSrs();
+    const track = this.reviewTrack(word.id);
     return {
       ...this.sentence(word, topic),
+      track,
       rating_options: REVIEW_GRADES.map((grade) => {
-        const outcome = reviewOutcome(srs, grade);
+        const outcome = this.ratedSchedules(word.id, grade, track);
+        const rated = track === 'production' ? outcome.production! : outcome;
         return {
           grade,
-          growth: growth(outcome),
-          next_review_seconds: Math.trunc(outcome.interval_days * SECONDS_PER_DAY),
+          growth: plantGrowth(outcome),
+          next_review_seconds: Math.trunc(rated.interval_days * SECONDS_PER_DAY),
         };
       }),
     };
   }
-  grade(id: string, grade: number, scope = 'all', topic = '') {
-    const eligible = this.reviewWords(scope, topic).some((word) => word.id === id);
+  private ratedSchedules(id: string, grade: number, track: ReviewTrack) {
+    const previous = this.state.srs[id] || initialSrs();
+    let recognition = { ...previous };
+    let production = previous.production;
+    if (track === 'production') {
+      requireThat(production, 'Production is still locked.', 409);
+      production = scheduledOutcome(production, grade, this.now);
+      if (grade >= 3) recognition = scheduledOutcome(previous, grade, this.now);
+    } else recognition = scheduledOutcome(previous, grade, this.now);
+    if (!production && growth(recognition) >= 3)
+      production = { ...initialSrs(), due_at: this.iso() };
+    return { ...recognition, production: production || null };
+  }
+  grade(
+    id: string,
+    grade: number,
+    scope = 'all',
+    topic = '',
+    track: ReviewTrack = this.reviewTrack(id),
+    excluded: string[] = [],
+  ) {
+    const eligible = this.reviewWords(scope, topic, excluded).some((word) => word.id === id);
     requireThat(
-      eligible,
+      eligible && track === this.reviewTrack(id),
       'This word is no longer due in this review set. Refresh to continue.',
       409,
     );
-
-    const outcome = reviewOutcome(this.state.srs[id] || initialSrs(), grade);
-    const delaySeconds = Math.trunc(outcome.interval_days * SECONDS_PER_DAY);
-    this.state.srs[id] = {
-      ...outcome,
-      due_at: new Date(this.now + delaySeconds * 1000).toISOString(),
-      last_grade: grade,
-      last_review_at: this.iso(),
-    };
+    this.state.srs[id] = this.ratedSchedules(id, grade, track);
 
     // Every rating plants just this seed, even "Again". Practice never calls this.
     for (const swipe of this.state.swipes) {
@@ -244,10 +276,24 @@ export class Garden {
         swipe.planted_at = this.iso();
       }
     }
-    this.state.reviews.push({ word_id: id, grade, reviewed_at: this.iso() });
-    return this.review(scope, topic);
+    this.state.reviews.push({ word_id: id, grade, reviewed_at: this.iso(), track });
+    return {
+      ...this.review(scope, topic, [...excluded, id]),
+      graduated: plantGrowth(this.state.srs[id]) === 5 ? this.details(this.word(id)) : null,
+    };
   }
 
+  markLearned(id: string) {
+    this.word(id);
+    if (this.learned(id)) return this.details(this.word(id));
+    requireThat(
+      this.kept(id)?.planted_at && plantGrowth(this.state.srs[id]) === 5,
+      'Both tracks must reach a 60-day interval first.',
+      409,
+    );
+    this.state.learned.push(id);
+    return this.details(this.word(id));
+  }
   private ensureSeedBagSpace() {
     requireThat(
       this.bag().length < SEED_BAG_CAPACITY,
@@ -260,6 +306,7 @@ export class Garden {
     const word = this.word(id);
     this.topic(topic);
     requireThat(this.inTopic(id, topic), 'This word does not belong to this topic.');
+    requireThat(!this.learned(id), 'Learned words are permanently complete.', 409);
     if (this.kept(id)) return { added: false };
     this.ensureSeedBagSpace();
 
@@ -476,7 +523,7 @@ export class Garden {
         bag_count: seedBag.length,
         bag_cap: SEED_BAG_CAPACITY,
         due_now: this.reviewWords().length,
-        planted_total: this.scope().length,
+        planted_total: this.catalog.words.filter((word) => this.kept(word.id)?.planted_at).length,
         time: this.time(),
       },
     };

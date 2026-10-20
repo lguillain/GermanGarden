@@ -12,32 +12,20 @@ def _practice_scope_words(conn: sqlite3.Connection, scope: str,
             SELECT w.id, w.lemma, w.article, w.plural, w.pos, w.english, w.level
             FROM swipes s JOIN words w ON w.id = s.word_id
             WHERE s.action = 'keep' AND s.planted_at IS NULL
+          AND s.word_id NOT IN (SELECT word_id FROM known_words UNION SELECT word_id FROM flashcard_learned)
             GROUP BY w.id
             """
         ).fetchall()
         return _attach_sentence(conn, base, activity_id=None)
-    if scope == "topic" and topic:
-        base = conn.execute(
-            """
-            SELECT w.id, w.lemma, w.article, w.plural, w.pos, w.english, w.level
-            FROM word_activities wa JOIN words w ON w.id = wa.word_id
-            JOIN swipes sp ON sp.word_id = w.id
-                           AND sp.action = 'keep' AND sp.planted_at IS NOT NULL
-            WHERE wa.activity_id = :aid
-            GROUP BY w.id
-            """,
-            {"aid": topic},
-        ).fetchall()
-        return _attach_sentence(conn, base, activity_id=topic)
-    base = conn.execute(
-        """
-        SELECT w.id, w.lemma, w.article, w.plural, w.pos, w.english, w.level
-        FROM swipes s JOIN words w ON w.id = s.word_id
-        WHERE s.action = 'keep' AND s.planted_at IS NOT NULL
-        GROUP BY w.id
-        """
-    ).fetchall()
-    return _attach_sentence(conn, base, activity_id=None)
+    base = conn.execute("""
+        SELECT w.* FROM words w WHERE
+          (EXISTS(SELECT 1 FROM swipes s WHERE s.word_id=w.id AND s.action='keep' AND s.planted_at IS NOT NULL)
+           OR EXISTS(SELECT 1 FROM known_words k WHERE k.word_id=w.id)
+           OR EXISTS(SELECT 1 FROM flashcard_learned f WHERE f.word_id=w.id))
+          AND (? <> 'topic' OR EXISTS(SELECT 1 FROM word_activities wa WHERE wa.word_id=w.id AND wa.activity_id=?))
+        ORDER BY w.id
+    """, (scope, topic)).fetchall()
+    return _attach_sentence(conn, base, activity_id=topic if scope == 'topic' else None)
 
 def _attach_sentence(conn: sqlite3.Connection, rows: list[sqlite3.Row],
                      activity_id: str | None) -> list[dict]:

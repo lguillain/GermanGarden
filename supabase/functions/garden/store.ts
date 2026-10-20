@@ -33,9 +33,10 @@ export function createStore(admin: SupabaseClient, options: StoreOptions): Store
       if (error) throw error;
       return data;
     },
-    async review(scope, topic) {
+    async review(scope, topic, excluded = []) {
       const { data, error } = await measure('review', () =>
         admin.rpc('load_review_selection', {
+          p_excluded: excluded,
           p_user_id: userId,
           p_scope: scope,
           p_topic: topic,

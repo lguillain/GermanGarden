@@ -100,7 +100,8 @@ CREATE TABLE IF NOT EXISTS word_srs (
                 CHECK (state IN ('learning','review','relearning','graduated')),
   due_at        TEXT    NOT NULL DEFAULT (datetime('now')),
   last_grade    INTEGER,                           -- 1=again, 2=hard, 3=good, 4=easy
-  last_review_at TEXT
+  last_review_at TEXT,
+  production TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_word_srs_due ON word_srs(due_at);
 
@@ -109,6 +110,7 @@ CREATE TABLE IF NOT EXISTS reviews (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   word_id    TEXT NOT NULL REFERENCES words(id) ON DELETE CASCADE,
   grade      INTEGER NOT NULL CHECK (grade BETWEEN 1 AND 4),
+  track TEXT NOT NULL DEFAULT 'recognition' CHECK (track IN ('recognition','production')),
   reviewed_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_reviews_word ON reviews(word_id);

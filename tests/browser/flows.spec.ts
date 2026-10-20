@@ -45,7 +45,7 @@ test('discover, practise, plant, review, and preserve progress', async ({ page }
   await plot.hover();
   await expect(page.locator('.plot-tooltip')).toBeVisible();
   await plot.click();
-  await page.getByRole('button', { name: `${wordWithArticle}, Just planted`, exact: true }).click();
+  await page.getByRole('button', { name: `${wordWithArticle}, Just planted · Production locked`, exact: true }).click();
   await expect(page.locator('.topic-plant-caption')).toContainText(word);
   await expect(page.locator('.topic-words tbody tr').first()).toContainText(word);
   const topicUrl = page.url();

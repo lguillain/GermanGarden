@@ -31,7 +31,7 @@ test('atomic topic keep matches domain rules, protects versions, and preserves h
       create schema auth; create table auth.users(id uuid primary key);
       create function auth.uid() returns uuid language sql as $$ select null::uuid $$;
       insert into auth.users values ('${first}'),('${second}');`);
-    for (const name of ['202610190001_garden','202610200001_normalize_learners','202610200002_catalog_reads','202610200004_matcher_progress','202610200006_scoped_progress','202610200008_keep_topic_word'])
+    for (const name of ['202610190001_garden','202610200001_normalize_learners','202610200002_catalog_reads','202610200004_matcher_progress','202610200006_scoped_progress','202610200008_keep_topic_word','202610200005_review_selection','202610200009_review_tracks'])
       await db.exec(readFileSync(`supabase/migrations/${name}.sql`, 'utf8'));
     await db.exec(`insert into activities values ('home','Home',null),('work','Work',null);
       insert into words(id,lemma,pos,english,level) select 'w'||n,'Wort'||n,'noun','word','A2' from generate_series(0,29) n;
@@ -41,7 +41,7 @@ test('atomic topic keep matches domain rules, protects versions, and preserves h
         (3,'w1','work','Arbeit.','Work.','test');`);
     const initial = freshLearner('First');
     initial.user.level = 'A2'; initial.user.swipe_count = 120;
-    initial.known = ['w1']; initial.learned = ['w2'];
+    initial.known = ['w29']; initial.learned = ['w27'];
     initial.swipes = [{ word_id: 'w3', activity_id: 'home', sentence_id: null, action: 'drop', drop_reason: 'uninteresting', planted_at: null, swiped_at: '2026-01-01T00:00:00Z' }];
     initial.reviews = [{ word_id: 'old', grade: 3, reviewed_at: '2026-01-01T00:00:00Z' }];
     await db.query('select import_learner_progress($1,$2)', [first, JSON.stringify(initial)]);
@@ -65,6 +65,8 @@ test('atomic topic keep matches domain rules, protects versions, and preserves h
       assert.equal((await db.query<{ saved: boolean }>('select save_learner_progress($1,$2,$3) saved', [first,before.version,'{}'])).rows[0].saved, false);
       assert.equal(after.data.swipes.at(-1)?.sentence_id, id === 'w0' ? 1 : id === 'w1' ? 3 : null);
     }
+    assert.deepEqual(await keep('w29'), { error: 'learned' });
+    assert.deepEqual(await keep('w27'), { error: 'learned' });
     const beforeDuplicate = await load();
     assert.equal(topicKeepResponse(await keep('w0')).added, false);
     assert.deepEqual(await load(), beforeDuplicate);
