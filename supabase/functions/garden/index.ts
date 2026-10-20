@@ -1,8 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
-import { Catalog, freshLearner, HttpError, requireThat, Learner } from './model.ts';
+import { Catalog, HttpError, requireThat, Learner } from './model.ts';
 import { Complete } from './ai.ts';
 import { dispatch, Store } from './service.ts';
 import { catalogCache } from './catalog-cache.ts';
+import { progressChanges } from './persistence.ts';
 
 const url = Deno.env.get('SUPABASE_URL')!;
 const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -28,21 +29,27 @@ const catalog = catalogCache(async (): Promise<Catalog> => {
 });
 const emptyCatalog: Catalog = { words: [], activities: [], word_activities: [], sentences: [] };
 function storeFor(userId: string, name: string): Store {
+  let snapshot: { version: number; data: Learner } | undefined;
   return {
     async load() {
-      const { data, error } = await admin.from('learner_state').select('version,data').eq('user_id', userId).maybeSingle();
+      const { data, error } = await admin.rpc('load_learner_progress', { p_user_id: userId, p_name: name });
       if (error) throw error;
-      if (data) return data as { version: number; data: Learner };
-      const inserted = await admin.from('learner_state').upsert({ user_id: userId, data: freshLearner(name) }, { onConflict: 'user_id', ignoreDuplicates: true });
-      if (inserted.error) throw inserted.error;
-      const result = await admin.from('learner_state').select('version,data').eq('user_id', userId).single();
-      if (result.error) throw result.error;
-      return result.data as { version: number; data: Learner };
+      snapshot = data as { version: number; data: Learner };
+      // Keep the comparison baseline separate from mutable domain state.
+      return structuredClone(snapshot);
     },
     async save(version, data) {
-      const result = await admin.rpc('save_learner_state', { p_user_id: userId, p_version: version, p_data: data });
+      requireThat(snapshot && snapshot.version === version, 'Progress must be loaded before saving.', 500);
+      const result = await admin.rpc('save_learner_progress', {
+        p_user_id: userId, p_version: version, p_changes: progressChanges(snapshot.data, data),
+      });
       if (result.error) throw result.error;
       return result.data === true;
+    },
+    async heartbeat() {
+      const { data, error } = await admin.rpc('heartbeat_learner', { p_user_id: userId, p_name: name });
+      if (error) throw error;
+      return data as NonNullable<Learner['time_summary']>;
     },
   };
 }

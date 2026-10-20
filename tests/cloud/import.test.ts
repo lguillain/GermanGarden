@@ -35,17 +35,18 @@ with tempfile.TemporaryDirectory() as directory:
       create function auth.uid() returns uuid language sql as $$ select null::uuid $$;
       insert into auth.users values ('${userId}');`);
     await db.exec(readFileSync('supabase/migrations/202610190001_garden.sql', 'utf8'));
+    await db.exec(readFileSync('supabase/migrations/202610200001_normalize_learners.sql', 'utf8'));
     await db.exec(sql);
-    const { rows } = await db.query<{ data: { user: { name: string }; srs: Record<string, { due_at: string; reps: number }>; swipes: { planted_at: string }[]; sessions: { seconds: number }[] } }>('select data from learner_state');
+    const { rows } = await db.query<{ data: { user: { name: string }; srs: Record<string, { due_at: string; reps: number }>; swipes: { planted_at: string }[]; sessions: { seconds: number }[] } }>("select load_learner_progress(user_id,'Test')->'data' as data from learner_profiles");
     assert.equal(rows[0].data.user.name, 'Léa');
-    assert.equal(rows[0].data.srs.word.due_at, '2026-10-20T10:00:00Z');
+    assert.equal(Date.parse(rows[0].data.srs.word.due_at), Date.parse('2026-10-20T10:00:00Z'));
     assert.equal(rows[0].data.srs.word.reps, 3);
-    assert.equal(rows[0].data.swipes[0].planted_at, '2026-10-01T10:05:00Z');
-    assert.equal(rows[0].data.sessions[0].seconds, 42);
+    assert.equal(Date.parse(rows[0].data.swipes[0].planted_at), Date.parse('2026-10-01T10:05:00Z'));
+    assert.equal((await db.query<{ seconds: number }>('select seconds from learner_sessions')).rows[0].seconds, 42);
     const words = await db.query<{ english: string }>('select english from words'); assert.equal(words.rows[0].english, "doctor's");
-    await assert.rejects(db.exec(sql), /duplicate key/);
+    await assert.rejects(db.exec(sql), /already exists/);
     await db.exec('ROLLBACK;');
-    const count = await db.query<{ n: number }>('select count(*)::int as n from learner_state'); assert.equal(count.rows[0].n, 1);
+    const count = await db.query<{ n: number }>('select count(*)::int as n from learner_profiles'); assert.equal(count.rows[0].n, 1);
   } finally { await db.close(); }
 });
 
@@ -85,8 +86,9 @@ with tempfile.TemporaryDirectory() as directory:
       create function auth.uid() returns uuid language sql as $$ select null::uuid $$;
       insert into auth.users values ('${ids[0]}'), ('${ids[1]}');`);
     await db.exec(readFileSync('supabase/migrations/202610190001_garden.sql', 'utf8'));
+    await db.exec(readFileSync('supabase/migrations/202610200001_normalize_learners.sql', 'utf8'));
     await db.exec(sql);
-    const result = await db.query<{ user_id: string; data: { user: { name: string }; swipes: unknown[]; known: string[] } }>('select user_id,data from learner_state order by user_id');
+    const result = await db.query<{ user_id: string; data: { user: { name: string }; swipes: unknown[]; known: string[] } }>("select user_id,load_learner_progress(user_id,'Test')->'data' as data from learner_profiles order by user_id");
     assert.equal(result.rows.length, 2);
     assert.equal(result.rows[0].data.user.name, 'Learner 0');
     assert.equal(result.rows[0].data.swipes.length, 1);
@@ -94,11 +96,11 @@ with tempfile.TemporaryDirectory() as directory:
     assert.equal(result.rows[1].data.user.name, 'Learner 1');
     assert.equal(result.rows[1].data.swipes.length, 0);
     assert.deepEqual(result.rows[1].data.known, ['word']);
-    await db.exec(`update learner_state set data = data || '{"new_progress":true}'::jsonb, version=1 where user_id='${ids[0]}';`);
+    await db.exec(`update learner_profiles set name='New progress', version=1 where user_id='${ids[0]}';`);
     await db.exec(sql);
-    const preserved = await db.query<{ data: { new_progress: boolean }; version: number }>(`select data,version from learner_state where user_id='${ids[0]}'`);
-    assert.equal(preserved.rows[0].data.new_progress, true);
+    const preserved = await db.query<{ name: string; version: number }>(`select name,version from learner_profiles where user_id='${ids[0]}'`);
+    assert.equal(preserved.rows[0].name, 'New progress');
     assert.equal(Number(preserved.rows[0].version), 1);
-    const counts = await db.query<{ n: number }>('select count(*)::int as n from learner_state'); assert.equal(counts.rows[0].n, 2);
+    const counts = await db.query<{ n: number }>('select count(*)::int as n from learner_profiles'); assert.equal(counts.rows[0].n, 2);
   } finally { await db.close(); }
 });

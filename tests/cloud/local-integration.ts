@@ -46,10 +46,10 @@ try {
   assert.equal((await api(clients[0], '/review')).card, null);
   assert.equal((await api(clients[0], '/garden')).summary.planted_total, 1);
   assert.equal((await api(clients[1], '/garden')).summary.planted_total, 0);
-  const foreign = await clients[1].from('learner_state').select('*').eq('user_id', userIds[0]);
+  const foreign = await clients[1].from('learner_profiles').select('*').eq('user_id', userIds[0]);
   assert.deepEqual(foreign.data, []);
-  const write = await clients[0].from('learner_state').update({ data: {} }).eq('user_id', userIds[0]); assert.ok(write.error);
-  const rpc = await clients[0].rpc('save_learner_state', { p_user_id: userIds[1], p_version: 0, p_data: {} }); assert.ok(rpc.error);
+  const write = await clients[0].from('learner_profiles').update({ name: 'Forbidden' }).eq('user_id', userIds[0]); assert.ok(write.error);
+  const rpc = await clients[0].rpc('save_learner_progress', { p_user_id: userIds[1], p_version: 0, p_changes: {} }); assert.ok(rpc.error);
   if (process.argv.includes('--browser')) {
     execFileSync('npm', ['run', 'build', '--', '--outDir', '../dist-cloud'], {
       env: { ...process.env, VITE_SUPABASE_URL: url, VITE_SUPABASE_PUBLISHABLE_KEY: status.ANON_KEY, VITE_BASE_PATH: '/garden-test/' },
@@ -73,9 +73,7 @@ try {
       await page.goto('http://127.0.0.1:4174/garden-test/#/review'); await page.reload();
       await expect(page.getByText('All caught up!', { exact: false })).toBeVisible();
       await expect(page.locator('.word-card')).toHaveCount(0);
-      const progress = await admin.from('learner_state').select('data,version').eq('user_id', userIds[0]).single();
-      progress.data!.data.srs[fixtureId].due_at = '2020-01-01T00:00:00Z';
-      const updated = await admin.rpc('save_learner_state', { p_user_id: userIds[0], p_version: progress.data!.version, p_data: progress.data!.data }); assert.equal(updated.data, true);
+      const updated = await admin.from('learner_srs').update({ due_at: '2020-01-01T00:00:00Z' }).eq('user_id', userIds[0]).eq('word_id', fixtureId); assert.equal(updated.error, null);
       await page.reload();
       await expect(page.locator('.word-card h2')).toHaveText('Baum');
       await page.getByRole('button', { name: 'Show translation' }).click();

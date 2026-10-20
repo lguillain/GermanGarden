@@ -128,6 +128,7 @@ export class Garden {
     return { activity: this.topic(topic), words: this.catalog.words.filter(w => this.inTopic(w.id, topic)).map(w => this.details(w)).sort((a, b) => Number(b.status === 'planted') - Number(a.status === 'planted') || a.lemma.localeCompare(b.lemma)) };
   }
   time() {
+    if (this.state.time_summary) return this.state.time_summary;
     const today = this.iso().slice(0, 10), sessions = this.state.sessions;
     return { today_seconds: sessions.filter(s => s.started_at.startsWith(today) || s.last_beat_at.startsWith(today)).reduce((sum, s) => sum + s.seconds, 0), total_seconds: sessions.reduce((sum, s) => sum + s.seconds, 0), current_session_seconds: sessions.at(-1)?.seconds || 0, timer_seconds: 300 };
   }

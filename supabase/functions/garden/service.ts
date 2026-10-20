@@ -4,6 +4,7 @@ import { Catalog, Learner, HttpError, requireThat, shuffle } from './model.ts';
 export interface Store {
   load(): Promise<{ version: number; data: Learner }>;
   save(version: number, data: Learner): Promise<boolean>;
+  heartbeat?(): Promise<NonNullable<Learner['time_summary']>>;
 }
 type Snapshot = Awaited<ReturnType<Store['load']>>;
 // Recompute mutations against the newest state on conflicts; never retry an AI call.
@@ -24,6 +25,7 @@ async function matcherTransaction(store: Store, catalog: Catalog, operation: (ga
   return transact(store, catalog, g => { g.preferredTopic = preferred; return operation(g); }, snapshot);
 }
 export async function dispatch(path: string, method: string, query: URLSearchParams, body: Body, store: Store, catalog: Catalog, complete?: Complete) {
+  if (path === '/heartbeat' && method === 'POST' && store.heartbeat) return store.heartbeat();
   const scope = method === 'GET' ? query.get('scope') || 'all' : text(body, 'scope', 'all');
   const topic = method === 'GET' ? query.get('topic') || '' : text(body, 'topic');
   const snapshot = await store.load(), garden = new Garden(catalog, snapshot.data);

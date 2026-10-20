@@ -73,8 +73,7 @@ def export_many(content, profiles, skip_existing=False):
         with sqlite3.connect(f'file:{profile.resolve()}?mode=ro', uri=True) as conn:
             conn.row_factory = sqlite3.Row
             statements.extend(content_statements(conn))
-            conflict = ' ON CONFLICT (user_id) DO NOTHING' if skip_existing else ''
-            statements.append(f"INSERT INTO public.learner_state(user_id, data) VALUES ('{user_id}', {literal(learner(conn))}){conflict};")
+            statements.append(f"SELECT public.import_learner_progress('{user_id}', {literal(learner(conn))}, {'true' if skip_existing else 'false'});")
     statements.append('COMMIT;')
     return '\n'.join(statements) + '\n'
 

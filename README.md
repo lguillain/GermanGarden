@@ -213,9 +213,46 @@ node --import tsx tests/cloud/local-integration.ts --browser
 This uses only the dedicated local stack, creates temporary accounts and vocabulary,
 checks real Auth/API/RLS behavior, and removes its fixtures. It does not call AI. The browser variant needs Playwright Chromium (`npx playwright install chromium`), builds into ignored `dist-cloud/`, and writes screenshots to `test-results/`.
 
-Progress is stored as one versioned JSON document per learner. This keeps the
-existing per-profile behavior and makes imports straightforward for a small private
-app. The Edge Function uses compare-and-swap writes with conflict retries; it
-rechecks capacity and review eligibility each time. Content tables are shared and
-read-only to users. Revisit the document model before expanding to large accounts
-or analytics workloads. Keep independent backups of important learner progress.
+Learner data lives in typed relational tables: `learner_profiles`,
+`learner_decisions`, `learner_word_marks`, `learner_srs`,
+`learner_topic_weights`, `learner_reviews`, and `learner_sessions`.
+Ordinary requests load current progress and time totals, not review or session
+history. Writes send only changed rows and append new reviews. Atomic version
+checks recheck seed-bag capacity and review eligibility on conflicts. Heartbeats
+update session rows separately without invalidating review versions. All learner
+tables enforce per-account reads, and only the backend can call write functions.
+JSON is used for RPC transport, not persisted as a learner document.
+
+### Upgrade an existing JSON-based deployment
+
+The `202610200001_normalize_learners.sql` migration copies and validates all learner
+collections and versions, then removes `learner_state` and its old write function.
+It runs in one transaction and locks the old table during the transfer. A failed
+validation rolls back the entire migration. No JSON archive remains in the database.
+
+1. Ask users to pause learning during the brief backend upgrade. Save independent
+   backups under ignored `data/` with private permissions:
+
+   ```bash
+   umask 077
+   supabase db dump --linked --schema public --file data/before-normalization-schema.sql
+   supabase db dump --linked --schema public --data-only --file data/before-normalization-data.sql
+   ```
+
+2. Run the cloud checks above and test locally with `supabase migration up --local`,
+   the updated garden function, and `tests/cloud/local-integration.ts`.
+3. Apply the migration and immediately deploy the matching backend:
+
+   ```bash
+   supabase db push --linked
+   supabase functions deploy garden
+   ```
+
+4. Confirm sign-in, garden, review, and time tracking. Publishing GitHub Pages is
+   not required for this backend-only change. Do not redeploy an older garden
+   function: it requires the removed JSON table. Regenerate any old import SQL
+   with the updated exporter before running it.
+
+If migration fails, keep the old backend and inspect the validation error. If the
+backend deployment fails after migration, retry deployment of this version; do not
+reset the database or re-import progress. Keep the independent backups private.

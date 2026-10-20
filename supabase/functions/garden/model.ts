@@ -10,6 +10,7 @@ export interface Learner {
   reviews: { word_id: string; grade: number; reviewed_at: string }[];
   sessions: { started_at: string; last_beat_at: string; seconds: number }[];
   weights: Record<string, number>;
+  time_summary?: { today_seconds: number; total_seconds: number; current_session_seconds: number; timer_seconds: number };
 }
 export class HttpError extends Error { constructor(public status: number, message: string) { super(message); } }
 export function requireThat(condition: unknown, message: string, status = 422): asserts condition { if (!condition) throw new HttpError(status, message); }

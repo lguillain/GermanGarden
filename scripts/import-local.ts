@@ -60,7 +60,7 @@ for (const file of profiles) {
   credentials.accounts[slug] = { email, password: credentials.accounts[slug]?.password || null, userId: user.id };
   saveCredentials();
   mapping[`data/profiles/${file}`] = user.id;
-  const result = await admin.from('learner_state').select('user_id').eq('user_id', user.id).maybeSingle();
+  const result = await admin.from('learner_profiles').select('user_id').eq('user_id', user.id).maybeSingle();
   if (result.error) throw result.error;
   imported.push({ slug, email, userId: user.id, existing: !!result.data });
 }
@@ -73,8 +73,12 @@ try {
   });
 } catch { throw new Error('The data transaction failed and was rolled back. Accounts and saved credentials remain available for retry. Check the private data/local-supabase-import.sql file.'); }
 for (const account of imported) {
-  const { data, error } = await admin.from('learner_state').select('data').eq('user_id', account.userId).single();
-  if (error) throw error;
-  console.log(`${account.slug}: ${account.existing ? 'existing progress preserved' : 'imported'} (${data.data.swipes.length} word decisions, ${data.data.reviews.length} reviews) — ${account.email}`);
+  const [decisions, reviews] = await Promise.all([
+    admin.from('learner_decisions').select('*', { count: 'exact', head: true }).eq('user_id', account.userId),
+    admin.from('learner_reviews').select('*', { count: 'exact', head: true }).eq('user_id', account.userId),
+  ]);
+  if (decisions.error) throw decisions.error;
+  if (reviews.error) throw reviews.error;
+  console.log(`${account.slug}: ${account.existing ? 'existing progress preserved' : 'imported'} (${decisions.count} word decisions, ${reviews.count} reviews) — ${account.email}`);
 }
 console.log(`All ${imported.length} profiles processed. Login passwords are saved in ${credentialsPath} (private, ignored by Git).`);
