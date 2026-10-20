@@ -20,6 +20,7 @@ A German vocabulary web app. Users discover words they care about, practise them
 - Two users for now (the author and her husband), possibly more later.
 - The hosted app uses private email/password accounts created by the garden owner. Each account has its own progress, shared across devices; there is no public signup.
 - Imported accounts can sign in using their profile username (for example, `leo`) and password. Full email addresses are also accepted.
+- Clicking the farmer icon signs out the current browser session and returns to sign-in. Other devices stay signed in, and the learner can immediately sign in again or switch accounts.
 - The local Python version retains its on-device profile chooser.
 - Used on a laptop, so desktop layout comes first.
 - Not in scope: social features and adding your own vocabulary.

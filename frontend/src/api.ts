@@ -5,7 +5,7 @@ export class ApiError extends Error {
 export async function api<T>(path: string, body?: unknown, method?: string): Promise<T> {
   const requestMethod = method ?? (body === undefined ? 'GET' : 'POST');
   if (supabase && path === '/profile' && requestMethod === 'DELETE') {
-    const { error } = await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut({ scope: 'local' });
     if (error) throw new ApiError(503, error.message);
     return { ok: true } as T;
   }

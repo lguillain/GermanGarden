@@ -211,7 +211,14 @@ npm run test:cloud
 npm run build
 ```
 
-These tests run without Docker or network access, using embedded PostgreSQL for
+Test frontend sign-in, farmer-icon logout, and account switching with mocked
+Supabase responses (requires Playwright Chromium; no cloud accounts are used):
+
+```bash
+npx playwright test --config playwright.cloud.config.ts
+```
+
+The cloud logic tests run without Docker or network access, using embedded PostgreSQL for
 migration/RLS tests. They cover scheduler parity with Python, all planting ratings,
 practice immutability, review completion, learned words, concurrent writes and
 account isolation. With `supabase start` and `supabase functions serve garden`
