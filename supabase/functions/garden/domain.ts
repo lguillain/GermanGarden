@@ -1,4 +1,24 @@
-import { Catalog, Learner, Word, requireThat, initialSrs, growth, reviewOutcome, shuffle } from './model.ts';
+import { Catalog, Learner, Word, Sentence, requireThat, initialSrs, growth, reviewOutcome, shuffle } from './model.ts';
+
+function buildCatalogIndex(catalog: Catalog) {
+  const topics = new Map<string, Set<string>>();
+  const sentences = new Map<string, Sentence[]>();
+  for (const row of catalog.word_activities) {
+    if (!topics.has(row.word_id)) topics.set(row.word_id, new Set());
+    topics.get(row.word_id)!.add(row.activity_id);
+  }
+  for (const sentence of catalog.sentences) {
+    if (!sentences.has(sentence.word_id)) sentences.set(sentence.word_id, []);
+    sentences.get(sentence.word_id)!.push(sentence);
+  }
+  return { topics, sentences, words: new Map(catalog.words.map(word => [word.id, word])) };
+}
+const catalogIndexes = new WeakMap<Catalog, ReturnType<typeof buildCatalogIndex>>();
+function catalogIndex(catalog: Catalog) {
+  let index = catalogIndexes.get(catalog);
+  if (!index) { index = buildCatalogIndex(catalog); catalogIndexes.set(catalog, index); }
+  return index;
+}
 
 export const grammarOptions: Record<string, Record<string, string[]>> = {
   noun: { case: ['Nominativ', 'Akkusativ', 'Dativ', 'Genitiv'], number: ['Singular', 'Plural'] },
@@ -9,8 +29,8 @@ export class Garden {
   constructor(public catalog: Catalog, public state: Learner, public now = Date.now(), public preferredTopic?: string) {}
   iso() { return new Date(this.now).toISOString(); }
   topic(id: string) { const topic = this.catalog.activities.find(a => a.id === id); requireThat(topic, 'Unknown topic.'); return topic; }
-  word(id: string) { const word = this.catalog.words.find(w => w.id === id); requireThat(word, 'Unknown word.', 404); return word; }
-  inTopic(id: string, topic: string) { return !topic || this.catalog.word_activities.some(a => a.word_id === id && a.activity_id === topic); }
+  word(id: string) { const word = catalogIndex(this.catalog).words.get(id); requireThat(word, 'Unknown word.', 404); return word; }
+  inTopic(id: string, topic: string) { return !topic || !!catalogIndex(this.catalog).topics.get(id)?.has(topic); }
   kept(id: string) { return this.state.swipes.find(s => s.word_id === id && s.action === 'keep'); }
   learned(id: string) { return this.state.known.includes(id) || this.state.learned.includes(id); }
   due(id: string) { const srs = this.state.srs[id]; return !srs || Date.parse(srs.due_at || '') <= this.now; }
@@ -22,7 +42,7 @@ export class Garden {
       visual_stage: due ? 'due' : learned || stage === 5 ? 'grown' : status === 'planted' ? 'planted' : status === 'bag' ? 'seeds' : 'unseen' };
   }
   sentence(word: Word, topic = '') {
-    const sentences = this.catalog.sentences.filter(s => s.word_id === word.id);
+    const sentences = catalogIndex(this.catalog).sentences.get(word.id) || [];
     const preferred = topic ? sentences.filter(s => s.activity_id === topic) : [];
     const sentence = shuffle(preferred.length ? preferred : sentences)[0];
     return { ...this.details(word), word_id: word.id, sentence_id: sentence?.id ?? null, de: sentence?.text || '', en: sentence?.english || '', activity_id: topic || sentence?.activity_id || null,
@@ -79,7 +99,7 @@ export class Garden {
       const levels = ['A1', 'A2', 'B1'], level = u.level || 'A2', index = levels.indexOf(level), roll = Math.random();
       const below = index > 0 ? .15 * u.affinity_below : 0, above = index < 2 ? .15 * u.affinity_above : 0;
       const chosen = roll < below ? levels[index - 1] : roll < below + above ? levels[index + 1] : level;
-      const pool = this.catalog.words.filter(w => this.unseen(w) && this.inTopic(w.id, u.current_topic || '') && this.catalog.sentences.some(s => s.word_id === w.id && s.activity_id === u.current_topic));
+      const pool = this.catalog.words.filter(w => this.unseen(w) && this.inTopic(w.id, u.current_topic || '') && catalogIndex(this.catalog).sentences.get(w.id)?.some(s => s.activity_id === u.current_topic));
       return shuffle(pool.filter(w => w.level === chosen))[0] || shuffle(pool.filter(w => w.level === level))[0];
     };
     let word = u.current_topic ? pick() : undefined;

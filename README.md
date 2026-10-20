@@ -166,6 +166,12 @@ origin if using a custom domain. `ANTHROPIC_API_KEY` is optional; without it,
 flashcards, discovery and reviews work, but AI practice is unavailable.
 The function validates each user token through Supabase Auth before accessing
 any data, including when gateway JWT verification is disabled in the config.
+Vocabulary is cached for five minutes per function instance; concurrent requests
+share a catalogue load. Vocabulary imports can take up to five minutes to appear
+in an existing instance. Learner progress is never cached. Timer heartbeats skip
+catalogue loading entirely. Deploy backend performance changes with
+`supabase functions deploy garden`; publishing GitHub Pages alone does not update
+the backend.
 
 ### Publish the frontend
 

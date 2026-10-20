@@ -2,13 +2,12 @@ import { createClient } from '@supabase/supabase-js';
 import { Catalog, freshLearner, HttpError, requireThat, Learner } from './model.ts';
 import { Complete } from './ai.ts';
 import { dispatch, Store } from './service.ts';
+import { catalogCache } from './catalog-cache.ts';
 
 const url = Deno.env.get('SUPABASE_URL')!;
 const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false, autoRefreshToken: false } });
 const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') || 'http://localhost:5173,http://127.0.0.1:5173,http://127.0.0.1:4174').split(',').map(s => s.trim());
-let cachedCatalog: { at: number; data: Catalog } | undefined;
-async function catalog(): Promise<Catalog> {
-  if (cachedCatalog && Date.now() - cachedCatalog.at < 60_000) return cachedCatalog.data;
+const catalog = catalogCache(async (): Promise<Catalog> => {
   async function rows(table: string, order: string[]) {
     const all = [];
     for (let offset = 0; ; offset += 1000) {
@@ -25,8 +24,9 @@ async function catalog(): Promise<Catalog> {
   ]);
   const data = { words, activities, word_activities, sentences } as Catalog;
   requireThat(words.length && activities.length, 'Vocabulary has not been imported yet.', 503);
-  cachedCatalog = { at: Date.now(), data }; return data;
-}
+  return data;
+});
+const emptyCatalog: Catalog = { words: [], activities: [], word_activities: [], sentences: [] };
 function storeFor(userId: string, name: string): Store {
   return {
     async load() {
@@ -67,6 +67,7 @@ export async function handler(request: Request): Promise<Response> {
   if (allowedOrigins.includes(origin)) headers['Access-Control-Allow-Origin'] = origin;
   headers['Access-Control-Allow-Headers'] = 'authorization, apikey, content-type, x-client-info';
   headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS';
+  headers['Access-Control-Max-Age'] = '3600';
   const respond = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers });
   try {
     requireThat(!origin || allowedOrigins.includes(origin), 'This site is not allowed to access the garden.', 403);
@@ -85,7 +86,7 @@ export async function handler(request: Request): Promise<Response> {
     }
     const requestUrl = new URL(request.url);
     const path = requestUrl.pathname.replace(/^\/(?:functions\/v1\/)?garden(?=\/|$)/, '') || '/';
-    return respond(await dispatch(path, request.method, requestUrl.searchParams, body, storeFor(user.id, String(user.user_metadata?.name || user.email?.split('@')[0] || 'Learner')), await catalog(), complete));
+    return respond(await dispatch(path, request.method, requestUrl.searchParams, body, storeFor(user.id, String(user.user_metadata?.name || user.email?.split('@')[0] || 'Learner')), path === '/heartbeat' ? emptyCatalog : await catalog(), complete));
   } catch (error) {
     if (error instanceof HttpError) return respond({ detail: error.message }, error.status);
     // Avoid logging tokens, request bodies, database rows or API keys.

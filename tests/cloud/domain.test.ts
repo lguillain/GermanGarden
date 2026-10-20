@@ -71,6 +71,37 @@ test('concurrent grading cannot apply the same review twice', async () => {
   assert.equal(store.state.reviews.length, 1);
 });
 
+test('review and heartbeat reuse their initial progress read', async () => {
+  const g = fixture(); g.add('word-0', 'home');
+  const store = memoryStore(g);
+  let reads = 0;
+  const counted: Store = {
+    async load() { reads++; return store.load(); },
+    save: (version, data) => store.save(version, data),
+  };
+  await dispatch('/review', 'POST', new URLSearchParams(), { word_id: 'word-0', grade: 3, scope: 'bag' }, counted, catalog);
+  assert.equal(reads, 1);
+  assert.equal(store.state.reviews.length, 1);
+  reads = 0;
+  await dispatch('/heartbeat', 'POST', new URLSearchParams(), {}, counted, { words: [], activities: [], word_activities: [], sentences: [] });
+  assert.equal(reads, 1);
+  assert.equal(store.state.sessions.length, 1);
+});
+
+test('catalogue indexes preserve memberships, sentence choices and catalogue isolation', () => {
+  const g = fixture();
+  for (const word of catalog.words) {
+    for (const activity of catalog.activities) {
+      assert.equal(g.inTopic(word.id, activity.id), catalog.word_activities.some(row => row.word_id === word.id && row.activity_id === activity.id));
+    }
+    assert.equal(g.sentence(word).sentence_id, catalog.sentences.find(sentence => sentence.word_id === word.id)?.id);
+  }
+  const other = new Garden({ ...catalog, word_activities: [], sentences: [] }, freshLearner('Other'));
+  assert.equal(other.inTopic('word-0', 'home'), false);
+  assert.equal(other.sentence(other.word('word-0')).sentence_id, null);
+  assert.equal(g.inTopic('word-0', 'home'), true);
+});
+
 test('practice AI preserves state and rejects out-of-scope words', async () => {
   const g = fixture(); g.add('word-0', 'home');
   const before = structuredClone(g.state);
