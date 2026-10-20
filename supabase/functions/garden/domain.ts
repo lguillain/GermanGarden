@@ -1,4 +1,4 @@
-import { Catalog, Learner, Word, Sentence, requireThat, initialSrs, growth, reviewOutcome, shuffle } from './model.ts';
+import { Catalog, Learner, Word, Sentence, ReviewSelection, freshLearner, requireThat, initialSrs, growth, reviewOutcome, shuffle } from './model.ts';
 
 // Stable per decision so a preview and its later confirmed response select the
 // same card. Concurrent progress changes still cause selection to be recomputed.
@@ -73,12 +73,15 @@ export class Garden {
   }
   review(scope = 'all', topic = '') {
     const words = this.reviewWords(scope, topic).sort((a, b) => Number(!!this.state.srs[a.id]) - Number(!!this.state.srs[b.id]) || Date.parse(this.state.srs[a.id]?.due_at || '') - Date.parse(this.state.srs[b.id]?.due_at || ''));
-    const word = words[0], srs = word && (this.state.srs[word.id] || initialSrs());
-    const card = word ? { ...this.sentence(word, scope === 'topic' ? topic : ''), rating_options: [1, 2, 3, 4].map(grade => {
+    const card = words[0] ? this.reviewCard(words[0], scope === 'topic' ? topic : '') : null;
+    return { card, remaining: words.length, counts: this.counts(topic, true) };
+  }
+  reviewCard(word: Word, topic = '') {
+    const srs = this.state.srs[word.id] || initialSrs();
+    return { ...this.sentence(word, topic), rating_options: [1, 2, 3, 4].map(grade => {
       const outcome = reviewOutcome(srs, grade);
       return { grade, growth: growth(outcome), next_review_seconds: Math.trunc(outcome.interval_days * 86400) };
-    }) } : null;
-    return { card, remaining: words.length, counts: this.counts(topic, true) };
+    }) };
   }
   grade(id: string, grade: number, scope = 'all', topic = '') {
     requireThat(this.reviewWords(scope, topic).some(w => w.id === id), 'This word is no longer due in this review set. Refresh to continue.', 409);
@@ -175,4 +178,20 @@ export class Garden {
   }
   practice(scope: string, topic: string) { return { words: this.scope(scope, topic).map(w => this.details(w)), grammar_options: grammarOptions, counts: this.counts(topic) }; }
   targets(scope: string, topic: string) { const words = shuffle(this.scope(scope, topic)).slice(0, 5); requireThat(words.length, 'Keep or plant some words first.'); return words.map(w => this.sentence(w, topic)); }
+}
+
+// Reuse card formatting and scheduling rules with only the selected word's data.
+export function reviewSelectionResponse(selection: ReviewSelection, scope: string, topic: string) {
+  requireThat(selection.vocabulary_available, 'Vocabulary has not been imported yet.', 503);
+  if (scope === 'topic' || topic) requireThat(selection.topic_exists, 'Unknown topic.');
+  const { selected, remaining, counts } = selection;
+  if (!selected) return { card: null, remaining, counts };
+  const state = freshLearner('');
+  state.swipes = [selected.swipe];
+  if (selected.srs) state.srs[selected.word.id] = selected.srs;
+  const garden = new Garden({
+    words: [selected.word], activities: selected.activity ? [selected.activity] : [],
+    word_activities: [], sentences: selected.sentence ? [selected.sentence] : [],
+  }, state);
+  return { card: garden.reviewCard(selected.word, scope === 'topic' ? topic : ''), remaining, counts };
 }

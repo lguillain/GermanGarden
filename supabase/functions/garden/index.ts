@@ -1,10 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
-import { Catalog, HttpError, requireThat, Learner } from './model.ts';
+import { Catalog, HttpError, requireThat, Learner, ReviewSelection } from './model.ts';
 import { Complete } from './ai.ts';
 import { dispatch, Store } from './service.ts';
 import { createCatalogLoader } from './catalog-loader.ts';
 import { progressChanges } from './persistence.ts';
 import { loadPracticeData } from './practice-catalog.ts';
+import { scopedProgressRequest } from './progress-request.ts';
 
 const url = Deno.env.get('SUPABASE_URL')!;
 const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -16,9 +17,17 @@ const catalog = createCatalogLoader(async request => {
 });
 type Measure = <T>(name: string, operation: () => PromiseLike<T>) => Promise<T>;
 const emptyCatalog: Catalog = { words: [], activities: [], word_activities: [], sentences: [] };
-function storeFor(userId: string, name: string, measure: Measure, matcher = false): Store {
+function storeFor(userId: string, name: string, measure: Measure, matcher = false,
+  scoped: ReturnType<typeof scopedProgressRequest> = null): Store {
   let snapshot: { version: number; data: Learner } | undefined;
   return {
+    async review(scope, topic) {
+      const { data, error } = await measure('review', () => admin.rpc('load_review_selection', {
+        p_user_id: userId, p_scope: scope, p_topic: topic,
+      }));
+      if (error) throw error;
+      return data as ReviewSelection;
+    },
     async profile() {
       const { data, error } = await measure('profile', () => admin.from('learner_profiles')
         .select('name, level, swipe_count').eq('user_id', userId).maybeSingle());
@@ -26,13 +35,16 @@ function storeFor(userId: string, name: string, measure: Measure, matcher = fals
       return data ?? { name, level: null, swipe_count: 0 };
     },
     async load() {
-      const { data, error } = await measure('progress', () => admin.rpc(matcher ? 'load_matcher_progress' : 'load_learner_progress', { p_user_id: userId, p_name: name }));
+      const { data, error } = await measure('progress', () => admin.rpc(
+        scoped ? 'load_scoped_progress' : matcher ? 'load_matcher_progress' : 'load_learner_progress',
+        { p_user_id: userId, p_name: name, ...scoped }));
       if (error) throw error;
       snapshot = data as { version: number; data: Learner };
       // Keep the comparison baseline separate from mutable domain state.
       return structuredClone(snapshot);
     },
     async save(version, data) {
+      requireThat(!scoped, 'Read-only progress cannot be saved.', 500);
       requireThat(snapshot && snapshot.version === version, 'Progress must be loaded before saving.', 500);
       if (matcher) {
         const result = await measure('save', () => admin.rpc('save_matcher_progress', {
@@ -106,8 +118,12 @@ export async function handler(request: Request): Promise<Response> {
     }
     const requestUrl = new URL(request.url);
     const path = requestUrl.pathname.replace(/^\/(?:functions\/v1\/)?garden(?=\/|$)/, '') || '/';
-    const store = storeFor(user.id, String(user.user_metadata?.name || user.email?.split('@')[0] || 'Learner'), measure, path === '/matcher');
+    const store = storeFor(user.id, String(user.user_metadata?.name || user.email?.split('@')[0] || 'Learner'),
+      measure, path === '/matcher', scopedProgressRequest(path, request.method));
     if (path === '/heartbeat') return respond(await dispatch(path, request.method, requestUrl.searchParams, body, store, emptyCatalog));
+    if (path === '/review' && request.method === 'GET') {
+      return respond(await measure('dispatch', () => dispatch(path, request.method, requestUrl.searchParams, body, store, emptyCatalog)));
+    }
     if (path === '/session' && request.method === 'GET') {
       const [profile, vocabulary] = await Promise.all([store.profile!(), measure('catalog', () => catalog(path, request.method))]);
       return respond(await dispatch(path, request.method, requestUrl.searchParams, body, { ...store, profile: async () => profile }, vocabulary, complete));

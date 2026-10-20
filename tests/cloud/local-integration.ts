@@ -20,6 +20,10 @@ async function api(client: typeof admin, path: string, body?: unknown) {
   const result = await response.json();
   assert.equal(response.status, 200, JSON.stringify(result));
   assert.match(response.headers.get('server-timing') || '', /auth;dur=/);
+  if (body === undefined && path.split('?')[0] === '/review') {
+    assert.match(response.headers.get('server-timing') || '', /review;dur=/);
+    assert.doesNotMatch(response.headers.get('server-timing') || '', /(?:catalog|progress);dur=/);
+  }
   return result;
 }
 try {
@@ -48,6 +52,11 @@ try {
   assert.equal(typeof matcher.card.de, 'string');
   await api(clients[0], `/topics/${fixtureId}/words/${fixtureId}/keep`, {});
   assert.equal((await api(clients[0], '/practice?scope=bag')).words.length, 1);
+  const seedReview = await api(clients[0], '/review?scope=bag');
+  assert.equal(seedReview.card.word_id, fixtureId);
+  assert.equal(seedReview.card.rating_options.length, 4);
+  assert.deepEqual(seedReview.counts, { plants: 0, seeds: 1 });
+  assert.equal((await api(clients[1], '/review?scope=bag')).card, null);
   const reviewed = await api(clients[0], '/review', { word_id: fixtureId, scope: 'bag', grade: 3 });
   assert.equal(reviewed.remaining, 0); assert.equal(reviewed.card, null);
   assert.equal((await api(clients[0], '/review')).card, null);
@@ -57,6 +66,7 @@ try {
   assert.deepEqual(foreign.data, []);
   const write = await clients[0].from('learner_profiles').update({ name: 'Forbidden' }).eq('user_id', userIds[0]); assert.ok(write.error);
   const rpc = await clients[0].rpc('save_learner_progress', { p_user_id: userIds[1], p_version: 0, p_changes: {} }); assert.ok(rpc.error);
+  const reviewRpc = await clients[0].rpc('load_review_selection', { p_user_id: userIds[1] }); assert.ok(reviewRpc.error);
   if (process.argv.includes('--browser')) {
     execFileSync('npm', ['run', 'build', '--', '--outDir', '../dist-cloud'], {
       env: { ...process.env, VITE_SUPABASE_URL: url, VITE_SUPABASE_PUBLISHABLE_KEY: status.ANON_KEY, VITE_BASE_PATH: '/garden-test/' },

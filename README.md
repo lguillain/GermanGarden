@@ -175,12 +175,19 @@ after authentication, except the practice menu, which first reads progress and
 then fetches only its kept words and topic memberships from `load_practice_catalog`.
 That small catalogue is not cached between learners and includes no sentences.
 Flashcards still load example sentences when opened.
+Review GET requests use `load_review_selection` instead: one database snapshot
+selects the next eligible word, one example sentence, and review counts. They
+skip the full catalogue and progress loaders, and never cache learner results.
+Rating previews still use the TypeScript scheduler; review POST writes retain
+their existing atomic version checks.
 Vocabulary imports can take up to five minutes to appear
 in an existing instance. Learner progress is never cached. Timer heartbeats skip
 catalogue loading entirely. Responses include `Server-Timing` durations for
 authentication, catalogue loading, progress reads, dispatch, saves, and explicit
 AI calls, where applicable. Ordinary discovery does not invoke AI; free-text
 guidance and AI practice still do.
+Review GET exposes `auth`, `review`, and `dispatch` timings; `dispatch` includes
+the `review` query duration, so these two values should not be added together.
 
 Deploy backend performance changes with
 `supabase functions deploy garden`; publishing GitHub Pages alone does not update
@@ -245,6 +252,12 @@ JSON is used for RPC transport, not persisted as a learner document.
 
 ### Upgrade an existing JSON-based deployment
 
+For the scoped topic/practice reads, apply
+`202610200006_scoped_progress.sql` with `supabase db push` before running
+`supabase functions deploy garden`. This additive migration also adds indexes
+for seed-bag and learned-word lookups. Partial read snapshots are never used for
+progress writes; no frontend deployment is required for this optimization.
+
 The `202610200001_normalize_learners.sql` migration copies and validates all learner
 collections and versions, then removes `learner_state` and its old write function.
 It runs in one transaction and locks the old table during the transfer. A failed
@@ -295,3 +308,17 @@ restores the previous card on failure. Seed bag changes appear only after confir
 Older frontends can still use the updated API, and the updated frontend tolerates
 responses without previews. Server-Timing exposes `auth`, `progress`, `catalog`,
 `dispatch`, and `save` durations for checking actual request latency.
+
+### Review read latency upgrade
+
+Apply `202610200005_review_selection.sql` before deploying the updated function:
+
+```bash
+supabase db push --linked
+supabase functions deploy garden
+```
+
+The migration adds a backend-only read function and preserves existing data and
+write functions. No frontend deployment is needed. Compare the GET `/review`
+request's total duration and `Server-Timing` header before and after deployment;
+the new path reports `review` instead of full `catalog` and `progress` reads.

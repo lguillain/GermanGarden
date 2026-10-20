@@ -4,6 +4,11 @@ export interface Sentence { id: number; word_id: string; activity_id: string | n
 export interface Catalog { words: Word[]; activities: Activity[]; word_activities: { word_id: string; activity_id: string; relevance: number }[]; sentences: Sentence[] }
 export interface Srs { ease: number; interval_days: number; reps: number; lapses: number; state: string; due_at?: string; last_grade?: number; last_review_at?: string }
 export interface Swipe { word_id: string; activity_id: string | null; sentence_id: number | null; action: 'keep' | 'drop'; drop_reason?: string | null; swiped_at: string; planted_at: string | null }
+export interface ReviewSelection {
+  topic_exists: boolean; vocabulary_available: boolean;
+  selected: { word: Word; swipe: Swipe; srs: Srs | null; sentence: Sentence | null; activity: Activity | null } | null;
+  remaining: number; counts: { plants: number; seeds: number };
+}
 export interface Learner {
   seen_ids?: string[]; // Compact discovery snapshots retain only IDs for past decisions.
   user: { name: string; level: string | null; swipe_count: number; drop_streak: number; cards_in_bucket: number; current_topic: string | null; affinity_below: number; affinity_above: number; level_bias: number };

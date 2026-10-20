@@ -1,12 +1,13 @@
 import { matcherPreview } from './matcher-preview.ts';
-import { Garden } from './domain.ts';
+import { Garden, reviewSelectionResponse } from './domain.ts';
 import { Body, Complete, text, aiPractice, guidance } from './ai.ts';
-import { Catalog, Learner, HttpError, requireThat, shuffle } from './model.ts';
+import { Catalog, Learner, ReviewSelection, HttpError, requireThat, shuffle } from './model.ts';
 export interface Store {
   load(): Promise<{ version: number; data: Learner }>;
   save(version: number, data: Learner): Promise<boolean>;
   profile?(): Promise<{ name: string; level: string | null; swipe_count: number }>;
   heartbeat?(): Promise<NonNullable<Learner['time_summary']>>;
+  review?(scope: string, topic: string): Promise<ReviewSelection>;
 }
 type Snapshot = Awaited<ReturnType<Store['load']>>;
 // Recompute mutations against the newest state on conflicts; never retry an AI call.
@@ -26,6 +27,10 @@ export async function dispatch(path: string, method: string, query: URLSearchPar
   if (path === '/heartbeat' && method === 'POST' && store.heartbeat) return store.heartbeat();
   const scope = method === 'GET' ? query.get('scope') || 'all' : text(body, 'scope', 'all');
   const topic = method === 'GET' ? query.get('topic') || '' : text(body, 'topic');
+  if (path === '/review' && method === 'GET' && store.review) {
+    requireThat(['all', 'topic', 'bag'].includes(scope), 'Unknown word set.');
+    return reviewSelectionResponse(await store.review(scope, topic), scope, topic);
+  }
   const snapshot = initial ?? await store.load(), garden = new Garden(catalog, snapshot.data);
   if (method === 'GET') {
     switch (path) {
