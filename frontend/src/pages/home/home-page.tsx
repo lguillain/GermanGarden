@@ -14,10 +14,9 @@ const duration = (seconds: number) =>
 
 export function HomePage() {
   const result = useQuery(gardenQuery());
-  if (result.isPending) return <Loading />;
-  if (result.error) return <ErrorNotice error={result.error} />;
-  const { summary, bag, plots } = result.data!;
-  const active = summary.planted_total > 0;
+  const garden = result.data;
+  const summary = garden?.summary;
+  const active = !summary || summary.planted_total > 0;
   return (
     <div className="garden-home">
       <div className="garden-intro">
@@ -26,7 +25,9 @@ export function HomePage() {
           {active && (
             <Link className="button primary" to="/review">
               Review words
-              {summary.due_now > 0 && <span className="action-count">{summary.due_now} due</span>}
+              {summary && summary.due_now > 0 && (
+                <span className="action-count">{summary.due_now} due</span>
+              )}
             </Link>
           )}
           <Link className={`button${active ? '' : ' primary'}`} to="/matcher">
@@ -34,27 +35,37 @@ export function HomePage() {
           </Link>
         </div>
       </div>
-      <section className="panel garden-progress" aria-label="Learning progress">
-        <dl className="progress-totals">
-          <div>
-            <dt>Words planted</dt>
-            <dd>{summary.planted_total}</dd>
-          </div>
-          <div>
-            <dt>Reviews due</dt>
-            <dd>{summary.due_now}</dd>
-          </div>
-          <div>
-            <dt>Time today</dt>
-            <dd>{duration(summary.time.today_seconds)}</dd>
-          </div>
-          <div>
-            <dt>Total time</dt>
-            <dd>{duration(summary.time.total_seconds)}</dd>
-          </div>
-        </dl>
-      </section>
-      <GardenScene plots={plots} bagCount={bag.length} bagContent={<SeedBag words={bag} />} />
+      <ErrorNotice error={result.error} />
+      {result.isPending && <Loading />}
+      {garden && summary && (
+        <>
+          <section className="panel garden-progress" aria-label="Learning progress">
+            <dl className="progress-totals">
+              <div>
+                <dt>Words planted</dt>
+                <dd>{summary.planted_total}</dd>
+              </div>
+              <div>
+                <dt>Reviews due</dt>
+                <dd>{summary.due_now}</dd>
+              </div>
+              <div>
+                <dt>Time today</dt>
+                <dd>{duration(summary.time.today_seconds)}</dd>
+              </div>
+              <div>
+                <dt>Total time</dt>
+                <dd>{duration(summary.time.total_seconds)}</dd>
+              </div>
+            </dl>
+          </section>
+          <GardenScene
+            plots={garden.plots}
+            bagCount={garden.bag.length}
+            bagContent={<SeedBag words={garden.bag} />}
+          />
+        </>
+      )}
     </div>
   );
 }

@@ -181,7 +181,9 @@ for (const path of ['/practice', '/practice/read', '/practice/chat']) {
     await page.goto(`/#${path}`);
     try {
       await expect.poll(() => summaryReads).toBe(1);
-      await expect(page.getByRole('status')).toHaveText('Loading…');
+      await expect(page.getByRole('heading', { name: path === '/practice' ? 'Practice' : path.endsWith('/read') ? 'Reading' : 'Conversation', exact: true })).toBeVisible();
+      if (path === '/practice') await expect(page.getByRole('link', { name: 'Start flashcards' })).toBeVisible();
+      else await expect(page.getByRole('link', { name: '← Practice', exact: true })).toBeVisible();
     } finally { release(); }
     await expect(page.getByRole('heading', { name: path === '/practice' ? 'Practice' : path.endsWith('/read') ? 'Reading' : 'Conversation', exact: true })).toBeVisible();
     expect(summaryReads).toBe(1);

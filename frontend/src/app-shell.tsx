@@ -4,7 +4,6 @@ import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react
 import type { Session, Time } from './api';
 import { api, ApiError } from './api';
 import { ErrorNotice, Loading } from './components/feedback';
-import { useStartupData } from './hooks/use-startup-data';
 import { SetupPage } from './pages/setup-page';
 import { supabase } from './supabase';
 
@@ -21,7 +20,6 @@ export function AppShell() {
   });
   const session = useQuery({ queryKey: ['session'], queryFn: () => api<Session>('/session') });
   const location = useLocation();
-  useStartupData(Boolean(auth.data || session.data));
   const navigate = useNavigate();
   const ready = !!session.data?.user.level;
   useQuery({
@@ -124,16 +122,13 @@ export function AppShell() {
       <div className="app-content">
         <main id="main" tabIndex={-1} className="container">
           <ErrorNotice error={switchProfile.error} />
-          {session.isPending ? (
-            <Loading />
-          ) : session.error ? (
+          {session.error && (
             <>
               <ErrorNotice error={session.error} />
               <button onClick={() => session.refetch()}>Retry</button>
             </>
-          ) : (
-            <Outlet context={session.data} />
           )}
+          <Outlet context={session.data} />
         </main>
       </div>
     </>

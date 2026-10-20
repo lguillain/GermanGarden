@@ -8,9 +8,7 @@ import { topicStages } from '../../components/topic-progress';
 export function ExplorePage() {
   const [filter, setFilter] = useState('');
   const result = useQuery(gardenQuery());
-  if (result.isPending) return <Loading />;
-  if (result.error) return <ErrorNotice error={result.error} />;
-  const topics = result.data!.topics;
+  const topics = result.data?.topics ?? [];
   const matching = topics.filter((topic) =>
     topic.name.toLowerCase().includes(filter.trim().toLowerCase()),
   );
@@ -33,7 +31,10 @@ export function ExplorePage() {
           </span>
         ))}
       </div>
-      {matching.length ? (
+      <ErrorNotice error={result.error} />
+      {result.isPending ? (
+        <Loading />
+      ) : !result.data ? null : matching.length ? (
         <TopicList topics={matching} />
       ) : (
         <Empty>

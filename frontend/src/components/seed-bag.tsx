@@ -1,23 +1,30 @@
 import { Link } from 'react-router-dom';
 import type { Word } from '../api';
+import { ErrorNotice, Loading } from './feedback';
 import { WordTitle } from './word-card';
 
-export function SeedBag({ words }: { words: Word[] }) {
+export function SeedBag({ words, error }: { words?: Word[]; error?: unknown }) {
   return (
     <aside className="panel bag" aria-label="Seed bag">
       <div className="section-heading">
         <h2>Seed bag</h2>
-        <span className="badge">{words.length} / 20</span>
+        <span className="badge">{words ? words.length : '…'} / 20</span>
       </div>
-      {words.length ? (
+      {words?.length !== 0 ? (
         <>
-          <ul className="bag-words">
-            {words.map((w) => (
-              <li key={w.id}>
-                <WordTitle word={w} />
-              </li>
-            ))}
-          </ul>
+          {words ? (
+            <ul className="bag-words">
+              {words.map((w) => (
+                <li key={w.id}>
+                  <WordTitle word={w} />
+                </li>
+              ))}
+            </ul>
+          ) : error ? (
+            <ErrorNotice error={error} />
+          ) : (
+            <Loading />
+          )}
           <div className="actions">
             <Link className="button" to="/practice?scope=bag">
               Practice

@@ -3,7 +3,7 @@ import type { Session, Topic } from '../../api';
 import { TopicProgress } from '../../components/topic-progress';
 
 export function TopicList({ topics }: { topics: Topic[] }) {
-  const { user } = useOutletContext<Session>();
+  const session = useOutletContext<Session | undefined>();
   return (
     <div className="topic-list">
       {topics.map((t) => (
@@ -15,7 +15,8 @@ export function TopicList({ topics }: { topics: Topic[] }) {
           <span className="topic-name">
             {t.name}
             <span className="topic-total small muted">
-              {Object.values(t.overview).reduce((sum, count) => sum + count, 0)} {user.level} words
+              {Object.values(t.overview).reduce((sum, count) => sum + count, 0)}{' '}
+              {session?.user.level} words
             </span>
           </span>
           <TopicProgress counts={t.overview} />

@@ -17,7 +17,9 @@ test('signed-in navigation and sign-out work while session bootstrap is stalled'
       // Leave bootstrap pending until the page closes.
     } else if (['/functions/v1/garden/garden', '/functions/v1/garden/practice/summary'].includes(url.pathname)) {
       pageRequests.push(url.pathname);
-      await route.fulfill({ json: { word_count: 0, counts: { plants: 0, seeds: 0 } } });
+      if (url.pathname.endsWith('/garden')) {
+        // Keep the garden data pending too: its static actions must still work.
+      } else await route.fulfill({ json: { word_count: 0, counts: { plants: 0, seeds: 0 } } });
     } else if (url.pathname === '/auth/v1/logout') {
       await route.fulfill({ status: 204 });
     } else throw new Error(`Unexpected request: ${url.pathname}`);
@@ -26,11 +28,15 @@ test('signed-in navigation and sign-out work while session bootstrap is stalled'
   await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible();
   await expect(page.locator('.profile-identity')).toContainText('Test');
   await expect(page.getByRole('status')).toHaveText('Loading…');
+  await expect(page.getByRole('heading', { name: 'Your garden' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Find new words', exact: true })).toBeVisible();
   expect(requested).toBe(true);
   await expect.poll(() => pageRequests).toContain('/functions/v1/garden/garden');
   await page.getByRole('link', { name: 'Practice', exact: true }).click();
   await expect(page).toHaveURL(/#\/practice$/);
   await expect.poll(() => pageRequests).toContain('/functions/v1/garden/practice/summary');
+  await expect(page.getByRole('link', { name: 'Start flashcards' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Start reading' })).toBeVisible();
   await page.locator('.profile-button').click();
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
 });

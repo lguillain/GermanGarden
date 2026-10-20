@@ -23,7 +23,7 @@ A German vocabulary web app. Users discover words they care about, practise them
 - Sign-in submits the current field values, including browser/password-manager autofill.
 - Clicking the farmer icon signs out the current browser session and returns to sign-in. Other devices stay signed in, and the learner can immediately sign in again or switch accounts.
 - The local Python version retains its on-device profile chooser.
-- The signed-in sidebar appears from browser login state while profile and page data load. Session bootstrap reads only the learner name, level, and AI availability, never vocabulary or learning progress. Topic names load separately when needed. Garden and practice data requests start alongside session bootstrap for signed-in users. Server requests still verify authentication.
+- The signed-in sidebar appears from browser login state while profile and page data load. Session bootstrap reads only the learner name, level, and AI availability, never vocabulary or learning progress. Topic names load separately when needed. Signed-in pages mount alongside session bootstrap. Headings, navigation, search/filter inputs, and practice-mode links stay available while independent data loads; loading/error messages are scoped to the affected content. AI actions wait for confirmed availability. Card decisions and review ratings remain disabled during saves to avoid conflicting writes. Server requests still verify authentication.
 - Used on a laptop, so desktop layout comes first.
 - Not in scope: social features and adding your own vocabulary.
 

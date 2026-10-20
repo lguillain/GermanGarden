@@ -11,7 +11,7 @@ import { TopicProgress } from '../../components/topic-progress';
 import { WordTitle } from '../../components/word-card';
 
 export function TopicPage() {
-  const { user } = useOutletContext<Session>();
+  const user = useOutletContext<Session | undefined>()?.user;
   const topic = decodeURIComponent(useLocation().pathname.split('/').pop() || '');
   const cache = useQueryClient();
   const [search, setSearch] = useState('');
@@ -42,11 +42,11 @@ export function TopicPage() {
       await cache.invalidateQueries();
     },
   });
-  if (result.isPending) return <Loading />;
-  if (result.error) return <ErrorNotice error={result.error} />;
-  const { activity, words } = result.data!;
+  const activity = result.data?.activity;
+  const words = result.data?.words ?? [];
+  const wordsReady = Boolean(result.data && (user || showOtherLevels));
   const overview = words
-    .filter((word) => word.level === user.level)
+    .filter((word) => word.level === user?.level)
     .reduce(
       (counts, word) => {
         counts[word.visual_stage || 'unseen']++;
@@ -65,7 +65,7 @@ export function TopicPage() {
   };
   const visibleWords = words.filter(
     (w) =>
-      showOtherLevels || w.level === user.level || (w.status !== 'new' && w.status !== 'not_now'),
+      showOtherLevels || w.level === user?.level || (w.status !== 'new' && w.status !== 'not_now'),
   );
   const matching = visibleWords.filter(
     (w) =>
@@ -120,25 +120,29 @@ export function TopicPage() {
         </Link>
       </div>
       <div className="topic-page-heading">
-        <Heading title={activity.name} />
+        <Heading title={activity?.name ?? 'Topic'} />
         <ScopeLinks
           scope="topic"
           topic={topic}
-          disabled={!words.some((w) => w.status === 'planted')}
+          disabled={Boolean(result.data) && !words.some((w) => w.status === 'planted')}
         />
       </div>
-      <section className="topic-progress-summary" aria-label="Topic progress">
-        <span className="level-progress-label">{user.level} progress</span>
-        <TopicProgress counts={overview} />
-      </section>
-      <TopicScene
-        key={topic}
-        plot={{
-          id: activity.id,
-          name: activity.name,
-          words: words.filter((w) => w.status === 'planted' || w.learned),
-        }}
-      />
+      {result.data && user && (
+        <section className="topic-progress-summary" aria-label="Topic progress">
+          <span className="level-progress-label">{user?.level} progress</span>
+          <TopicProgress counts={overview} />
+        </section>
+      )}
+      {activity && (
+        <TopicScene
+          key={topic}
+          plot={{
+            id: activity.id,
+            name: activity.name,
+            words: words.filter((w) => w.status === 'planted' || w.learned),
+          }}
+        />
+      )}
       <h2 className="topic-list-heading">Words</h2>
       <div className="topic-word-controls">
         <label>
@@ -152,7 +156,7 @@ export function TopicPage() {
         <label>
           <span className="sr-only">Word status</span>
           <select value={filter} onChange={(e) => setFilter(e.target.value)}>
-            <option value="all">All statuses ({visibleWords.length})</option>
+            <option value="all">All statuses{wordsReady ? ` (${visibleWords.length})` : ''}</option>
             {Object.entries(statuses).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
@@ -175,7 +179,12 @@ export function TopicPage() {
         </p>
       )}
       <ErrorNotice error={add.error} />
-      {matching.length ? (
+      <ErrorNotice error={result.error} />
+      {result.isPending ? (
+        <Loading />
+      ) : !result.data ? null : !wordsReady ? (
+        <p className="muted">Waiting for your level to filter words.</p>
+      ) : matching.length ? (
         <div className="panel table-wrap">
           <table className="topic-words">
             <thead>
@@ -214,7 +223,7 @@ export function TopicPage() {
                 <tr
                   key={w.id}
                   className={
-                    w.status === 'new' && user.level && w.level !== user.level
+                    w.status === 'new' && user?.level && w.level !== user?.level
                       ? 'word-outside-level'
                       : undefined
                   }

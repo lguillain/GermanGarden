@@ -85,8 +85,8 @@ Product behavior is documented in `vocab-garden-ux.md`; repository commands and 
 - Other `pages/` files: self-contained discovery, review, login, and profile flows.
 - `components/`: UI used across page groups—word cards, seed bag, topic progress,
   feedback, word-set switch, and the shared SVG artwork.
-- `hooks/`: shared word-set selection, topic-name queries, and startup prefetching.
-- `queries/`: query options shared by garden pages and startup prefetching.
+- `hooks/`: shared word-set selection and topic-name queries.
+- `queries/`: query options shared by garden pages.
 - `api.ts`, `supabase.ts`, `query-client.ts`: HTTP/auth clients and query configuration.
 
 Keep page-specific state, components, and hooks alongside their page. Promote
@@ -226,9 +226,9 @@ The practice menu, Reading, and Conversation call `/practice/summary`, backed by
 `load_practice_summary`, which counts seeds/plants without loading word details
 or scheduling history. Grammar uses `/practice`: it reads kept progress and
 then only those words from `load_practice_catalog`, without sentences. That
-learner-specific catalogue is never cached between accounts. Signed-in garden
-and practice pages prefetch their data alongside session bootstrap and reuse
-the same query on mount. Browser queries stay fresh for 30 seconds; keep/review
+learner-specific catalogue is never cached between accounts. Signed-in pages mount alongside session bootstrap, so their data requests run
+concurrently. Headings, navigation, and independent controls stay visible; only
+data-dependent content waits for its API response. Browser queries stay fresh for 30 seconds; keep/review
 mutations invalidate the affected counts and word lists.
 Flashcards still load example sentences when opened.
 Review GET requests use `load_review_selection` instead: one database snapshot

@@ -7,7 +7,7 @@ import { useScope } from '../../hooks/use-scope';
 
 export function PracticePage() {
   const { scope, query, label } = useScope();
-  const { ai_available } = useOutletContext<Session>();
+  const aiAvailable = useOutletContext<Session | undefined>()?.ai_available;
   const result = usePracticeSummary(query);
   const modes = [
     ['flashcards', 'Flashcards', 'Browse your words and reveal their translations.'],
@@ -21,32 +21,29 @@ export function PracticePage() {
         <Heading title="Practice">{scope === 'topic' ? label : undefined}</Heading>
         <WordSetSwitch page="/practice" counts={result.data?.counts} />
       </div>
-      {result.isPending ? (
-        <Loading />
-      ) : result.error ? (
-        <ErrorNotice error={result.error} />
-      ) : !result.data?.word_count ? (
+      {result.isPending && <Loading />}
+      <ErrorNotice error={result.error} />
+      {result.data?.word_count === 0 && (
         <Empty>
           No words in this set yet. <Link to="/matcher">Find new words</Link> or practise your{' '}
           <Link to="/practice?scope=bag">seed bag</Link>.
         </Empty>
-      ) : (
-        <div className="practice-grid">
-          {modes.map(([path, title, description]) => (
-            <article className="panel" key={path}>
-              <h2>{title}</h2>
-              <p className="muted">{description}</p>
-              {path === 'flashcards' || ai_available ? (
-                <Link className="button" to={`/practice/${path}${query}`}>
-                  Start {title.toLowerCase()} →
-                </Link>
-              ) : (
-                <p className="muted small">Needs ANTHROPIC_API_KEY in your local .env file.</p>
-              )}
-            </article>
-          ))}
-        </div>
       )}
+      <div className="practice-grid">
+        {modes.map(([path, title, description]) => (
+          <article className="panel" key={path}>
+            <h2>{title}</h2>
+            <p className="muted">{description}</p>
+            {path === 'flashcards' || aiAvailable !== false ? (
+              <Link className="button" to={`/practice/${path}${query}`}>
+                Start {title.toLowerCase()} →
+              </Link>
+            ) : (
+              <p className="muted small">Ask the garden owner to enable AI practice.</p>
+            )}
+          </article>
+        ))}
+      </div>
     </>
   );
 }

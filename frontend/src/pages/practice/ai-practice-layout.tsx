@@ -17,16 +17,16 @@ export function AiPracticeLayout({
   children: ReactNode;
 }) {
   const { scope, query, label } = useScope();
-  const { ai_available } = useOutletContext<Session>();
+  const aiAvailable = useOutletContext<Session | undefined>()?.ai_available;
   return (
     <>
       <Link className="back" to={`/practice${query}`}>
         ← Practice
       </Link>
       <Heading title={title}>{scope === 'all' ? undefined : label}</Heading>
-      {!ai_available ? (
+      {aiAvailable === false ? (
         <Empty>AI practice is not configured yet. Ask the garden owner to enable it.</Empty>
-      ) : result.isPending ? (
+      ) : aiAvailable === undefined || result.isPending ? (
         <Loading />
       ) : result.error ? (
         <ErrorNotice error={result.error} />

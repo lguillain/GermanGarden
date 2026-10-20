@@ -9,7 +9,7 @@ import { SeedBag } from '../components/seed-bag';
 import { WordCard } from '../components/word-card';
 
 export function MatcherPage() {
-  const { ai_available } = useOutletContext<Session>();
+  const aiAvailable = useOutletContext<Session | undefined>()?.ai_available;
   const activities = useActivities();
   const [params] = useSearchParams();
   const initialTopic = params.get('topic') || '';
@@ -81,7 +81,7 @@ export function MatcherPage() {
               </option>
             ))}
           </select>
-          {ai_available && (
+          {aiAvailable !== false && (
             <details className="disclosure matcher-guidance">
               <summary>Help me choose a topic</summary>
               <form
@@ -103,10 +103,9 @@ export function MatcherPage() {
                   onChange={(e) => setGuidance(e.target.value)}
                   placeholder="A wine evening with friends"
                   maxLength={3000}
-                  disabled={busy}
                   required
                 />
-                <button disabled={busy || !guidance.trim()}>
+                <button disabled={busy || aiAvailable !== true || !guidance.trim()}>
                   {guide.isPending ? 'Matching…' : 'Match a topic'}
                 </button>
               </form>
@@ -162,7 +161,7 @@ export function MatcherPage() {
           <ErrorNotice error={swipe.error} />
           {swipe.error && <button onClick={() => result.refetch()}>Refresh card</button>}
         </section>
-        <SeedBag words={result.data?.bag || []} />
+        <SeedBag words={result.data?.bag} error={result.error} />
       </div>
     </>
   );
