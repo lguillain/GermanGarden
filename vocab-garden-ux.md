@@ -64,7 +64,9 @@ A German vocabulary web app. Users discover words they care about, practise them
 
 ## Vocab matcher
 - **Guidance panel:** pick a topic (or let the app choose), and optionally describe in free text what kind of words you want, e.g. "words for a wine evening with friends". An LLM uses this to pick words from the seed bank.
+- Opening Find words, choosing a topic, and moving between cards use the normal vocabulary selection rules immediately. They do not wait for automatic AI recommendations. AI guidance runs only when the learner submits a free-text request without choosing a specific topic.
 - **Word card:** topic, the word with article, part of speech, CEFR level, an example sentence, and the English translation on tap.
+- Returning to Find words keeps the current card when its cached state is still valid. Reconnecting must not replace it. If progress changed elsewhere in the app and the selection needs refreshing, show a loading state until the fresh card is ready rather than flashing an outdated card first.
 - **Actions per card:** Not now, Learned, Keep.
 - **Side panel:** the seed bag as a list of kept words, with actions to practise or review seeds.
 

@@ -1,5 +1,5 @@
 import { Garden } from './domain.ts';
-import { Body, Complete, text, aiPractice, guidance, recommendTopic } from './ai.ts';
+import { Body, Complete, text, aiPractice, guidance } from './ai.ts';
 import { Catalog, Learner, HttpError, requireThat, shuffle } from './model.ts';
 export interface Store {
   load(): Promise<{ version: number; data: Learner }>;
@@ -16,19 +16,11 @@ export async function transact<T>(store: Store, catalog: Catalog, operation: (ga
   }
   throw new HttpError(409, 'Progress changed in another tab. Please try again.');
 }
-async function matcherTransaction(store: Store, catalog: Catalog, operation: (garden: Garden) => unknown, complete?: Complete, explicitTopic = false, initial?: Snapshot) {
-  const snapshot = initial ?? await store.load(), preview = new Garden(catalog, structuredClone(snapshot.data));
-  const previous = preview.state.user.current_topic;
-  operation(preview);
-  const preferred = complete && !explicitTopic && previous !== preview.state.user.current_topic
-    ? await recommendTopic(preview, previous || '', complete) : undefined;
-  return transact(store, catalog, g => { g.preferredTopic = preferred; return operation(g); }, snapshot);
-}
-export async function dispatch(path: string, method: string, query: URLSearchParams, body: Body, store: Store, catalog: Catalog, complete?: Complete) {
+export async function dispatch(path: string, method: string, query: URLSearchParams, body: Body, store: Store, catalog: Catalog, complete?: Complete, initial?: Snapshot) {
   if (path === '/heartbeat' && method === 'POST' && store.heartbeat) return store.heartbeat();
   const scope = method === 'GET' ? query.get('scope') || 'all' : text(body, 'scope', 'all');
   const topic = method === 'GET' ? query.get('topic') || '' : text(body, 'topic');
-  const snapshot = await store.load(), garden = new Garden(catalog, snapshot.data);
+  const snapshot = initial ?? await store.load(), garden = new Garden(catalog, snapshot.data);
   if (method === 'GET') {
     switch (path) {
       case '/session': return { user: { ...garden.state.user, swipes: garden.state.user.swipe_count }, ai_available: !!complete, activities: catalog.activities };
@@ -36,7 +28,7 @@ export async function dispatch(path: string, method: string, query: URLSearchPar
       case '/review': return garden.review(scope, topic);
       case '/practice': return garden.practice(scope, topic);
       case '/flashcards': return { cards: shuffle(garden.scope(scope, topic)).slice(0, 10).map(w => garden.sentence(w, topic)) };
-      case '/matcher': return matcherTransaction(store, catalog, g => { if (topic) g.setTopic(topic); return g.matcher(); }, complete, !!topic, snapshot);
+      case '/matcher': return transact(store, catalog, g => { if (topic) g.setTopic(topic); return g.matcher(); }, snapshot);
     }
     const match = path.match(/^\/topics\/([^/]+)$/); if (match) return garden.topicDetail(decodeURIComponent(match[1]));
   }
@@ -57,7 +49,7 @@ export async function dispatch(path: string, method: string, query: URLSearchPar
     }
     if (path === '/heartbeat') return transact(store, catalog, g => g.heartbeat(), snapshot);
     if (path === '/review') return transact(store, catalog, g => g.grade(text(body, 'word_id'), Number(body.grade), scope, topic), snapshot);
-    if (path === '/matcher') return matcherTransaction(store, catalog, g => g.swipe(text(body, 'word_id'), text(body, 'action'), text(body, 'activity_id') || null, Number(body.sentence_id)), complete, false, snapshot);
+    if (path === '/matcher') return transact(store, catalog, g => g.swipe(text(body, 'word_id'), text(body, 'action'), text(body, 'activity_id') || null, Number(body.sentence_id)), snapshot);
     const match = path.match(/^\/topics\/([^/]+)\/words\/([^/]+)\/keep$/);
     if (match) return transact(store, catalog, g => g.add(decodeURIComponent(match[2]), decodeURIComponent(match[1])), snapshot);
   }

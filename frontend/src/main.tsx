@@ -224,11 +224,15 @@ function MatcherPage() {
   const [revealed, setRevealed] = useState(false);
   const cache = useQueryClient();
   const key = ['matcher', initialTopic];
-  const result = useQuery({ queryKey: key, queryFn: () => api<Matcher>(`/matcher?topic=${encodeURIComponent(initialTopic)}`), staleTime: Infinity, refetchOnMount: 'always' });
+  const result = useQuery({
+    queryKey: key, queryFn: () => api<Matcher>(`/matcher?topic=${encodeURIComponent(initialTopic)}`),
+    staleTime: Infinity, refetchOnMount: true, refetchOnReconnect: false,
+  });
   const update = (data: Matcher) => { cache.setQueryData(key, data); cache.invalidateQueries({ queryKey: ['garden'] }); setRevealed(false); };
   const guide = useMutation({ mutationFn: (selection: { topic: string; guidance?: string }) => api<Matcher>('/guide', selection), onSuccess: update });
   const swipe = useMutation({ mutationFn: (action: string) => { const c = result.data!.card!; return api<Matcher>('/matcher', { action, word_id: c.word_id, activity_id: c.activity_id, sentence_id: c.sentence_id }); }, onSuccess: update });
-  const busy = guide.isPending || swipe.isPending;
+  const loading = result.isPending || result.isFetching;
+  const busy = loading || guide.isPending || swipe.isPending;
   const card = result.data?.card;
   useEffect(() => { setRevealed(false); setTopic(initialTopic); }, [initialTopic]);
   return <>
@@ -260,7 +264,7 @@ function MatcherPage() {
         <ErrorNotice error={guide.error} />
       </section>
       <section className="matcher-study" aria-label="Current word" aria-busy={busy}>
-        {result.isPending ? <Loading /> : result.error ? <ErrorNotice error={result.error} /> : card ? <>
+        {loading ? <Loading /> : result.error ? <ErrorNotice error={result.error} /> : card ? <>
           <div className="panel matcher-card">
           <p className="eyebrow">{card.activity_name || 'Core vocabulary'}</p>
           <WordCard key={card.word_id} word={card} hideArticleUntilRevealed revealed={revealed} onReveal={() => setRevealed(true)} />

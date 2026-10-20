@@ -167,11 +167,24 @@ flashcards, discovery and reviews work, but AI practice is unavailable.
 The function validates each user token through Supabase Auth before accessing
 any data, including when gateway JWT verification is disabled in the config.
 Vocabulary is cached for five minutes per function instance; concurrent requests
-share a catalogue load. Vocabulary imports can take up to five minutes to appear
+share a catalogue load. Instance reuse is an optimization, not a requirement:
+each cold load uses one `load_garden_catalog` database call. Topic lists fetch only
+their topic's words and no sentences; session checks fetch only activities. The
+garden skips sentences too. Vocabulary and learner progress load concurrently
+after authentication, except the practice menu, which first reads progress and
+then fetches only its kept words and topic memberships from `load_practice_catalog`.
+That small catalogue is not cached between learners and includes no sentences.
+Flashcards still load example sentences when opened.
+Vocabulary imports can take up to five minutes to appear
 in an existing instance. Learner progress is never cached. Timer heartbeats skip
-catalogue loading entirely. Deploy backend performance changes with
+catalogue loading entirely. Responses include `Server-Timing` durations for
+authentication, catalogue loading, progress reads, dispatch, saves, and explicit
+AI calls, where applicable. Ordinary discovery does not invoke AI; free-text
+guidance and AI practice still do.
+
+Deploy backend performance changes with
 `supabase functions deploy garden`; publishing GitHub Pages alone does not update
-the backend.
+the backend. Apply pending database migrations first with `supabase db push`.
 
 ### Publish the frontend
 

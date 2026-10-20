@@ -18,7 +18,9 @@ async function api(client: typeof admin, path: string, body?: unknown) {
     method: body === undefined ? 'GET' : 'POST', headers: { Authorization: `Bearer ${data.session!.access_token}`, apikey: status.ANON_KEY, 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body),
   });
   const result = await response.json();
-  assert.equal(response.status, 200, JSON.stringify(result)); return result;
+  assert.equal(response.status, 200, JSON.stringify(result));
+  assert.match(response.headers.get('server-timing') || '', /auth;dur=/);
+  return result;
 }
 try {
   for (let i = 0; i < 2; i++) {
@@ -39,6 +41,11 @@ try {
   const crossOrigin = await fetch(`${url}/functions/v1/garden/session`, { headers: { Origin: 'https://example.org' } }); assert.equal(crossOrigin.status, 403);
   const preflight = await fetch(`${url}/functions/v1/garden/session`, { method: 'OPTIONS', headers: { Origin: 'http://localhost:5173' } }); assert.equal(preflight.status, 204);
   await api(clients[0], '/session'); await api(clients[0], '/onboarding', { level: 'A2' });
+  const topicWords = await api(clients[0], `/topics/${fixtureId}`);
+  assert.deepEqual(topicWords.words.map((word: { id: string }) => word.id), [fixtureId]);
+  const matcher = await api(clients[0], `/matcher?topic=${encodeURIComponent(fixtureId)}`);
+  assert.equal(matcher.card.word_id, fixtureId);
+  assert.equal(typeof matcher.card.de, 'string');
   await api(clients[0], `/topics/${fixtureId}/words/${fixtureId}/keep`, {});
   assert.equal((await api(clients[0], '/practice?scope=bag')).words.length, 1);
   const reviewed = await api(clients[0], '/review', { word_id: fixtureId, scope: 'bag', grade: 3 });

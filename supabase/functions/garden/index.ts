@@ -2,37 +2,25 @@ import { createClient } from '@supabase/supabase-js';
 import { Catalog, HttpError, requireThat, Learner } from './model.ts';
 import { Complete } from './ai.ts';
 import { dispatch, Store } from './service.ts';
-import { catalogCache } from './catalog-cache.ts';
+import { createCatalogLoader } from './catalog-loader.ts';
 import { progressChanges } from './persistence.ts';
+import { loadPracticeData } from './practice-catalog.ts';
 
 const url = Deno.env.get('SUPABASE_URL')!;
 const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false, autoRefreshToken: false } });
 const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') || 'http://localhost:5173,http://127.0.0.1:5173,http://127.0.0.1:4174').split(',').map(s => s.trim());
-const catalog = catalogCache(async (): Promise<Catalog> => {
-  async function rows(table: string, order: string[]) {
-    const all = [];
-    for (let offset = 0; ; offset += 1000) {
-      let query = admin.from(table).select('*');
-      for (const column of order) query = query.order(column);
-      const { data, error } = await query.range(offset, offset + 999);
-      if (error) throw error;
-      all.push(...data); if (data.length < 1000) break;
-    }
-    return all;
-  }
-  const [words, activities, word_activities, sentences] = await Promise.all([
-    rows('words', ['id']), rows('activities', ['id']), rows('word_activities', ['word_id', 'activity_id']), rows('sentences', ['id']),
-  ]);
-  const data = { words, activities, word_activities, sentences } as Catalog;
-  requireThat(words.length && activities.length, 'Vocabulary has not been imported yet.', 503);
-  return data;
+const catalog = createCatalogLoader(async request => {
+  const { data, error } = await admin.rpc('load_garden_catalog', { ...request });
+  if (error) throw error;
+  return data as Catalog;
 });
+type Measure = <T>(name: string, operation: () => PromiseLike<T>) => Promise<T>;
 const emptyCatalog: Catalog = { words: [], activities: [], word_activities: [], sentences: [] };
-function storeFor(userId: string, name: string): Store {
+function storeFor(userId: string, name: string, measure: Measure): Store {
   let snapshot: { version: number; data: Learner } | undefined;
   return {
     async load() {
-      const { data, error } = await admin.rpc('load_learner_progress', { p_user_id: userId, p_name: name });
+      const { data, error } = await measure('progress', () => admin.rpc('load_learner_progress', { p_user_id: userId, p_name: name }));
       if (error) throw error;
       snapshot = data as { version: number; data: Learner };
       // Keep the comparison baseline separate from mutable domain state.
@@ -40,14 +28,15 @@ function storeFor(userId: string, name: string): Store {
     },
     async save(version, data) {
       requireThat(snapshot && snapshot.version === version, 'Progress must be loaded before saving.', 500);
-      const result = await admin.rpc('save_learner_progress', {
-        p_user_id: userId, p_version: version, p_changes: progressChanges(snapshot.data, data),
-      });
+      const changes = progressChanges(snapshot.data, data);
+      const result = await measure('save', () => admin.rpc('save_learner_progress', {
+        p_user_id: userId, p_version: version, p_changes: changes,
+      }));
       if (result.error) throw result.error;
       return result.data === true;
     },
     async heartbeat() {
-      const { data, error } = await admin.rpc('heartbeat_learner', { p_user_id: userId, p_name: name });
+      const { data, error } = await measure('heartbeat', () => admin.rpc('heartbeat_learner', { p_user_id: userId, p_name: name }));
       if (error) throw error;
       return data as NonNullable<Learner['time_summary']>;
     },
@@ -69,20 +58,29 @@ const complete: Complete | undefined = key ? async (system, message, history = [
 } : undefined;
 
 export async function handler(request: Request): Promise<Response> {
+  const timings: string[] = [];
+  const measure: Measure = async (name, operation) => {
+    const started = performance.now();
+    try { return await operation(); }
+    finally { timings.push(`${name};dur=${(performance.now() - started).toFixed(1)}`); }
+  };
   const origin = request.headers.get('Origin') || '';
   const headers: Record<string, string> = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Vary': 'Origin' };
   if (allowedOrigins.includes(origin)) headers['Access-Control-Allow-Origin'] = origin;
   headers['Access-Control-Allow-Headers'] = 'authorization, apikey, content-type, x-client-info';
   headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS';
   headers['Access-Control-Max-Age'] = '3600';
-  const respond = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers });
+  headers['Access-Control-Expose-Headers'] = 'Server-Timing';
+  const respond = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+    status, headers: { ...headers, 'Server-Timing': timings.join(', ') },
+  });
   try {
     requireThat(!origin || allowedOrigins.includes(origin), 'This site is not allowed to access the garden.', 403);
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
     const token = request.headers.get('Authorization')?.replace(/^Bearer\s+/i, '');
     requireThat(token, 'Please sign in.', 401);
     // Never trust a user ID supplied in the request body or an unverified JWT.
-    const { data: { user }, error } = await admin.auth.getUser(token);
+    const { data: { user }, error } = await measure('auth', () => admin.auth.getUser(token));
     requireThat(!error && user, 'Your session has expired. Please sign in again.', 401);
     requireThat(['GET', 'POST'].includes(request.method), 'Method not allowed.', 405);
     let body = {};
@@ -93,7 +91,18 @@ export async function handler(request: Request): Promise<Response> {
     }
     const requestUrl = new URL(request.url);
     const path = requestUrl.pathname.replace(/^\/(?:functions\/v1\/)?garden(?=\/|$)/, '') || '/';
-    return respond(await dispatch(path, request.method, requestUrl.searchParams, body, storeFor(user.id, String(user.user_metadata?.name || user.email?.split('@')[0] || 'Learner')), path === '/heartbeat' ? emptyCatalog : await catalog(), complete));
+    const store = storeFor(user.id, String(user.user_metadata?.name || user.email?.split('@')[0] || 'Learner'), measure);
+    if (path === '/heartbeat') return respond(await dispatch(path, request.method, requestUrl.searchParams, body, store, emptyCatalog));
+    const [vocabulary, snapshot] = path === '/practice' && request.method === 'GET'
+      ? await loadPracticeData(() => store.load(), wordIds => measure('catalog', async () => {
+        const { data, error } = await admin.rpc('load_practice_catalog', { p_word_ids: wordIds });
+        if (error) throw error;
+        return data as Catalog;
+      }))
+      : await Promise.all([measure('catalog', () => catalog(path, request.method)), store.load()]);
+    const timedComplete: Complete | undefined = complete
+      ? (...args) => measure('ai', () => complete(...args)) : undefined;
+    return respond(await measure('dispatch', () => dispatch(path, request.method, requestUrl.searchParams, body, store, vocabulary, timedComplete, snapshot)));
   } catch (error) {
     if (error instanceof HttpError) return respond({ detail: error.message }, error.status);
     // Avoid logging tokens, request bodies, database rows or API keys.

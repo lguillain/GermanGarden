@@ -71,6 +71,29 @@ test('concurrent grading cannot apply the same review twice', async () => {
   assert.equal(store.state.reviews.length, 1);
 });
 
+test('ordinary discovery never waits for AI, while submitted guidance still uses it', async () => {
+  const garden = fixture();
+  for (let i = 0; i < 5; i++) garden.add(`word-${i}`, 'home');
+  const store = memoryStore(garden);
+  let calls = 0;
+  const complete = async () => { calls++; return { home: 3, work: 1 }; };
+  await dispatch('/matcher', 'GET', new URLSearchParams(), {}, store, catalog, complete);
+  assert.equal(calls, 0);
+  await dispatch('/guide', 'POST', new URLSearchParams(), { guidance: 'Words for home' }, store, catalog, complete);
+  assert.equal(calls, 1);
+  assert.equal(store.state.weights.home, 3);
+});
+
+test('topic selection prefers least explored eligible topics and respects exclusions', () => {
+  const garden = fixture();
+  garden.add('word-0', 'home');
+  assert.equal(garden.bestTopic(), 'work');
+  assert.equal(garden.bestTopic('work'), 'home');
+  garden.state.known.push('word-22', 'word-23');
+  assert.equal(garden.bestTopic(), 'home');
+  assert.equal(garden.bestTopic('home'), null);
+});
+
 test('review and heartbeat reuse their initial progress read', async () => {
   const g = fixture(); g.add('word-0', 'home');
   const store = memoryStore(g);

@@ -1,6 +1,6 @@
 import { Garden, grammarOptions } from './domain.ts';
 import { requireThat, HttpError } from './model.ts';
-import { READ_SYSTEM, CHAT_SYSTEM, GRAMMAR_GEN_SYSTEM, GRAMMAR_CHECK_SYSTEM, LEVEL_GUIDANCE, GUIDE_SYSTEM, REFLECT_SYSTEM } from './prompts.ts';
+import { READ_SYSTEM, CHAT_SYSTEM, GRAMMAR_GEN_SYSTEM, GRAMMAR_CHECK_SYSTEM, LEVEL_GUIDANCE, GUIDE_SYSTEM } from './prompts.ts';
 export type Body = Record<string, unknown>;
 export type Message = { role: 'user' | 'assistant'; content: string; corrections?: unknown[] };
 export type Complete = (system: string, message: string, history?: Message[]) => Promise<Record<string, unknown>>;
@@ -64,15 +64,4 @@ export async function guidance(garden: Garden, input: string, complete: Complete
   const weights: Record<string, number> = {};
   for (const a of garden.catalog.activities) weights[a.id] = typeof result[a.id] === 'number' && Number.isFinite(result[a.id]) ? Math.max(.3, Math.min(3, result[a.id] as number)) : 1;
   return weights;
-}
-
-export async function recommendTopic(garden: Garden, exclude: string, complete: Complete): Promise<string | undefined> {
-  const keeps = garden.state.swipes.filter(s => s.action === 'keep').slice(-40);
-  if (keeps.length < 5) return;
-  const candidates = garden.catalog.activities.filter(a => a.id !== exclude && garden.catalog.words.some(w => w.level === (garden.state.user.level || 'A2') && garden.inTopic(w.id, a.id) && garden.unseen(w)));
-  if (!candidates.length) return;
-  try {
-    const result = await complete(REFLECT_SYSTEM + '\nShortlist: ' + JSON.stringify(candidates), 'Recent keeps: ' + JSON.stringify(keeps.map(s => ({ ...garden.word(s.word_id), activity_id: s.activity_id }))));
-    return candidates.find(a => a.id === result.activity_id)?.id;
-  } catch { return; } // Discovery still works when AI is unavailable.
 }

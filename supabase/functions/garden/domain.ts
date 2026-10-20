@@ -26,7 +26,7 @@ export const grammarOptions: Record<string, Record<string, string[]>> = {
   adj: { degree: ['Positiv', 'Komparativ', 'Superlativ'], declension: ['stark (no article)', 'schwach (der/die/das)', 'gemischt (ein/kein/mein)'] },
 };
 export class Garden {
-  constructor(public catalog: Catalog, public state: Learner, public now = Date.now(), public preferredTopic?: string) {}
+  constructor(public catalog: Catalog, public state: Learner, public now = Date.now()) {}
   iso() { return new Date(this.now).toISOString(); }
   topic(id: string) { const topic = this.catalog.activities.find(a => a.id === id); requireThat(topic, 'Unknown topic.'); return topic; }
   word(id: string) { const word = catalogIndex(this.catalog).words.get(id); requireThat(word, 'Unknown word.', 404); return word; }
@@ -87,9 +87,17 @@ export class Garden {
   unseen(word: Word) { return !this.learned(word.id) && !this.state.swipes.some(s => s.word_id === word.id); }
   bestTopic(exclude = '') {
     const level = this.state.user.level || 'A2';
-    if (this.preferredTopic && this.preferredTopic !== exclude && this.catalog.words.some(w => w.level === level && this.inTopic(w.id, this.preferredTopic!) && this.unseen(w))) return this.preferredTopic;
-    return shuffle(this.catalog.activities).filter(a => a.id !== exclude && this.catalog.words.some(w => w.level === level && this.inTopic(w.id, a.id) && this.unseen(w)))
-      .sort((a, b) => this.catalog.words.filter(w => w.level === level && this.inTopic(w.id, a.id) && !this.unseen(w)).length - this.catalog.words.filter(w => w.level === level && this.inTopic(w.id, b.id) && !this.unseen(w)).length)[0]?.id || null;
+    const seen = new Set([...this.state.known, ...this.state.learned, ...this.state.swipes.map(s => s.word_id)]);
+    const unseenTopics = new Set<string>(), seenCounts = new Map<string, number>();
+    for (const word of this.catalog.words) {
+      if (word.level !== level) continue;
+      for (const topic of catalogIndex(this.catalog).topics.get(word.id) || []) {
+        if (seen.has(word.id)) seenCounts.set(topic, (seenCounts.get(topic) || 0) + 1);
+        else unseenTopics.add(topic);
+      }
+    }
+    return shuffle(this.catalog.activities).filter(a => a.id !== exclude && unseenTopics.has(a.id))
+      .sort((a, b) => (seenCounts.get(a.id) || 0) - (seenCounts.get(b.id) || 0))[0]?.id || null;
   }
   matcher() {
     const u = this.state.user;
@@ -151,6 +159,6 @@ export class Garden {
     }
     return { plots: plots.sort((a, b) => a.name.localeCompare(b.name)), topics: topics.sort((a, b) => a.name.localeCompare(b.name)), bag: this.bag(), summary: { bag_count: this.bag().length, bag_cap: 20, due_now: this.reviewWords().length, planted_total: this.scope().length, time: this.time() } };
   }
-  practice(scope: string, topic: string) { return { words: this.scope(scope, topic).map(w => this.sentence(w, topic)), grammar_options: grammarOptions, counts: this.counts(topic) }; }
+  practice(scope: string, topic: string) { return { words: this.scope(scope, topic).map(w => this.details(w)), grammar_options: grammarOptions, counts: this.counts(topic) }; }
   targets(scope: string, topic: string) { const words = shuffle(this.scope(scope, topic)).slice(0, 5); requireThat(words.length, 'Keep or plant some words first.'); return words.map(w => this.sentence(w, topic)); }
 }
