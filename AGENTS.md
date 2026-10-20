@@ -9,8 +9,12 @@ Use the domain terms seed bank, seed bag, garden, practice, and review consisten
 
 - `frontend/src/`: React/TypeScript app and SVG garden artwork.
   `main.tsx` only mounts providers and the router; `app.tsx` defines routes;
-  `app-shell.tsx` owns session/loading/navigation. Keep page flows in `pages/`,
-  reusable UI in `components/`, and shared query/scope hooks in `hooks/`.
+  `app-shell.tsx` owns session/loading/navigation. Keep page flows in `pages/`.
+  Colocate page-specific components and hooks with their page; group related
+  practice pages and their helpers under `pages/practice/`. Use `components/`
+  and `hooks/` only for code shared across page groups.
+  Check existing components before adding UI. Share repeated presentation at
+  the nearest common page group; keep each page's business logic with its flow.
 - `supabase/migrations/`: PostgreSQL schema, RLS policies and atomic write functions.
 - `supabase/functions/garden/`: TypeScript Edge Function, domain rules and AI prompts.
 - `app/`: original Python/FastAPI backend, retained for local use and parity checks.

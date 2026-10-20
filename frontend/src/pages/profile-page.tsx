@@ -2,7 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
-import { ErrorNotice, Heading, Loading } from '../components/feedback';
+import { ErrorNotice, Loading } from '../components/feedback';
+import { WelcomeLayout } from '../components/welcome-layout';
 
 export function ProfilePage() {
   const cache = useQueryClient();
@@ -20,9 +21,10 @@ export function ProfilePage() {
     },
   });
   return (
-    <div className="welcome">
-      <span className="brand">Vocab Garden</span>
-      <Heading title="Who’s learning?">Choose your profile to pick up where you left off.</Heading>
+    <WelcomeLayout
+      title="Who’s learning?"
+      description="Choose your profile to pick up where you left off."
+    >
       <div className="panel">
         {profiles.isPending && <Loading />}
         <ErrorNotice error={profiles.error} />
@@ -62,6 +64,6 @@ export function ProfilePage() {
         <ErrorNotice error={select.error} />
       </div>
       <p className="muted small">Profiles and progress are saved on this computer.</p>
-    </div>
+    </WelcomeLayout>
   );
 }

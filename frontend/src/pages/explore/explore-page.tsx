@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import type { Garden } from '../api';
-import { api } from '../api';
-import { Empty, ErrorNotice, Heading, Loading } from '../components/feedback';
-import { TopicList } from '../components/topic-list';
-import { topicStages } from '../components/topic-progress';
+import type { Garden } from '../../api';
+import { api } from '../../api';
+import { Empty, ErrorNotice, Heading, Loading } from '../../components/feedback';
+import { TopicList } from './topic-list';
+import { topicStages } from '../../components/topic-progress';
 
 export function ExplorePage() {
   const [filter, setFilter] = useState('');

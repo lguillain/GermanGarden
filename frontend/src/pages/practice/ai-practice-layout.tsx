@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
-import type { Session } from '../api';
-import type { usePracticeWords } from '../hooks/use-practice-words';
-import { useScope } from '../hooks/use-scope';
-import { Empty, ErrorNotice, Heading, Loading } from './feedback';
+import type { Session } from '../../api';
+import type { usePracticeWords } from './use-practice-words';
+import { useScope } from '../../hooks/use-scope';
+import { Empty, ErrorNotice, Heading, Loading } from '../../components/feedback';
 export function AiPracticeLayout({
   title,
   words,

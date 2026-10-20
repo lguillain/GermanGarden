@@ -1,12 +1,12 @@
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
-import { api, type Grammar } from '../api';
-import { AiPracticeLayout } from '../components/ai-practice-layout';
-import { Corrections } from '../components/corrections';
-import { ErrorNotice } from '../components/feedback';
-import { WordTitle } from '../components/word-card';
-import { usePracticeWords } from '../hooks/use-practice-words';
-import { useScope } from '../hooks/use-scope';
+import { api, type Grammar } from '../../api';
+import { AiPracticeLayout } from './ai-practice-layout';
+import { Corrections } from './corrections';
+import { ErrorNotice } from '../../components/feedback';
+import { WordTitle } from '../../components/word-card';
+import { usePracticeWords } from './use-practice-words';
+import { useScope } from '../../hooks/use-scope';
 const grammarLabels: Record<string, string> = {
   Nominativ: 'Nominative',
   Akkusativ: 'Accusative',

@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import type { Garden } from '../api';
-import { api } from '../api';
-import { ErrorNotice, Heading, Loading } from '../components/feedback';
-import GardenScene from '../components/garden-scene';
-import { SeedBag } from '../components/seed-bag';
+import type { Garden } from '../../api';
+import { api } from '../../api';
+import { ErrorNotice, Heading, Loading } from '../../components/feedback';
+import GardenScene from './garden-scene';
+import { SeedBag } from '../../components/seed-bag';
 
 const duration = (seconds: number) =>
   seconds >= 3600

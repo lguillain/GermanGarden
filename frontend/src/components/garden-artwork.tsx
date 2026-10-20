@@ -1,5 +1,4 @@
-import { type ReactNode, useId, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useId, useState } from 'react';
 import type { GardenPlot, Word } from '../api';
 
 const growthNames = ['Just planted', 'Sprout', 'Seedling', 'Sapling', 'Blooming', 'Fully grown'];
@@ -7,9 +6,9 @@ const LAND =
   'M0 -82 Q7 -82 14 -78 L142 -8 Q156 0 142 8 L14 78 Q0 86 -14 78 L-142 8 Q-156 0 -142 -8 L-14 -78 Q-7 -82 0 -82Z';
 const hash = (value: string) =>
   [...value].reduce((n, char) => (n * 31 + char.charCodeAt(0)) >>> 0, 0);
-const wordName = (word: Word) => [word.article, word.lemma].filter(Boolean).join(' ');
+export const wordName = (word: Word) => [word.article, word.lemma].filter(Boolean).join(' ');
 const isWilted = (word: Word) => Boolean(word.review_due && !word.learned);
-const plantLabel = (word: Word) =>
+export const plantLabel = (word: Word) =>
   `${growthNames[word.learned ? 5 : word.growth || 0]}${isWilted(word) ? ' · Needs review' : ''}`;
 
 function Paints({ id }: { id: string }) {
@@ -473,7 +472,7 @@ function islandOutline(cells: { x: number; y: number }[]) {
     .join(' ')}Z`;
 }
 
-function GardenArtwork({
+export function GardenArtwork({
   plots,
   focused,
   selectedWord,
@@ -771,91 +770,5 @@ function GardenArtwork({
         </g>
       )}
     </svg>
-  );
-}
-
-export function TopicScene({ plot }: { plot: GardenPlot }) {
-  const id = `topic-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
-  const [wordId, setWordId] = useState<string | null>(null);
-  const word = plot.words.find((item) => item.id === wordId);
-  return (
-    <section className="topic-scene" aria-label={`${plot.name} garden plot`}>
-      <GardenArtwork
-        plots={[plot]}
-        focused
-        selectedWord={wordId}
-        onPickWord={setWordId}
-        onPickPlot={() => {}}
-        id={id}
-      />
-      <div className="topic-plant-caption" aria-live="polite">
-        {word ? (
-          <>
-            <strong lang="de">{wordName(word)}</strong>
-            <span>
-              {word.english} · {plantLabel(word)}
-            </span>
-          </>
-        ) : (
-          <span>
-            {plot.words.length
-              ? 'Select a plant to see its word'
-              : 'No planted or learned words in this topic yet'}
-          </span>
-        )}
-      </div>
-    </section>
-  );
-}
-
-export default function GardenScene({
-  plots,
-  bagCount = 0,
-  bagContent,
-}: {
-  plots: GardenPlot[];
-  bagCount?: number;
-  bagContent?: ReactNode;
-}) {
-  const id = `garden-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
-  const navigate = useNavigate();
-  const [bagOpen, setBagOpen] = useState(false);
-  return (
-    <section className="garden-world" aria-label="Growing garden">
-      {!!plots.length && (
-        <div className="world-bottom">
-          <span>Hover to see a topic · Select a field to look closer</span>
-        </div>
-      )}
-      <GardenArtwork
-        plots={plots}
-        focused={false}
-        selectedWord={null}
-        onPickWord={() => {}}
-        onPickPlot={(topic) => navigate(`/topics/${encodeURIComponent(topic)}`)}
-        id={id}
-        bagCount={bagCount}
-        bagOpen={bagOpen}
-        onPickBag={() => setBagOpen((open) => !open)}
-      />
-      {!plots.length && (
-        <div className="world-empty">
-          <h2>A little land. A fresh start.</h2>
-          <p>Review a seed to start growing.</p>
-        </div>
-      )}
-      {bagOpen && (
-        <div id="world-seed-bag" className="plot-inspector world-seed-bag">
-          <button
-            className="bag-close"
-            aria-label="Close seed bag"
-            onClick={() => setBagOpen(false)}
-          >
-            ×
-          </button>
-          {bagContent}
-        </div>
-      )}
-    </section>
   );
 }

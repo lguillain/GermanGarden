@@ -1,9 +1,9 @@
 import { Link, useOutletContext } from 'react-router-dom';
-import type { Session } from '../api';
-import { Empty, ErrorNotice, Heading, Loading } from '../components/feedback';
-import { WordSetSwitch } from '../components/word-set-switch';
-import { usePracticeWords } from '../hooks/use-practice-words';
-import { useScope } from '../hooks/use-scope';
+import type { Session } from '../../api';
+import { Empty, ErrorNotice, Heading, Loading } from '../../components/feedback';
+import { WordSetSwitch } from '../../components/word-set-switch';
+import { usePracticeWords } from './use-practice-words';
+import { useScope } from '../../hooks/use-scope';
 
 export function PracticePage() {
   const { scope, query, label } = useScope();

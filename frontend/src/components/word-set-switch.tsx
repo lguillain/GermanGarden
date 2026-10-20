@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useScope } from '../hooks/use-scope';
-import { PlantIcon, SeedIcon } from './garden-scene';
+import { PlantIcon, SeedIcon } from './garden-artwork';
 
 export function WordSetSwitch({
   page,

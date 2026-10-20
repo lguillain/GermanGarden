@@ -122,15 +122,20 @@ test('practice pages keep their own state and reset it when the word set changes
   await page.getByRole('link', { name: 'Start reading' }).click();
   await page.getByRole('button', { name: 'Start reading' }).click();
   await expect(page.locator('.reading')).toContainText('Der Baum ist grün.');
+  await expect(page.locator('.chips .badge')).toHaveText(['der Baum', 'die Blume']);
+  await expect(page.locator('.chips .used')).toHaveCount(0);
   await page.getByRole('button', { name: 'Show English translation' }).click();
   await expect(page.locator('.reading .translation')).toHaveText('The tree is green.');
   await page.getByRole('link', { name: '← Practice', exact: true }).click();
   await page.getByRole('link', { name: 'Start conversation' }).click();
   await page.getByRole('button', { name: 'Start conversation' }).click();
   await expect(page.locator('.chat-log')).toContainText('Was wächst im Garten?');
+  await expect(page.locator('.chips .badge')).toHaveText(['der Baum', 'die Blume']);
+  await expect(page.locator('.chips .used')).toHaveCount(0);
   await page.getByLabel('Your reply in German').fill('Der Baum ist schön.');
   await page.getByRole('button', { name: 'Send', exact: true }).click();
   await expect(page.locator('.chat-log')).toContainText('Sehr schön!');
+  await expect(page.locator('.chips .used')).toHaveText(['der Baum ✓']);
   await page.evaluate(() => {
     window.location.hash = '/practice/chat?scope=all';
   });

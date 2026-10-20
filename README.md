@@ -76,13 +76,20 @@ Product behavior is documented in `vocab-garden-ux.md`; repository commands and 
 
 - `main.tsx`: mounts React, query providers, and the router.
 - `app.tsx`: route definitions; `app-shell.tsx`: session, navigation, and sign-out.
-- `pages/`: individual garden, topic, discovery, review, profile, and practice flows.
-  Conversation, reading, and grammar each own their state and API mutations.
-- `components/`: shared word cards, seed bag, topic progress, feedback, and SVG artwork.
-- `hooks/`: shared word-set selection and practice queries.
+- `pages/home/`: home page and its interactive garden view.
+- `pages/explore/`: Explore page and its topic list.
+- `pages/topic/`: topic page, scope links, and its selectable plot view.
+- `pages/practice/`: practice menu, flashcards, conversation, reading, and grammar,
+  together with their layout, corrections, query hook, and route wrapper.
+  Each practice page owns its state and API mutations.
+- Other `pages/` files: self-contained discovery, review, login, and profile flows.
+- `components/`: UI used across page groups—word cards, seed bag, topic progress,
+  feedback, word-set switch, and the shared SVG artwork.
+- `hooks/`: word-set selection shared by practice and review.
 - `api.ts`, `supabase.ts`, `query-client.ts`: HTTP/auth clients and query configuration.
 
-Keep page-specific state with its page rather than in the application entry point.
+Keep page-specific state, components, and hooks alongside their page. Promote
+code to a shared folder when another page group actually needs it.
 The AI practice route resets its page when the selected word set changes; the
 shared practice layout handles loading, errors, and empty sets without owning
 conversation or exercise state.

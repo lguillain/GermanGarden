@@ -1,13 +1,14 @@
+import { TopicScene } from './topic-scene';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useLocation, useOutletContext } from 'react-router-dom';
-import type { Activity, Session, Word } from '../api';
-import { api } from '../api';
-import { Empty, ErrorNotice, Heading, Loading } from '../components/feedback';
-import { PlantIcon, SeedIcon, TopicScene } from '../components/garden-scene';
-import { ScopeLinks } from '../components/scope-links';
-import { TopicProgress } from '../components/topic-progress';
-import { WordTitle } from '../components/word-card';
+import type { Activity, Session, Word } from '../../api';
+import { api } from '../../api';
+import { Empty, ErrorNotice, Heading, Loading } from '../../components/feedback';
+import { PlantIcon, SeedIcon } from '../../components/garden-artwork';
+import { ScopeLinks } from './scope-links';
+import { TopicProgress } from '../../components/topic-progress';
+import { WordTitle } from '../../components/word-card';
 
 export function TopicPage() {
   const { user } = useOutletContext<Session>();

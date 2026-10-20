@@ -1,11 +1,11 @@
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
-import { api, type Word } from '../api';
-import { AiPracticeLayout } from '../components/ai-practice-layout';
-import { ErrorNotice } from '../components/feedback';
-import { WordTitle } from '../components/word-card';
-import { usePracticeWords } from '../hooks/use-practice-words';
-import { useScope } from '../hooks/use-scope';
+import { api, type Word } from '../../api';
+import { AiPracticeLayout } from './ai-practice-layout';
+import { ErrorNotice } from '../../components/feedback';
+import { TargetWords } from './target-words';
+import { usePracticeWords } from './use-practice-words';
+import { useScope } from '../../hooks/use-scope';
 
 export function ReadingPage() {
   const { scope, topic, query } = useScope();
@@ -33,13 +33,7 @@ export function ReadingPage() {
           <ErrorNotice error={reading.error} />
           {reading.data && (
             <>
-              <div className="chips">
-                {reading.data.targets.map((w) => (
-                  <span className="badge" key={w.id}>
-                    <WordTitle word={w} />
-                  </span>
-                ))}
-              </div>
+              <TargetWords words={reading.data.targets} />
               <article className="panel reading">
                 <p className="eyebrow">{reading.data.text.setting}</p>
                 <p lang="de">{reading.data.text.de}</p>

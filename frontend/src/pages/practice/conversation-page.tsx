@@ -1,12 +1,12 @@
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
-import { api, type Chat } from '../api';
-import { AiPracticeLayout } from '../components/ai-practice-layout';
-import { Corrections } from '../components/corrections';
-import { ErrorNotice } from '../components/feedback';
-import { WordTitle } from '../components/word-card';
-import { usePracticeWords } from '../hooks/use-practice-words';
-import { useScope } from '../hooks/use-scope';
+import { api, type Chat } from '../../api';
+import { AiPracticeLayout } from './ai-practice-layout';
+import { Corrections } from './corrections';
+import { ErrorNotice } from '../../components/feedback';
+import { TargetWords } from './target-words';
+import { usePracticeWords } from './use-practice-words';
+import { useScope } from '../../hooks/use-scope';
 
 export function ConversationPage() {
   const { scope, topic, query } = useScope();
@@ -31,16 +31,7 @@ export function ConversationPage() {
     <AiPracticeLayout title="Conversation" words={words} grammar={false}>
       {words.data && (
         <>
-          {chat && (
-            <div className="chips">
-              {chat.targets.map((w) => (
-                <span className={`badge ${chat.used.includes(w.lemma) ? 'used' : ''}`} key={w.id}>
-                  <WordTitle word={w} />
-                  {chat.used.includes(w.lemma) ? ' ✓' : ''}
-                </span>
-              ))}
-            </div>
-          )}
+          {chat && <TargetWords words={chat.targets} used={chat.used} />}
           {chat && (
             <div className="chat-log" aria-live="polite">
               {chat?.history.map((m, i) => (

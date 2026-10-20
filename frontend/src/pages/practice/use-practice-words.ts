@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { api, type GrammarOptions, type Word } from '../api';
+import { api, type GrammarOptions, type Word } from '../../api';
 export interface PracticeWords {
   words: Word[];
   grammar_options: GrammarOptions;

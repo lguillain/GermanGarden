@@ -2,7 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import type { Session } from '../api';
 import { api } from '../api';
-import { ErrorNotice, Heading } from '../components/feedback';
+import { ErrorNotice } from '../components/feedback';
+import { WelcomeLayout } from '../components/welcome-layout';
 
 export function SetupPage({ session }: { session: Session }) {
   const cache = useQueryClient();
@@ -13,11 +14,10 @@ export function SetupPage({ session }: { session: Session }) {
     onSuccess: () => cache.invalidateQueries({ queryKey: ['session'] }),
   });
   return (
-    <div className="welcome">
-      <span className="brand">Vocab Garden</span>
-      <Heading title={`Welcome, ${session.user.name}`}>
-        A couple of basics before you start.
-      </Heading>
+    <WelcomeLayout
+      title={`Welcome, ${session.user.name}`}
+      description="A couple of basics before you start."
+    >
       <form
         className="panel"
         onSubmit={(e) => {
@@ -67,6 +67,6 @@ export function SetupPage({ session }: { session: Session }) {
           {save.isPending ? 'Saving…' : 'Start learning'}
         </button>
       </form>
-    </div>
+    </WelcomeLayout>
   );
 }

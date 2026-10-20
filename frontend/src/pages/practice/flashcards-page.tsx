@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { Word } from '../api';
-import { api } from '../api';
-import { Empty, ErrorNotice, Heading, Loading } from '../components/feedback';
-import { WordCard } from '../components/word-card';
-import { useScope } from '../hooks/use-scope';
+import type { Word } from '../../api';
+import { api } from '../../api';
+import { Empty, ErrorNotice, Heading, Loading } from '../../components/feedback';
+import { WordCard } from '../../components/word-card';
+import { useScope } from '../../hooks/use-scope';
 
 export function FlashcardsPage() {
   const { query, label } = useScope();

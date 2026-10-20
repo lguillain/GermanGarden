@@ -1,16 +1,16 @@
 import { Link, Route, Routes } from 'react-router-dom';
 import { AppShell } from './app-shell';
 import { Empty } from './components/feedback';
-import { AiRoute } from './practice-route';
+import { AiRoute } from './pages/practice/practice-route';
 import { CloudLogin } from './pages/cloud-login-page';
-import { ExplorePage } from './pages/explore-page';
-import { FlashcardsPage } from './pages/flashcards-page';
-import { HomePage } from './pages/home-page';
+import { ExplorePage } from './pages/explore/explore-page';
+import { FlashcardsPage } from './pages/practice/flashcards-page';
+import { HomePage } from './pages/home/home-page';
 import { MatcherPage } from './pages/matcher-page';
-import { PracticePage } from './pages/practice-page';
+import { PracticePage } from './pages/practice/practice-page';
 import { ProfilePage } from './pages/profile-page';
 import { ReviewPage } from './pages/review-page';
-import { TopicPage } from './pages/topic-page';
+import { TopicPage } from './pages/topic/topic-page';
 import { supabase } from './supabase';
 
 export function App() {

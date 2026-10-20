@@ -2,18 +2,16 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
+import { ErrorNotice } from '../components/feedback';
+import { WelcomeLayout } from '../components/welcome-layout';
 
 export function CloudLogin() {
   const navigate = useNavigate(),
     cache = useQueryClient();
-  const [error, setError] = useState(''),
+  const [error, setError] = useState<Error | null>(null),
     [busy, setBusy] = useState(false);
   return (
-    <div className="welcome">
-      <span className="brand">Vocab Garden</span>
-      <header className="page-heading">
-        <h1>Welcome back</h1>
-      </header>
+    <WelcomeLayout title="Welcome back">
       <form
         className="panel"
         onSubmit={async (event) => {
@@ -21,7 +19,7 @@ export function CloudLogin() {
           // Read the actual fields: autofill may not emit React change events.
           const fields = new FormData(event.currentTarget);
           setBusy(true);
-          setError('');
+          setError(null);
           try {
             const login = String(fields.get('username') ?? '')
               .trim()
@@ -34,7 +32,7 @@ export function CloudLogin() {
             navigate('/');
           } catch (error) {
             setError(
-              error instanceof Error ? error.message : 'Could not sign in. Please try again.',
+              error instanceof Error ? error : new Error('Could not sign in. Please try again.'),
             );
           } finally {
             setBusy(false);
@@ -60,11 +58,7 @@ export function CloudLogin() {
           autoComplete="current-password"
           required
         />
-        {error && (
-          <p className="error" role="alert">
-            {error}
-          </p>
-        )}
+        <ErrorNotice error={error} />
         <button className="primary" disabled={busy}>
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
@@ -72,6 +66,6 @@ export function CloudLogin() {
       <p className="muted small">
         Use the account created for you by the garden owner. Your progress is saved across devices.
       </p>
-    </div>
+    </WelcomeLayout>
   );
 }

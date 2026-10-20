@@ -1,6 +1,6 @@
 import { Link, useOutletContext } from 'react-router-dom';
-import type { Session, Topic } from '../api';
-import { TopicProgress } from './topic-progress';
+import type { Session, Topic } from '../../api';
+import { TopicProgress } from '../../components/topic-progress';
 
 export function TopicList({ topics }: { topics: Topic[] }) {
   const { user } = useOutletContext<Session>();
