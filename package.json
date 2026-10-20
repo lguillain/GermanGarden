@@ -11,7 +11,11 @@
     "test:cloud": "node --import tsx --test tests/cloud/*.test.ts",
     "check:cloud": "tsc -p tsconfig.cloud.json",
     "import:local": "node --import tsx scripts/import-local.ts",
-    "configure:local": "node --import tsx scripts/configure-local.ts"
+    "configure:local": "node --import tsx scripts/configure-local.ts",
+    "format:cloud": "prettier --write \"supabase/functions/garden/**/*.ts\"",
+    "check:format:cloud": "prettier --check \"supabase/functions/garden/**/*.ts\"",
+    "format:frontend": "prettier --write \"frontend/src/**/*.{ts,tsx}\"",
+    "check:format:frontend": "prettier --check \"frontend/src/**/*.{ts,tsx}\""
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
@@ -27,6 +31,7 @@
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "4.7.0",
+    "prettier": "3.9.10",
     "tsx": "^4.23.15",
     "typescript": "5.9.3",
     "vite": "6.4.1"

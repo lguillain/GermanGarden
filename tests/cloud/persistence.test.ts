@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { freshLearner, initialSrs } from '../../supabase/functions/garden/model.ts';
+import { freshLearner } from '../../supabase/functions/garden/model.ts';
+import { initialSrs } from '../../supabase/functions/garden/scheduler.ts';
 import { progressChanges } from '../../supabase/functions/garden/persistence.ts';
 import { dispatch } from '../../supabase/functions/garden/service.ts';
 

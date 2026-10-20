@@ -19,15 +19,20 @@ export function catalogRequest(path: string, method: string): CatalogRequest {
 export function createCatalogLoader(fetchCatalog: (request: CatalogRequest) => Promise<Catalog>) {
   const caches = new Map<string, () => Promise<Catalog>>();
   return (path: string, method: string) => {
-    const request = catalogRequest(path, method), key = JSON.stringify(request);
+    const request = catalogRequest(path, method),
+      key = JSON.stringify(request);
     let get = caches.get(key);
     if (!get) {
       // Bound topic-specific caches, including invalid topic IDs.
       if (caches.size >= 32) caches.delete(caches.keys().next().value!);
       get = catalogCache(async () => {
         const data = await fetchCatalog(request);
-        requireThat(data.activities.length && (request.p_activities_only || request.p_topic !== null || data.words.length),
-          'Vocabulary has not been imported yet.', 503);
+        requireThat(
+          data.activities.length &&
+            (request.p_activities_only || request.p_topic !== null || data.words.length),
+          'Vocabulary has not been imported yet.',
+          503,
+        );
         return data;
       });
       caches.set(key, get);

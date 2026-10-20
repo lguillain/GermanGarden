@@ -18,6 +18,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run check:format:cloud
+      - run: npm run check:format:frontend
       - run: npm run test:cloud
       - run: npm run check:cloud
       - run: npx playwright install --with-deps chromium

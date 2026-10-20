@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
-import { Catalog, freshLearner, initialSrs, Learner } from '../../supabase/functions/garden/model.ts';
+import { Catalog, freshLearner, Learner } from '../../supabase/functions/garden/model.ts';
+import { initialSrs } from '../../supabase/functions/garden/scheduler.ts';
 import { Garden } from '../../supabase/functions/garden/domain.ts';
 import { scopedProgressRequest } from '../../supabase/functions/garden/progress-request.ts';
 

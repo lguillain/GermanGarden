@@ -9,20 +9,41 @@ export interface Store {
   heartbeat?(): Promise<NonNullable<Learner['time_summary']>>;
   review?(scope: string, topic: string): Promise<ReviewSelection>;
 }
-type Snapshot = Awaited<ReturnType<Store['load']>>;
+export type Snapshot = Awaited<ReturnType<Store['load']>>;
+const MAX_WRITE_ATTEMPTS = 5;
 // Recompute mutations against the newest state on conflicts; never retry an AI call.
-export async function transact<T>(store: Store, catalog: Catalog, operation: (garden: Garden) => T, initial?: Snapshot): Promise<T> {
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const snapshot = attempt === 0 && initial ? initial : await store.load(), garden = new Garden(catalog, structuredClone(snapshot.data));
+export async function transact<T>(
+  store: Store,
+  catalog: Catalog,
+  operation: (garden: Garden) => T,
+  initial?: Snapshot,
+): Promise<T> {
+  for (let attempt = 0; attempt < MAX_WRITE_ATTEMPTS; attempt++) {
+    const snapshot = attempt === 0 && initial ? initial : await store.load();
+    const garden = new Garden(catalog, structuredClone(snapshot.data));
     const result = operation(garden);
     if (await store.save(snapshot.version, garden.state)) return result;
   }
   throw new HttpError(409, 'Progress changed in another tab. Please try again.');
 }
-export async function dispatch(path: string, method: string, query: URLSearchParams, body: Body, store: Store, catalog: Catalog, complete?: Complete, initial?: Snapshot) {
+export async function dispatch(
+  path: string,
+  method: string,
+  query: URLSearchParams,
+  body: Body,
+  store: Store,
+  catalog: Catalog,
+  complete?: Complete,
+  initial?: Snapshot,
+) {
+  // These read paths deliberately avoid loading a full learner snapshot.
   if (path === '/session' && method === 'GET' && store.profile) {
     const profile = await store.profile();
-    return { user: { name: profile.name, level: profile.level, swipes: profile.swipe_count }, ai_available: !!complete, activities: catalog.activities };
+    return {
+      user: { name: profile.name, level: profile.level, swipes: profile.swipe_count },
+      ai_available: !!complete,
+      activities: catalog.activities,
+    };
   }
   if (path === '/heartbeat' && method === 'POST' && store.heartbeat) return store.heartbeat();
   const scope = method === 'GET' ? query.get('scope') || 'all' : text(body, 'scope', 'all');
@@ -31,38 +52,113 @@ export async function dispatch(path: string, method: string, query: URLSearchPar
     requireThat(['all', 'topic', 'bag'].includes(scope), 'Unknown word set.');
     return reviewSelectionResponse(await store.review(scope, topic), scope, topic);
   }
-  const snapshot = initial ?? await store.load(), garden = new Garden(catalog, snapshot.data);
+  const snapshot = initial ?? (await store.load());
+  const garden = new Garden(catalog, snapshot.data);
   if (method === 'GET') {
     switch (path) {
-      case '/session': return { user: { ...garden.state.user, swipes: garden.state.user.swipe_count }, ai_available: !!complete, activities: catalog.activities };
-      case '/garden': return garden.home();
-      case '/review': return garden.review(scope, topic);
-      case '/practice': return garden.practice(scope, topic);
-      case '/flashcards': return { cards: shuffle(garden.scope(scope, topic)).slice(0, 10).map(w => garden.sentence(w, topic)) };
-      case '/matcher': return transact(store, catalog, g => { if (topic) g.setTopic(topic); return matcherPreview(g, g.matcher()); }, snapshot);
+      case '/session':
+        return {
+          user: { ...garden.state.user, swipes: garden.state.user.swipe_count },
+          ai_available: !!complete,
+          activities: catalog.activities,
+        };
+      case '/garden':
+        return garden.home();
+      case '/review':
+        return garden.review(scope, topic);
+      case '/practice':
+        return garden.practice(scope, topic);
+      case '/flashcards':
+        return {
+          cards: shuffle(garden.scope(scope, topic))
+            .slice(0, 10)
+            .map((w) => garden.sentence(w, topic)),
+        };
+      case '/matcher':
+        return transact(
+          store,
+          catalog,
+          (currentGarden) => {
+            if (topic) currentGarden.setTopic(topic);
+            return matcherPreview(currentGarden, currentGarden.matcher());
+          },
+          snapshot,
+        );
     }
-    const match = path.match(/^\/topics\/([^/]+)$/); if (match) return garden.topicDetail(decodeURIComponent(match[1]));
+    const match = path.match(/^\/topics\/([^/]+)$/);
+    if (match) return garden.topicDetail(decodeURIComponent(match[1]));
   }
   if (method === 'POST') {
-    if (['/reading', '/chat', '/grammar'].includes(path)) { requireThat(complete, 'AI practice is not configured.', 503); return aiPractice(path, body, garden, complete); }
+    if (['/reading', '/chat', '/grammar'].includes(path)) {
+      requireThat(complete, 'AI practice is not configured.', 503);
+      return aiPractice(path, body, garden, complete);
+    }
     if (path === '/onboarding' || path === '/guide') {
       const input = text(body, path === '/guide' ? 'guidance' : 'goals').trim();
       if (topic) garden.topic(topic);
       const level = path === '/onboarding' ? text(body, 'level') : '';
-      if (path === '/onboarding') requireThat(['A1', 'A2', 'B1', 'unsure'].includes(level), 'Choose a valid level.');
+      if (path === '/onboarding')
+        requireThat(['A1', 'A2', 'B1', 'unsure'].includes(level), 'Choose a valid level.');
+      // Resolve AI guidance once, outside the transaction retry loop.
       let weights: Record<string, number> | undefined;
-      if (input && !topic) { requireThat(complete, 'AI guidance is not configured.', 503); weights = await guidance(garden, input, complete); }
-      return transact(store, catalog, g => {
-        if (weights) g.state.weights = weights;
-        if (path === '/onboarding') { g.state.user.level = level === 'unsure' ? 'A1' : level; return g.state.user; }
-        g.setTopic(topic || (weights ? Object.entries(weights).sort((a, b) => b[1] - a[1])[0]?.[0] : null) || g.bestTopic()); return matcherPreview(g, g.matcher());
-      }, snapshot);
+      if (input && !topic) {
+        requireThat(complete, 'AI guidance is not configured.', 503);
+        weights = await guidance(garden, input, complete);
+      }
+      return transact(
+        store,
+        catalog,
+        (currentGarden) => {
+          if (weights) currentGarden.state.weights = weights;
+          if (path === '/onboarding') {
+            currentGarden.state.user.level = level === 'unsure' ? 'A1' : level;
+            return currentGarden.state.user;
+          }
+          currentGarden.setTopic(
+            topic ||
+              (weights ? Object.entries(weights).sort((a, b) => b[1] - a[1])[0]?.[0] : null) ||
+              currentGarden.bestTopic(),
+          );
+          return matcherPreview(currentGarden, currentGarden.matcher());
+        },
+        snapshot,
+      );
     }
-    if (path === '/heartbeat') return transact(store, catalog, g => g.heartbeat(), snapshot);
-    if (path === '/review') return transact(store, catalog, g => g.grade(text(body, 'word_id'), Number(body.grade), scope, topic), snapshot);
-    if (path === '/matcher') return transact(store, catalog, g => matcherPreview(g, g.swipe(text(body, 'word_id'), text(body, 'action'), text(body, 'activity_id') || null, Number(body.sentence_id))), snapshot);
+    if (path === '/heartbeat')
+      return transact(store, catalog, (currentGarden) => currentGarden.heartbeat(), snapshot);
+    if (path === '/review')
+      return transact(
+        store,
+        catalog,
+        (currentGarden) =>
+          currentGarden.grade(text(body, 'word_id'), Number(body.grade), scope, topic),
+        snapshot,
+      );
+    if (path === '/matcher')
+      return transact(
+        store,
+        catalog,
+        (currentGarden) =>
+          matcherPreview(
+            currentGarden,
+            currentGarden.swipe(
+              text(body, 'word_id'),
+              text(body, 'action'),
+              text(body, 'activity_id') || null,
+              Number(body.sentence_id),
+            ),
+          ),
+        snapshot,
+      );
     const match = path.match(/^\/topics\/([^/]+)\/words\/([^/]+)\/keep$/);
-    if (match) return transact(store, catalog, g => g.add(decodeURIComponent(match[2]), decodeURIComponent(match[1])), snapshot);
+    if (match)
+      return transact(
+        store,
+        catalog,
+        (currentGarden) =>
+          currentGarden.add(decodeURIComponent(match[2]), decodeURIComponent(match[1])),
+        snapshot,
+      );
   }
   throw new HttpError(404, 'Page not found.');
 }

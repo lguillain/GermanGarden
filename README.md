@@ -72,6 +72,48 @@ Then open **http://127.0.0.1:8000**. Restart that process after rebuilding front
 
 Product behavior is documented in `vocab-garden-ux.md`; repository commands and conventions are in `AGENTS.md`.
 
+### Frontend structure
+
+- `main.tsx`: mounts React, query providers, and the router.
+- `app.tsx`: route definitions; `app-shell.tsx`: session, navigation, and sign-out.
+- `pages/`: individual garden, topic, discovery, review, profile, and practice flows.
+  Conversation, reading, and grammar each own their state and API mutations.
+- `components/`: shared word cards, seed bag, topic progress, feedback, and SVG artwork.
+- `hooks/`: shared word-set selection and practice queries.
+- `api.ts`, `supabase.ts`, `query-client.ts`: HTTP/auth clients and query configuration.
+
+Keep page-specific state with its page rather than in the application entry point.
+The AI practice route resets its page when the selected word set changes; the
+shared practice layout handles loading, errors, and empty sets without owning
+conversation or exercise state.
+
+Run `npm run format:frontend` after frontend changes. The deployment workflow
+checks formatting with `npm run check:format:frontend`.
+
+### Reading the cloud backend
+
+Start with `supabase/functions/garden/domain.ts` for the learning flows:
+`scope` chooses the word set, `reviewWords` checks eligibility, `grade` updates
+the schedule and plants the rated seed, and `swipe` records a seed-bank decision.
+`scheduler.ts` contains the pure growth-stage and rating calculations, checked
+against the Python scheduler. Practice reads these rules without changing growth.
+
+The request flow is `index.ts` → `service.ts` → `domain.ts`.
+`index.ts` verifies the learner and chooses the data-loading path;
+`service.ts` routes requests and retries atomic writes against fresh progress;
+`store.ts` implements database reads and writes. The learner ID always comes
+from verified authentication. `ai.ts` handles practice and guidance, while
+`anthropic.ts` only handles the external API transport.
+
+Review GET has a smaller read path: `load_review_selection` selects one card and
+counts in PostgreSQL, and `reviewSelectionResponse` uses the same domain card
+formatting and scheduler as review POST. The SQL/domain parity tests cover both
+paths. Changes to review eligibility or ordering must keep them consistent.
+
+Run `npm run format:cloud` after editing cloud TypeScript.
+`npm run check:format:cloud` checks formatting without changing files and also
+runs in the deployment workflow.
+
 ## Supabase + GitHub Pages
 
 The cloud version serves the static React app on GitHub Pages and runs the API in

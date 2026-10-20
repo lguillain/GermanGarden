@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
 import { Garden, reviewSelectionResponse } from '../../supabase/functions/garden/domain.ts';
-import { Catalog, freshLearner, initialSrs, Learner, ReviewSelection } from '../../supabase/functions/garden/model.ts';
+import { Catalog, freshLearner, Learner, ReviewSelection } from '../../supabase/functions/garden/model.ts';
+import { initialSrs } from '../../supabase/functions/garden/scheduler.ts';
 import { dispatch } from '../../supabase/functions/garden/service.ts';
 
 const userA = '00000000-0000-4000-8000-000000000001';

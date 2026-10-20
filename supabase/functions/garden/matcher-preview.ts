@@ -4,7 +4,8 @@ import { Garden } from './domain.ts';
 // The browser can show it while the real write is pending, but cannot act again
 // until the server confirms. Version conflicts always use fresh progress.
 export function matcherPreview(garden: Garden, result: ReturnType<Garden['matcher']>) {
-  const previews: Partial<Record<'keep' | 'learned' | 'not_now', ReturnType<Garden['matcher']>>> = {};
+  const previews: Partial<Record<'keep' | 'learned' | 'not_now', ReturnType<Garden['matcher']>>> =
+    {};
   const card = result.card;
   if (card && card.sentence_id !== null) {
     for (const action of ['keep', 'learned', 'not_now'] as const) {

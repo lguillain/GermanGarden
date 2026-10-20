@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { Garden } from '../../supabase/functions/garden/domain.ts';
-import { Catalog, freshLearner, growth, initialSrs, reviewOutcome } from '../../supabase/functions/garden/model.ts';
+import { Catalog, freshLearner } from '../../supabase/functions/garden/model.ts';
+import { growth, initialSrs, reviewOutcome } from '../../supabase/functions/garden/scheduler.ts';
 import { dispatch, Store } from '../../supabase/functions/garden/service.ts';
 import { aiPractice } from '../../supabase/functions/garden/ai.ts';
 

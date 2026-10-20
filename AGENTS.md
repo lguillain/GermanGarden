@@ -8,6 +8,9 @@ Use the domain terms seed bank, seed bag, garden, practice, and review consisten
 ## Structure
 
 - `frontend/src/`: React/TypeScript app and SVG garden artwork.
+  `main.tsx` only mounts providers and the router; `app.tsx` defines routes;
+  `app-shell.tsx` owns session/loading/navigation. Keep page flows in `pages/`,
+  reusable UI in `components/`, and shared query/scope hooks in `hooks/`.
 - `supabase/migrations/`: PostgreSQL schema, RLS policies and atomic write functions.
 - `supabase/functions/garden/`: TypeScript Edge Function, domain rules and AI prompts.
 - `app/`: original Python/FastAPI backend, retained for local use and parity checks.
@@ -28,7 +31,9 @@ Use the domain terms seed bank, seed bag, garden, practice, and review consisten
 - Configure local frontend environment: `npm run configure:local` (requires the local Supabase stack).
 - Import all local profiles and vocabulary: `npm run import:local` (requires the local Supabase stack; credentials are saved privately under `data/`).
 - Build and frontend typecheck: `npm run build`.
+- Format frontend TypeScript: `npm run format:frontend`; verify: `npm run check:format:frontend`.
 - Cloud typecheck: `npm run check:cloud`.
+- Format cloud TypeScript: `npm run format:cloud`; verify formatting: `npm run check:format:cloud`.
 - Cloud tests: `npm run test:cloud` (Node 22+ and Python 3; no Docker required).
 - Local Auth/API integration: `node --import tsx tests/cloud/local-integration.ts` (local Supabase and function must be running).
 - Legacy API tests: `.venv/bin/python -m unittest discover -s tests -v`.
@@ -38,8 +43,10 @@ Use the domain terms seed bank, seed bag, garden, practice, and review consisten
 ## Style and tests
 
 Use strict TypeScript, clear domain names, and lowercase hyphenated new filenames.
-Keep learning rules in the cloud domain module; keep HTTP, authentication and
-persistence in the handler/service. Match the original scheduler using parity tests.
+Keep learning rules in `domain.ts` and pure scheduling rules in `scheduler.ts`.
+Keep HTTP/authentication in `index.ts`, routing and atomic retries in `service.ts`,
+database access in `store.ts`, and provider transport in `anthropic.ts`.
+Match the original scheduler using parity tests.
 Never accept a user ID from the browser to choose whose progress to read or write.
 
 Verify meaningful behavior changes, especially:
