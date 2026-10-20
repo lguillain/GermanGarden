@@ -234,6 +234,12 @@ Flashcards still load example sentences when opened.
 Review GET requests use `load_review_selection` instead: one database snapshot
 selects the next eligible word, one example sentence, and review counts. They
 skip the full catalogue and progress loaders, and never cache learner results.
+Topic-page additions use `keep_topic_word`: one atomic database call validates
+the word/topic, serializes seed-bag capacity checks under the learner profile
+lock, and appends at most one keep. It returns just that word and its state; no
+catalogue or progress snapshot is loaded. The frontend updates cached topic
+rows from this confirmation and marks affected learning queries stale without
+waiting for unrelated reads. `Server-Timing` exposes `keep` for this path.
 Rating previews still use the TypeScript scheduler; review POST writes retain
 their existing atomic version checks.
 Vocabulary imports can take up to five minutes to appear
@@ -307,6 +313,10 @@ tables enforce per-account reads, and only the backend can call write functions.
 JSON is used for RPC transport, not persisted as a learner document.
 
 ### Upgrade an existing JSON-based deployment
+
+For atomic topic additions, apply `202610200008_keep_topic_word.sql`, deploy the
+garden function, then publish the frontend. The new frontend expects the keep
+response to include the confirmed word.
 
 For the slim session and practice startup, apply
 `202610200007_practice_summary.sql`, deploy the garden function, and publish the

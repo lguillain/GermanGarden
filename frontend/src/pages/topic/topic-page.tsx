@@ -29,17 +29,29 @@ export function TopicPage() {
   });
   const add = useMutation({
     mutationFn: (word: Word) =>
-      api<{ added: boolean }>(
+      api<{ added: boolean; word: Word }>(
         `/topics/${encodeURIComponent(topic)}/words/${encodeURIComponent(word.id)}/keep`,
         {},
       ),
-    onSuccess: async (data, word) => {
+    onMutate: () => cache.cancelQueries({ queryKey: ['topic'] }),
+    onSuccess: (data, word) => {
       setNotice(
         data.added
           ? `${word.lemma} added to your seed bag.`
           : 'This word is already in your bag or garden.',
       );
-      await cache.invalidateQueries();
+      cache.setQueriesData<{ activity: Activity; words: Word[] }>(
+        { queryKey: ['topic'] },
+        (previous) =>
+          previous && {
+            ...previous,
+            words: previous.words.map((item) => (item.id === data.word.id ? data.word : item)),
+          },
+      );
+      // The confirmed word is already visible. Other screens refresh when opened;
+      // profile, topic names and timers do not depend on seed-bag changes.
+      for (const key of ['topic', 'garden', 'matcher', 'practice', 'review', 'flashcards'])
+        void cache.invalidateQueries({ queryKey: [key], refetchType: 'none' });
     },
   });
   const activity = result.data?.activity;

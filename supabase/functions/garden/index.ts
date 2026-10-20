@@ -1,3 +1,4 @@
+import { topicKeepRequest } from './topic-keep.ts';
 import { createClient } from '@supabase/supabase-js';
 import { Catalog, HttpError, requireThat } from './model.ts';
 import { Complete } from './ai.ts';
@@ -104,7 +105,10 @@ export async function handler(request: Request): Promise<Response> {
       );
     if (path === '/activities' && request.method === 'GET')
       return respond(await measure('activities', activities));
-    if ((path === '/review' || path === '/practice/summary') && request.method === 'GET') {
+    if (
+      ((path === '/review' || path === '/practice/summary') && request.method === 'GET') ||
+      topicKeepRequest(path, request.method)
+    ) {
       return respond(
         await measure('dispatch', () =>
           dispatch(path, request.method, requestUrl.searchParams, body, store, emptyCatalog),

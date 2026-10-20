@@ -1,8 +1,10 @@
+import { topicKeepRequest, topicKeepResponse, type TopicKeepResult } from './topic-keep.ts';
 import { matcherPreview } from './matcher-preview.ts';
 import { Garden, reviewSelectionResponse } from './domain.ts';
 import { Body, Complete, text, aiPractice, guidance } from './ai.ts';
 import { Catalog, Learner, ReviewSelection, HttpError, requireThat, shuffle } from './model.ts';
 export interface Store {
+  keepTopicWord?(wordId: string, topic: string): Promise<TopicKeepResult>;
   load(): Promise<{ version: number; data: Learner }>;
   save(version: number, data: Learner): Promise<boolean>;
   profile?(): Promise<{ name: string; level: string | null }>;
@@ -70,6 +72,9 @@ export async function dispatch(
     requireThat(['all', 'topic', 'bag'].includes(scope), 'Unknown word set.');
     return reviewSelectionResponse(await store.review(scope, topic), scope, topic);
   }
+  const keep = topicKeepRequest(path, method);
+  if (keep && store.keepTopicWord)
+    return topicKeepResponse(await store.keepTopicWord(keep.wordId, keep.topic));
   const snapshot = initial ?? (await store.load());
   const garden = new Garden(catalog, snapshot.data);
   if (method === 'GET') {
@@ -169,13 +174,14 @@ export async function dispatch(
           ),
         snapshot,
       );
-    const match = path.match(/^\/topics\/([^/]+)\/words\/([^/]+)\/keep$/);
-    if (match)
+    if (keep)
       return transact(
         store,
         catalog,
-        (currentGarden) =>
-          currentGarden.add(decodeURIComponent(match[2]), decodeURIComponent(match[1])),
+        (currentGarden) => {
+          const result = currentGarden.add(keep.wordId, keep.topic);
+          return { ...result, word: currentGarden.details(currentGarden.word(keep.wordId)) };
+        },
         snapshot,
       );
   }

@@ -8,7 +8,8 @@ export interface CatalogRequest {
 }
 export function catalogRequest(path: string, method: string): CatalogRequest {
   // This shared loader scopes only read-only topic lists; practice has its own
-  // snapshot-based loader. Mutations and discovery need the full catalogue.
+  // snapshot-based loader and atomic topic additions bypass it entirely.
+  // Remaining mutations and discovery need the full catalogue.
   const topic = method === 'GET' ? path.match(/^\/topics\/([^/]+)$/) : null;
   return {
     p_topic: topic ? decodeURIComponent(topic[1]) : null,

@@ -39,6 +39,7 @@ A German vocabulary web app. Users discover words they care about, practise them
 
 ## Seed bag
 - There is only ever one seed bag.
+- Adding a word from a topic updates that row from the server-confirmed result. It does not wait for unrelated page refreshes; failed saves leave the row unchanged. Duplicate additions preserve the existing bag/planted state.
 - It holds up to 20 words.
 - Words in the seed bag can be practised and reviewed at any time.
 - Reviewing a seed plants that word immediately, regardless of its rating, and removes it from the bag. Practice does not plant words.

@@ -21,6 +21,18 @@ export function createStore(admin: SupabaseClient, options: StoreOptions): Store
   if (scoped) loadFunction = 'load_scoped_progress';
   else if (matcher) loadFunction = 'load_matcher_progress';
   return {
+    async keepTopicWord(wordId, topic) {
+      const { data, error } = await measure('keep', () =>
+        admin.rpc('keep_topic_word', {
+          p_user_id: userId,
+          p_name: name,
+          p_word_id: wordId,
+          p_topic: topic,
+        }),
+      );
+      if (error) throw error;
+      return data;
+    },
     async review(scope, topic) {
       const { data, error } = await measure('review', () =>
         admin.rpc('load_review_selection', {

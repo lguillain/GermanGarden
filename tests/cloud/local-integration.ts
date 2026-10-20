@@ -23,6 +23,11 @@ async function api(client: typeof admin, path: string, body?: unknown) {
   if (body === undefined && ['/session', '/practice/summary'].includes(path.split('?')[0])) {
     assert.doesNotMatch(response.headers.get('server-timing') || '', /(?:catalog|progress);dur=/);
   }
+  if (body !== undefined && path.endsWith('/keep')) {
+    assert.match(response.headers.get('server-timing') || '', /keep;dur=/);
+    assert.ok(JSON.stringify(result).length < 2000, 'Keep response contains only the confirmed word');
+    assert.doesNotMatch(response.headers.get('server-timing') || '', /(?:catalog|progress|save);dur=/);
+  }
   if (body === undefined && path.split('?')[0] === '/review') {
     assert.match(response.headers.get('server-timing') || '', /review;dur=/);
     assert.doesNotMatch(response.headers.get('server-timing') || '', /(?:catalog|progress);dur=/);
@@ -79,6 +84,7 @@ try {
   const write = await clients[0].from('learner_profiles').update({ name: 'Forbidden' }).eq('user_id', userIds[0]); assert.ok(write.error);
   const rpc = await clients[0].rpc('save_learner_progress', { p_user_id: userIds[1], p_version: 0, p_changes: {} }); assert.ok(rpc.error);
   const reviewRpc = await clients[0].rpc('load_review_selection', { p_user_id: userIds[1] }); assert.ok(reviewRpc.error);
+  const keepRpc = await clients[0].rpc('keep_topic_word', { p_user_id: userIds[1], p_name: 'Wrong', p_word_id: fixtureId, p_topic: fixtureId }); assert.ok(keepRpc.error);
   const practiceRpc = await clients[0].rpc('load_practice_summary', { p_user_id: userIds[1] }); assert.ok(practiceRpc.error);
   if (process.argv.includes('--browser')) {
     execFileSync('npm', ['run', 'build', '--', '--outDir', '../dist-cloud'], {
@@ -125,9 +131,27 @@ try {
       console.log('Cloud browser checks passed: repository subpath, sign-in, page refresh, hidden articles, review completion and sign-out.');
     } finally { await browser?.close(); server.kill(); }
   }
+  const extraWords = Array.from({ length: 22 }, (_, i) => ({ id: `${fixtureId}-keep-${i}`, lemma: `Wort${i}`, pos: 'noun', english: 'word', level: 'A2' }));
+  const insertedWords = await admin.from('words').insert(extraWords); assert.equal(insertedWords.error, null);
+  const insertedLinks = await admin.from('word_activities').insert(extraWords.map(word => ({ word_id: word.id, activity_id: fixtureId, relevance: 3 }))); assert.equal(insertedLinks.error, null);
+  // Two simultaneous requests for one word must add it exactly once.
+  const duplicates = await Promise.all([api(clients[1], `/topics/${fixtureId}/words/${extraWords[0].id}/keep`, {}), api(clients[1], `/topics/${fixtureId}/words/${extraWords[0].id}/keep`, {})]);
+  assert.deepEqual(duplicates.map(result => result.added).sort(), [false, true]);
+  for (const word of extraWords.slice(1,19)) await api(clients[1], `/topics/${fixtureId}/words/${word.id}/keep`, {});
+  const { data: signedIn } = await clients[1].auth.getSession();
+  const finalSlot = await Promise.all(extraWords.slice(19).map(async word => {
+    const response = await fetch(`${url}/functions/v1/garden/topics/${fixtureId}/words/${word.id}/keep`, {
+      method: 'POST', headers: { Authorization: `Bearer ${signedIn.session!.access_token}`, apikey: status.ANON_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userIds[0] }),
+    });
+    return { status: response.status, data: await response.json() };
+  }));
+  assert.deepEqual(finalSlot.map(result => result.status).sort(), [200,409,409]);
+  assert.equal((await api(clients[1], '/practice/summary?scope=bag')).word_count, 20);
+  assert.equal((await api(clients[0], '/practice/summary?scope=bag')).word_count, 0);
   console.log('Local Supabase integration passed: auth, CORS, private progress, planting, practice, review completion, RLS and protected writes.');
 } finally {
   for (const id of userIds) await admin.auth.admin.deleteUser(id);
-  await admin.from('words').delete().eq('id', fixtureId);
+  await admin.from('words').delete().in('id', [fixtureId, ...Array.from({length:22},(_,i)=>`${fixtureId}-keep-${i}`)]);
   await admin.from('activities').delete().eq('id', fixtureId);
 }

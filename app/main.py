@@ -180,7 +180,7 @@ def add_topic_word(topic: str, word_id: str, conn: sqlite3.Connection = Db):
     existing = conn.execute("SELECT 1 FROM swipes WHERE word_id=? AND action='keep'",
                             (word_id,)).fetchone()
     if existing:
-        return {'added': False}
+        return {'added': False, 'word': next(w for w in topic_detail(topic, conn)['words'] if w['id'] == word_id)}
     if garden.seed_bag_count(conn) >= garden.SEED_BAG_CAP:
         raise HTTPException(409, 'Your seed bag is full. Review a seed to plant it and make room.')
     sentence = conn.execute('''SELECT id FROM sentences WHERE word_id=?
@@ -189,7 +189,7 @@ def add_topic_word(topic: str, word_id: str, conn: sqlite3.Connection = Db):
     conn.execute("INSERT INTO swipes (word_id, activity_id, sentence_id, action) VALUES (?, ?, ?, 'keep')",
                  (word_id, topic, sentence['id'] if sentence else None))
     conn.commit()
-    return {'added': True}
+    return {'added': True, 'word': next(w for w in topic_detail(topic, conn)['words'] if w['id'] == word_id)}
 
 
 @app.get('/api/matcher')
