@@ -58,6 +58,10 @@ test('production graduates both tracks and Learned stays fully grown, unreviewab
     const card = page.locator('.word-card');
     await expect(card).toContainText('EN → DE');
     await expect(card.getByRole('heading')).toHaveText('tree');
+    await expect(card).toContainText('The tree is tall.');
+    await expect(card).not.toContainText('Hint: B…');
+    await expect(card).not.toContainText('Der Baum ist groß.');
+    await card.getByRole('button', { name: 'Hint', exact: true }).click();
     await expect(card).toContainText('Hint: B…');
     await expect(card).not.toContainText('Baum');
     await page.getByRole('button', { name: 'Show answer', exact: true }).click();
@@ -94,8 +98,16 @@ test('production graduates both tracks and Learned stays fully grown, unreviewab
     if ((await page.locator('.word-card').getByRole('heading').innerText()) === 'flower')
       await page.getByRole('button', { name: 'Next', exact: true }).click();
     await expect(page.locator('.word-card').getByRole('heading')).toHaveText('tree');
+    await expect(page.locator('.word-card')).toContainText('The tree is tall.');
+    await expect(page.locator('.word-card')).not.toContainText('Hint: B…');
+    await page.getByRole('button', { name: 'Hint', exact: true }).click();
+    await expect(page.locator('.word-card')).toContainText('Hint: B…');
+    await page.getByRole('button', { name: 'DE → EN', exact: true }).click();
+    await page.getByRole('button', { name: 'EN → DE', exact: true }).click();
+    await expect(page.locator('.word-card')).not.toContainText('Hint: B…');
     await page.getByRole('button', { name: 'Show answer' }).click();
     await expect(page.locator('.translation')).toContainText('der Baum');
+    await expect(page.getByText('The tree is tall.', { exact: true })).toHaveCount(1);
     await page.getByRole('button', { name: 'DE → EN', exact: true }).click();
     await expect(page.locator('.translation')).toHaveCount(0);
     await expect(page.locator('.word-card').getByRole('heading')).toHaveText('Baum');
