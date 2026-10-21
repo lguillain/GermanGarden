@@ -20,7 +20,7 @@ async function setup() {
   return db;
 }
 function source() {
-  const state = freshLearner('Léa'); state.user.level = 'A2'; state.user.swipe_count = 2;
+  const state = { ...freshLearner('Léa'), sessions: [] as { started_at: string; last_beat_at: string; seconds: number }[] }; state.user.level = 'A2'; state.user.swipe_count = 2;
   state.user.level_bias = 0.30000000000000004; state.user.affinity_above = 1.4400000000000002;
   state.swipes = [{ word_id: 'word', activity_id: 'home', sentence_id: 1, action: 'keep', swiped_at: '2026-10-01T10:00:00Z', planted_at: null }];
   state.srs.word = { ...initialSrs(), due_at: '2026-10-20T10:00:00Z' };
@@ -30,7 +30,7 @@ function source() {
   return state;
 }
 async function load(db: PGlite, userId = userA) {
-  const result = await db.query<{ snapshot: { version: number; data: Learner } }>('select public.load_learner_progress($1,$2) as snapshot', [userId, 'Test']);
+  const result = await db.query<{ snapshot: { version: number; data: Learner & { sessions: unknown[]; time_summary?: { total_seconds: number } } } }>('select public.load_learner_progress($1,$2) as snapshot', [userId, 'Test']);
   return result.rows[0].snapshot;
 }
 async function save(db: PGlite, version: number, changes: unknown) {
@@ -85,7 +85,7 @@ test('invalid source data rolls the entire migration back without removing the o
     await db.query('insert into learner_state(user_id,data) values ($1,$2)', [userA, JSON.stringify(invalid)]);
     await assert.rejects(db.exec(migration), /check constraint/);
     await db.exec('rollback');
-    assert.deepEqual((await db.query<{ data: Learner }>('select data from learner_state')).rows[0].data, invalid);
+    assert.deepEqual((await db.query<{ data: Learner & { sessions: unknown[]; time_summary?: { total_seconds: number } } }>('select data from learner_state')).rows[0].data, invalid);
     assert.equal((await db.query<{ name: string | null }>("select to_regclass('public.learner_profiles')::text as name")).rows[0].name, null);
   } finally { await db.close(); }
 });
@@ -145,7 +145,7 @@ test('compact matcher reads preserve history and atomically append decisions wit
     state.swipes.push({ ...state.swipes[0], word_id: 'planted', planted_at: '2026-10-01T10:00:00Z' });
     state.srs.planted = initialSrs();
     await db.query('select import_learner_progress($1,$2)', [userA, JSON.stringify(state)]);
-    const read = async (id = userA) => (await db.query<{ snapshot: { version: number; data: Learner } }>('select load_matcher_progress($1,$2) snapshot', [id, 'Test'])).rows[0].snapshot;
+    const read = async (id = userA) => (await db.query<{ snapshot: { version: number; data: Learner & { sessions: unknown[]; time_summary?: { total_seconds: number } } } }>('select load_matcher_progress($1,$2) snapshot', [id, 'Test'])).rows[0].snapshot;
     const original = (await load(db)).data;
     const before = await read();
     assert.deepEqual(before.data.swipes.map(s => s.word_id), ['word']);

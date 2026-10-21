@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import type { Session, Time } from './api';
+import type { Session } from './api';
 import { api, ApiError } from './api';
 import { ErrorNotice, Loading } from './components/feedback';
 import { SetupPage } from './pages/setup-page';
@@ -22,13 +22,6 @@ export function AppShell() {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
-  const ready = !!session.data?.user.level;
-  useQuery({
-    queryKey: ['time', session.data?.user.name],
-    queryFn: () => api<Time>('/heartbeat', {}),
-    enabled: ready,
-    refetchInterval: () => (document.visibilityState === 'visible' ? 15000 : false),
-  });
   useEffect(() => {
     setMenuOpen(false);
     const heading = document.querySelector('h1');

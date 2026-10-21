@@ -99,10 +99,6 @@ export async function handler(request: Request): Promise<Response> {
       matcher: path === '/matcher',
       scoped: scopedProgressRequest(path, request.method),
     });
-    if (path === '/heartbeat')
-      return respond(
-        await dispatch(path, request.method, requestUrl.searchParams, body, store, emptyCatalog),
-      );
     if (path === '/activities' && request.method === 'GET')
       return respond(await measure('activities', activities));
     if (

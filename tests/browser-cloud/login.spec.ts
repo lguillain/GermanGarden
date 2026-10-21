@@ -17,7 +17,6 @@ test('sign-in submits the visible values when autofill does not dispatch input e
 test('farmer signs out only this session and allows signing back in or switching accounts', async ({ page }) => {
   const logoutScopes: (string | null)[] = [];
   let username = '';
-  const time = { today_seconds: 0, total_seconds: 0, current_session_seconds: 0, timer_seconds: 300 };
   await page.route('https://auth-test.supabase.co/**', async route => {
     const request = route.request(), url = new URL(request.url());
     if (url.pathname === '/auth/v1/token') {
@@ -35,10 +34,8 @@ test('farmer signs out only this session and allows signing back in or switching
       await route.fulfill({ status: 204 });
     } else if (url.pathname === '/functions/v1/garden/session') {
       await route.fulfill({ json: { user: { name: username, level: 'A2' }, ai_available: false } });
-    } else if (url.pathname === '/functions/v1/garden/heartbeat') {
-      await route.fulfill({ json: time });
     } else if (url.pathname === '/functions/v1/garden/garden') {
-      await route.fulfill({ json: { plots: [], topics: [], bag: [], summary: { bag_count: 0, bag_cap: 20, due_now: 0, planted_total: 0, time } } });
+      await route.fulfill({ json: { plots: [], topics: [], bag: [], summary: { bag_count: 0, bag_cap: 20, due_now: 0, planted_total: 0 } } });
     } else {
       throw new Error(`Unexpected request: ${url.pathname}`);
     }

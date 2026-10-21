@@ -1,5 +1,4 @@
-"""Vocab Garden state: seed bag, planting, growth stages, SM-2 reviews,
-and time tracking.
+"""Vocab Garden state: seed bag, planting, growth stages, and SM-2 reviews.
 
 The garden is a view over `swipes` (keep rows) plus `word_srs` (per-word
 spaced-repetition state). A kept word is in the SEED BAG while its swipe
@@ -16,8 +15,6 @@ import sqlite3
 from dataclasses import dataclass
 
 SEED_BAG_CAP = 20
-TIMER_SECONDS = 5 * 60                    # 5-minute visible timer
-SESSION_GAP_SECONDS = 90                  # heartbeat gap that starts a new session
 
 # Growth-stage thresholds (0 = unplanted; 5 = fully grown).
 GROWTH_LABELS = ["seed", "sprout", "seedling", "sapling", "bloom", "full"]
@@ -369,59 +366,6 @@ def next_review_card(conn: sqlite3.Connection, scope: str,
     return card
 
 
-# ---------------------------- time tracking ----------------------------
-
-
-def heartbeat(conn: sqlite3.Connection) -> dict:
-    """Called periodically from the browser. Extends the current session
-    (if last beat was recent) or starts a new one. Returns dashboard-ready
-    time stats."""
-    row = conn.execute(
-        "SELECT id, started_at, last_beat_at, seconds FROM sessions "
-        "ORDER BY last_beat_at DESC LIMIT 1"
-    ).fetchone()
-    gap = SESSION_GAP_SECONDS
-    if row:
-        delta = conn.execute(
-            "SELECT CAST((julianday('now') - julianday(?)) * 86400 AS INTEGER)",
-            (row["last_beat_at"],),
-        ).fetchone()[0]
-        delta = int(delta or 0)
-        if delta <= gap:
-            conn.execute(
-                "UPDATE sessions SET seconds = seconds + ?, "
-                "last_beat_at = datetime('now') WHERE id = ?",
-                (max(0, delta), row["id"]),
-            )
-        else:
-            conn.execute("INSERT INTO sessions DEFAULT VALUES")
-    else:
-        conn.execute("INSERT INTO sessions DEFAULT VALUES")
-    conn.commit()
-    return time_stats(conn)
-
-
-def time_stats(conn: sqlite3.Connection) -> dict:
-    """Return {today_seconds, total_seconds, current_session_seconds}."""
-    today = conn.execute(
-        "SELECT COALESCE(SUM(seconds), 0) FROM sessions "
-        "WHERE date(started_at) = date('now','localtime') "
-        "   OR date(last_beat_at) = date('now','localtime')"
-    ).fetchone()[0]
-    total = conn.execute(
-        "SELECT COALESCE(SUM(seconds), 0) FROM sessions"
-    ).fetchone()[0]
-    current = conn.execute(
-        "SELECT COALESCE(seconds, 0) FROM sessions ORDER BY last_beat_at DESC LIMIT 1"
-    ).fetchone()
-    return {
-        "today_seconds": int(today or 0),
-        "total_seconds": int(total or 0),
-        "current_session_seconds": int(current[0]) if current else 0,
-        "timer_seconds": TIMER_SECONDS,
-    }
-
-
 # ---------------------------- summary for the home ----------------------------
 
 
@@ -440,7 +384,6 @@ def home_summary(conn: sqlite3.Connection, level: str | None) -> dict:
         "due_now": int(due_now or 0),
         "new_in_bag": int(new_in_bag or 0),
         "planted_total": int(planted_total or 0),
-        "time": time_stats(conn),
     }
 
 

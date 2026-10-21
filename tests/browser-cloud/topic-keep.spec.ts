@@ -24,7 +24,6 @@ for (const outcome of ['added', 'duplicate', 'full'] as const) {
       }
       if (route.request().method() === 'GET' && saved) readsAfterSave.push(path);
       if (path.endsWith('/session')) return route.fulfill({json:{user:{name:'Test',level:'A2'},ai_available:false}});
-      if (path.endsWith('/heartbeat')) return route.fulfill({json:{today_seconds:0,total_seconds:0,current_session_seconds:0,timer_seconds:300}});
       if (path.endsWith('/practice/summary')) return route.fulfill({json:{word_count: saved && outcome === 'added' ? 1 : 0,counts:{plants:0,seeds:saved && outcome === 'added' ? 1 : 0}}});
       if (path.endsWith('/topics/home')) {
         if (saved) return; // A redundant refetch must not hold the button pending.

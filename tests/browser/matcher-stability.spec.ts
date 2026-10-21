@@ -10,7 +10,6 @@ async function mockApi(page: Page, getMatcher: () => Promise<ReturnType<typeof m
     let json: unknown;
     if (path === '/api/session') json = { user: { name: 'Test', level: 'A2' }, ai_available: false };
     else if (path === '/api/activities') json = [{ id: 'home', name: 'Home' }];
-    else if (path === '/api/heartbeat') json = { today_seconds: 0, total_seconds: 0, current_session_seconds: 0, timer_seconds: 300 };
     else if (path === '/api/practice/summary') json = { word_count: 0, counts: { plants: 0, seeds: 0 } };
     else if (path === '/api/topics/home/words/example/keep') { added = true; json = { added: true, word: { id: 'example', lemma: 'Beispiel', article: 'das', english: 'example', level: 'A2', pos: 'noun', status: 'bag', visual_stage: 'seeds', growth: 0 } }; }
     else if (path === '/api/topics/home') json = { activity: { id: 'home', name: 'Home' }, words: [{ id: 'example', lemma: 'Beispiel', article: 'das', english: 'example', level: 'A2', pos: 'noun', status: added ? 'bag' : 'new', visual_stage: added ? 'seeds' : 'unseen', growth: 0 }] };

@@ -17,7 +17,7 @@ export async function tracksDatabase() {
     create function auth.uid() returns uuid language sql as $$ select null::uuid $$;
     insert into auth.users values ('${account}'),('${otherAccount}');`);
   const files = readdirSync('supabase/migrations').sort();
-  for (const file of files.filter((f) => f.endsWith('.sql') && !f.includes('009_review_tracks')))
+  for (const file of files.filter((f) => f.endsWith('.sql') && f < '202610200009_review_tracks.sql'))
     await db.exec(readFileSync(`supabase/migrations/${file}`, 'utf8'));
   await db.exec(`insert into activities values ('home','Home',null);
     insert into words(id,lemma,article,pos,english,level) values ('tree','Baum','der','noun','tree','A2'),('flower','Blume','die','noun','flower','A2');
@@ -48,6 +48,9 @@ export async function tracksDatabase() {
     JSON.stringify(freshLearner('Other')),
   ]);
   await db.exec(readFileSync('supabase/migrations/202610200009_review_tracks.sql', 'utf8'));
+  await db.query("insert into learner_sessions(user_id,position,started_at,last_beat_at,seconds) values ($1,0,now(),now(),42)", [account]);
+  for (const file of files.filter((f) => f.endsWith('.sql') && f > '202610200009_review_tracks.sql'))
+    await db.exec(readFileSync(`supabase/migrations/${file}`, 'utf8'));
   const catalog = (await db.query<{ data: Catalog }>('select load_garden_catalog() data')).rows[0]
     .data;
   function store(userId = account): Store {

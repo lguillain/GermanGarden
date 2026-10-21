@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
 
-const time = { today_seconds: 0, total_seconds: 0, current_session_seconds: 0, timer_seconds: 300 };
 const counts = { unseen: 1, seeds: 0, planted: 0, due: 0, grown: 0 };
 
 test.beforeEach(async ({ page }) => {
@@ -12,7 +11,6 @@ test.beforeEach(async ({ page }) => {
   await page.route('https://auth-test.supabase.co/**', async route => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith('/session')) return route.fulfill({ json: { user: { name: 'Test', level: 'A2' }, ai_available: true } });
-    if (path.endsWith('/heartbeat')) return route.fulfill({ json: time });
     if (path.endsWith('/activities')) return route.fulfill({ json: [{ id: 'home', name: 'Home' }] });
     throw new Error(`Unexpected request ${path}`);
   });

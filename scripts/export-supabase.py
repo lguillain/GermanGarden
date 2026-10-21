@@ -45,11 +45,7 @@ def learner(conn):
         if review.get('track') == 'recognition':
             review.pop('track')
         review['reviewed_at'] = timestamp(review['reviewed_at'])
-    sessions = rows(conn, 'sessions')
-    for session in sessions:
-        for key in ('started_at', 'last_beat_at'):
-            session[key] = timestamp(session[key])
-    return dict(user=user, swipes=swipes, srs=srs, reviews=reviews, sessions=sessions,
+    return dict(user=user, swipes=swipes, srs=srs, reviews=reviews,
                 known=[r['word_id'] for r in rows(conn, 'known_words')],
                 learned=[r['word_id'] for r in rows(conn, 'flashcard_learned')],
                 weights={r['activity_id']: r['weight'] for r in rows(conn, 'activity_weights')})

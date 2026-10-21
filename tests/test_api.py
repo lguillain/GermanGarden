@@ -401,14 +401,11 @@ class ApiTests(unittest.TestCase):
             self.plant_fixture()
 
             def fetch(path):
-                if path == '/api/heartbeat':
-                    response = self.client.post(path, json={})
-                else:
-                    response = self.client.get(path)
+                response = self.client.get(path)
                 return path, response.status_code, response.json()
 
             with ThreadPoolExecutor(max_workers=8) as pool:
-                results = list(pool.map(fetch, ['/api/garden', '/api/heartbeat', '/api/session'] * 10))
+                results = list(pool.map(fetch, ['/api/garden', '/api/session'] * 10))
             for path, status, data in results:
                 self.assertEqual(status, 200, (path, data))
                 if path == '/api/garden':

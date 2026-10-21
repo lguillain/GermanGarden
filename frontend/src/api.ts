@@ -88,12 +88,6 @@ export interface Session {
   user: { name: string; level: string | null };
   ai_available: boolean;
 }
-export interface Time {
-  today_seconds: number;
-  total_seconds: number;
-  current_session_seconds: number;
-  timer_seconds: number;
-}
 export interface Topic extends Activity {
   overview: Record<'unseen' | 'seeds' | 'planted' | 'due' | 'grown', number>;
   total: number;
@@ -116,7 +110,6 @@ export interface Garden {
     bag_cap: number;
     due_now: number;
     planted_total: number;
-    time: Time;
   };
 }
 export interface Matcher {

@@ -18,15 +18,6 @@ test('saving a review sends only changed progress and newly appended history', (
   });
 });
 
-test('cloud heartbeat skips loading and saving learner progress', async () => {
-  const summary = { today_seconds: 15, total_seconds: 42, current_session_seconds: 15, timer_seconds: 300 };
-  const result = await dispatch('/heartbeat', 'POST', new URLSearchParams(), {}, {
-    async load() { throw new Error('Must not load progress'); },
-    async save() { throw new Error('Must not save progress'); },
-    async heartbeat() { return summary; },
-  }, { words: [], activities: [], word_activities: [], sentences: [] });
-  assert.equal(result, summary);
-});
 
 test('cloud session reads only the profile, without loading or saving progress', async () => {
   const result = await dispatch('/session', 'GET', new URLSearchParams(), {}, {

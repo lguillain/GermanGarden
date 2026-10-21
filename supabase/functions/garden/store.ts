@@ -99,12 +99,5 @@ export function createStore(admin: SupabaseClient, options: StoreOptions): Store
       if (result.error) throw result.error;
       return result.data === true;
     },
-    async heartbeat() {
-      const { data, error } = await measure('heartbeat', () =>
-        admin.rpc('heartbeat_learner', { p_user_id: userId, p_name: name }),
-      );
-      if (error) throw error;
-      return data as NonNullable<Learner['time_summary']>;
-    },
   };
 }

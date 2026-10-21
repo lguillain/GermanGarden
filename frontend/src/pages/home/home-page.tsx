@@ -5,13 +5,6 @@ import { ErrorNotice, Heading, Loading } from '../../components/feedback';
 import GardenScene from './garden-scene';
 import { SeedBag } from '../../components/seed-bag';
 
-const duration = (seconds: number) =>
-  seconds >= 3600
-    ? `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`
-    : seconds >= 60
-      ? `${Math.floor(seconds / 60)}m`
-      : `${seconds}s`;
-
 export function HomePage() {
   const result = useQuery(gardenQuery());
   const garden = result.data;
@@ -48,14 +41,6 @@ export function HomePage() {
               <div>
                 <dt>Reviews due</dt>
                 <dd>{summary.due_now}</dd>
-              </div>
-              <div>
-                <dt>Time today</dt>
-                <dd>{duration(summary.time.today_seconds)}</dd>
-              </div>
-              <div>
-                <dt>Total time</dt>
-                <dd>{duration(summary.time.total_seconds)}</dd>
               </div>
             </dl>
           </section>

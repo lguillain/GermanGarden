@@ -96,7 +96,7 @@ test('topic selection prefers least explored eligible topics and respects exclus
   assert.equal(garden.bestTopic('home'), null);
 });
 
-test('review and heartbeat reuse their initial progress read', async () => {
+test('reviews reuse their initial progress read', async () => {
   const g = fixture(); g.add('word-0', 'home');
   const store = memoryStore(g);
   let reads = 0;
@@ -107,10 +107,6 @@ test('review and heartbeat reuse their initial progress read', async () => {
   await dispatch('/review', 'POST', new URLSearchParams(), { word_id: 'word-0', grade: 3, scope: 'bag' }, counted, catalog);
   assert.equal(reads, 1);
   assert.equal(store.state.reviews.length, 1);
-  reads = 0;
-  await dispatch('/heartbeat', 'POST', new URLSearchParams(), {}, counted, { words: [], activities: [], word_activities: [], sentences: [] });
-  assert.equal(reads, 1);
-  assert.equal(store.state.sessions.length, 1);
 });
 
 test('catalogue indexes preserve memberships, sentence choices and catalogue isolation', () => {
@@ -139,11 +135,6 @@ test('practice AI preserves state and rejects out-of-scope words', async () => {
   assert.ok('history' in chat && Array.isArray(chat.history)); assert.deepEqual(chat.history[0].corrections, []);
 });
 
-test('heartbeat counts elapsed time once and starts a new session after inactivity', () => {
-  const g = fixture(); g.heartbeat(); g.now += 15000; g.heartbeat(); g.heartbeat();
-  assert.equal(g.time().total_seconds, 15);
-  g.now += 100000; g.heartbeat(); assert.equal(g.time().total_seconds, 15); assert.equal(g.state.sessions.length, 2);
-});
 
 test('scheduler matches the original Python implementation over every stage and rating', () => {
   const states = [initialSrs(), { ...initialSrs(), state: 'relearning', reps: 0, lapses: 2 }, ...[1, 7, 21, 45, 60].map(interval_days => ({ ...initialSrs(), state: interval_days >= 60 ? 'graduated' : 'review', interval_days, reps: 4 }))];

@@ -114,7 +114,6 @@ test('imports preserve production progress and reject unknown nested fields; pra
   const { db, catalog, store } = await tracksDatabase();
   try {
     const state = (await store().load()).data;
-    delete state.time_summary;
     state.srs.tree.production = {
       ...initialSrs(),
       interval_days: 21,
@@ -154,4 +153,20 @@ test('imports preserve production progress and reject unknown nested fields; pra
   } finally {
     await db.close();
   }
+});
+
+test('time tracking migration removes stored time and RPCs while preserving learning progress', async () => {
+  const { db, store } = await tracksDatabase();
+  try {
+    const state = (await store().load()).data;
+    assert.equal(state.srs.tree.interval_days, 25);
+    assert.deepEqual(state.known, ['flower']);
+    assert.equal('sessions' in state, false);
+    assert.equal('time_summary' in state, false);
+    const result = await db.query<{ table_name: string | null; heartbeat: string | null; summary: string | null }>(`
+      select to_regclass('public.learner_sessions')::text table_name,
+        to_regprocedure('public.heartbeat_learner(uuid,text,timestamp with time zone)')::text heartbeat,
+        to_regprocedure('public.learner_time(uuid,timestamp with time zone)')::text summary`);
+    assert.deepEqual(result.rows[0], { table_name: null, heartbeat: null, summary: null });
+  } finally { await db.close(); }
 });

@@ -13,7 +13,6 @@ export interface Store {
     all_plants: number;
     topic_exists: boolean;
   }>;
-  heartbeat?(): Promise<NonNullable<Learner['time_summary']>>;
   review?(scope: string, topic: string, excluded?: string[]): Promise<ReviewSelection>;
 }
 export type Snapshot = Awaited<ReturnType<Store['load']>>;
@@ -51,7 +50,6 @@ export async function dispatch(
       ai_available: !!complete,
     };
   }
-  if (path === '/heartbeat' && method === 'POST' && store.heartbeat) return store.heartbeat();
   const scope = method === 'GET' ? query.get('scope') || 'all' : text(body, 'scope', 'all');
   const topic = method === 'GET' ? query.get('topic') || '' : text(body, 'topic');
   if (path === '/practice/summary' && method === 'GET' && store.practiceSummary) {
@@ -156,8 +154,6 @@ export async function dispatch(
         snapshot,
       );
     }
-    if (path === '/heartbeat')
-      return transact(store, catalog, (currentGarden) => currentGarden.heartbeat(), snapshot);
     if (path === '/review/learned')
       return transact(
         store,

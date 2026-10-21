@@ -243,8 +243,7 @@ waiting for unrelated reads. `Server-Timing` exposes `keep` for this path.
 Rating previews still use the TypeScript scheduler; review POST writes retain
 their existing atomic version checks.
 Vocabulary imports can take up to five minutes to appear
-in an existing instance. Learner progress is never cached. Timer heartbeats skip
-catalogue loading entirely. Responses include `Server-Timing` durations for
+in an existing instance. Learner progress is never cached. Responses include `Server-Timing` durations for
 authentication, catalogue loading, progress reads, dispatch, saves, and explicit
 AI calls, where applicable. Ordinary discovery does not invoke AI; free-text
 guidance and AI practice still do.
@@ -304,11 +303,9 @@ checks real Auth/API/RLS behavior, and removes its fixtures. It does not call AI
 
 Learner data lives in typed relational tables: `learner_profiles`,
 `learner_decisions`, `learner_word_marks`, `learner_srs`,
-`learner_topic_weights`, `learner_reviews`, and `learner_sessions`.
-Ordinary requests load current progress and time totals, not review or session
-history. Writes send only changed rows and append new reviews. Atomic version
-checks recheck seed-bag capacity and review eligibility on conflicts. Heartbeats
-update session rows separately without invalidating review versions. All learner
+`learner_topic_weights`, and `learner_reviews`.
+Ordinary requests load current progress, not review history. Writes send only changed rows and append new reviews. Atomic version
+checks recheck seed-bag capacity and review eligibility on conflicts. All learner
 tables enforce per-account reads, and only the backend can call write functions.
 JSON is used for RPC transport, not persisted as a learner document.
 
@@ -353,7 +350,7 @@ validation rolls back the entire migration. No JSON archive remains in the datab
    supabase functions deploy garden
    ```
 
-4. Confirm sign-in, garden, review, and time tracking. Publishing GitHub Pages is
+4. Confirm sign-in, garden and review. Publishing GitHub Pages is
    not required for this backend-only change. Do not redeploy an older garden
    function: it requires the removed JSON table. Regenerate any old import SQL
    with the updated exporter before running it.
@@ -417,3 +414,13 @@ Run the graduation browser test with
 `npx playwright test --config playwright.cloud.config.ts tests/browser-cloud/review-tracks.spec.ts`.
 It uses the real domain and PostgreSQL migration/write functions in PGlite, with
 simulated authentication and HTTP transport; it does not use live accounts.
+
+### Remove learning-time tracking
+
+Deploy the frontend and garden function from this version, then apply
+`supabase db push --linked --yes`. Migration
+`202610210001_remove_time_tracking.sql` deletes stored learning-time sessions
+and their RPCs, and removes time fields from progress reads and imports.
+Vocabulary progress, review history, and review schedules are preserved.
+Existing SQLite databases drop their old `sessions` table when opened through
+the app's schema initialization. Exports no longer include time-tracking data.

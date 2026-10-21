@@ -1,7 +1,6 @@
 import { Learner } from './model.ts';
 
-// Only changed rows cross the database boundary. Review history is append-only;
-// study sessions are updated independently by the heartbeat RPC.
+// Only changed rows cross the database boundary. Review history is append-only.
 export function progressChanges(before: Learner, after: Learner) {
   const different = (a: unknown, b: unknown) => JSON.stringify(a) !== JSON.stringify(b);
   return {

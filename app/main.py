@@ -419,10 +419,6 @@ def grammar(body: GrammarInput, conn: sqlite3.Connection = Db):
     return learn.grammar_generate(level, word, config)
 
 
-@app.post('/api/heartbeat')
-def heartbeat(conn: sqlite3.Connection = Db):
-    return garden.heartbeat(conn)
-
 
 # A built frontend can be served by the same local Python process.
 DIST = Path(__file__).resolve().parent.parent / 'dist'

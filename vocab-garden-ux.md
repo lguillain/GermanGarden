@@ -64,8 +64,8 @@ Topic word lists apply the level visibility rules described below.
 - **Find new words** opens the vocab matcher. **Review words** reviews planted words across all topics and shows a due count when there are reviews due. Once home data loads, this action is hidden if there are no planted words.
 - Selecting the seed bag in the garden opens its word list, with **Practice** and **Plant** actions when it contains seeds. **Plant** starts a seed-bag review; it does not plant words without ratings.
 - The sidebar provides Garden, Explore topics, Find words, Practice, and Review navigation.
-- The home summary shows words planted, reviews due, time today, and total time. The planted count counts reviewed words, while plots also include words marked Learned.
-- There is currently no visible 5-minute countdown.
+- The home summary shows words planted and reviews due. The planted count counts reviewed words, while plots also include words marked Learned.
+- The app does not track time spent learning or store activity-timer sessions.
 
 ## Explore topics and topic pages
 - Explore topics lists all topics, including empty ones, and supports searching by topic name. Selecting a topic opens its topic page.

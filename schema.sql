@@ -114,12 +114,3 @@ CREATE TABLE IF NOT EXISTS reviews (
   reviewed_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_reviews_word ON reviews(word_id);
-
--- Rolling time-in-app accounting. One row per active heartbeat window.
-CREATE TABLE IF NOT EXISTS sessions (
-  id         INTEGER PRIMARY KEY AUTOINCREMENT,
-  started_at TEXT NOT NULL DEFAULT (datetime('now')),
-  last_beat_at TEXT NOT NULL DEFAULT (datetime('now')),
-  seconds    INTEGER NOT NULL DEFAULT 0
-);
-CREATE INDEX IF NOT EXISTS idx_sessions_last_beat ON sessions(last_beat_at);

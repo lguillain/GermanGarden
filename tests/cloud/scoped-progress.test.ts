@@ -58,7 +58,6 @@ test('scoped progress preserves topic/practice responses and isolates accounts',
     assert.ok(practiceState.swipes.every(s => s.action === 'keep'));
     assert.equal(practiceState.srs.drop, undefined);
     assert.deepEqual(topicState.known, ['known']);
-    assert.equal(topicState.time_summary, undefined);
     assert.deepEqual((await load('missing', false)).swipes, []);
     for (const role of ['anon', 'authenticated']) {
       await db.exec(`set role ${role}`);

@@ -24,9 +24,9 @@ class RequiresProfile(Exception):
 
 
 def _migrate_user_state(conn: sqlite3.Connection) -> None:
-    """Non-destructive ADD COLUMN migrations. Covers user_state and swipes;
+    """Legacy schema migrations. Covers user_state and swipes;
     schema.sql's CREATE IF NOT EXISTS handles brand-new tables (word_srs,
-    reviews, sessions)."""
+    reviews)."""
     existing = {r["name"] for r in conn.execute("PRAGMA table_info(user_state)")}
     for col, ddl in [
         ("name",            "TEXT"),
@@ -118,7 +118,7 @@ def _bootstrap_default() -> None:
             "DELETE FROM swipes; DELETE FROM known_words; "
             "DELETE FROM activity_weights; DELETE FROM user_state; "
             "DELETE FROM flashcard_learned; DELETE FROM word_srs; "
-            "DELETE FROM reviews; DELETE FROM sessions;"
+            "DELETE FROM reviews;"
         )
         conn.commit()
 
@@ -146,7 +146,7 @@ def create_profile(name: str) -> str:
             "DELETE FROM swipes; DELETE FROM known_words; "
             "DELETE FROM activity_weights; DELETE FROM user_state; "
             "DELETE FROM flashcard_learned; DELETE FROM word_srs; "
-            "DELETE FROM reviews; DELETE FROM sessions;"
+            "DELETE FROM reviews;"
         )
         conn.execute(
             "INSERT INTO user_state (id, name) VALUES (1, ?)", (name,),

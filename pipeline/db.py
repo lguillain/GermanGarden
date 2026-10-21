@@ -28,6 +28,7 @@ def connect(path: Path | None = None, *, check_same_thread: bool = True) -> sqli
 
 def ensure_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+    conn.execute("DROP TABLE IF EXISTS sessions")
     conn.commit()
 
 

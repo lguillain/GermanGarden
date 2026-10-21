@@ -14,7 +14,6 @@ for (const failure of [false, true]) {
       const path = new URL(route.request().url()).pathname;
       if (path.endsWith('/session')) return route.fulfill({ json: { user: { name: 'Test', level: 'A2' }, ai_available: false } });
       if (path.endsWith('/activities')) return route.fulfill({ json: [] });
-      if (path.endsWith('/heartbeat')) return route.fulfill({ json: { today_seconds: 0, total_seconds: 0, current_session_seconds: 0, timer_seconds: 300 } });
       if (path.endsWith('/matcher') && route.request().method() === 'GET') return route.fulfill({ json: {
         card: card('First'), bag: [], previews: { keep: { card: card('Next'), bag: [card('First')] } },
       } });

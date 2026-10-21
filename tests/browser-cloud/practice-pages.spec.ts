@@ -27,15 +27,6 @@ test.beforeEach(async ({ page }) => {
           ai_available: true,
         },
       });
-    if (path.endsWith('/heartbeat'))
-      return route.fulfill({
-        json: {
-          today_seconds: 0,
-          total_seconds: 0,
-          current_session_seconds: 0,
-          timer_seconds: 300,
-        },
-      });
     if (path.endsWith('/practice/summary')) return route.fulfill({ json: { word_count: words.length, counts: { plants: 2, seeds: 0 } } });
     if (path.endsWith('/activities')) return route.fulfill({ json: [] });
     if (path.endsWith('/practice'))

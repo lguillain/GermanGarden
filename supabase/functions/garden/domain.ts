@@ -70,8 +70,6 @@ const SEED_BAG_CAPACITY = 20;
 const LEVELS = ['A1', 'A2', 'B1'];
 const SECONDS_PER_DAY = 86_400;
 const PRACTICE_TARGET_COUNT = 5;
-const SESSION_IDLE_SECONDS = 90;
-const TIMER_SECONDS = 300;
 
 export class Garden {
   constructor(
@@ -465,29 +463,6 @@ export class Garden {
         ),
     };
   }
-  time() {
-    if (this.state.time_summary) return this.state.time_summary;
-    const today = this.iso().slice(0, 10),
-      sessions = this.state.sessions;
-    return {
-      today_seconds: sessions
-        .filter((s) => s.started_at.startsWith(today) || s.last_beat_at.startsWith(today))
-        .reduce((sum, s) => sum + s.seconds, 0),
-      total_seconds: sessions.reduce((sum, s) => sum + s.seconds, 0),
-      current_session_seconds: sessions.at(-1)?.seconds || 0,
-      timer_seconds: TIMER_SECONDS,
-    };
-  }
-  heartbeat() {
-    const last = this.state.sessions.at(-1),
-      gap = last ? Math.floor((this.now - Date.parse(last.last_beat_at)) / 1000) : Infinity;
-    if (last && gap <= SESSION_IDLE_SECONDS) {
-      last.seconds += Math.max(0, gap);
-      last.last_beat_at = this.iso();
-    } else
-      this.state.sessions.push({ started_at: this.iso(), last_beat_at: this.iso(), seconds: 0 });
-    return this.time();
-  }
   home() {
     const plots = [],
       topics = [];
@@ -524,7 +499,6 @@ export class Garden {
         bag_cap: SEED_BAG_CAPACITY,
         due_now: this.reviewWords().length,
         planted_total: this.catalog.words.filter((word) => this.kept(word.id)?.planted_at).length,
-        time: this.time(),
       },
     };
   }

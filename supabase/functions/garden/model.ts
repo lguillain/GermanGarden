@@ -77,14 +77,7 @@ export interface Learner {
   learned: string[];
   srs: Record<string, Srs>;
   reviews: { word_id: string; grade: number; reviewed_at: string; track?: ReviewTrack }[];
-  sessions: { started_at: string; last_beat_at: string; seconds: number }[];
   weights: Record<string, number>;
-  time_summary?: {
-    today_seconds: number;
-    total_seconds: number;
-    current_session_seconds: number;
-    timer_seconds: number;
-  };
 }
 export class HttpError extends Error {
   constructor(
@@ -115,7 +108,6 @@ export function freshLearner(name: string): Learner {
     learned: [],
     srs: {},
     reviews: [],
-    sessions: [],
     weights: {},
   };
 }
