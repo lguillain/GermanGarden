@@ -120,7 +120,11 @@ def setup(body: OnboardingInput, conn: sqlite3.Connection = Db):
 
 
 @app.get('/api/garden')
-def home(conn: sqlite3.Connection = Db):
+def home(time_zone: str = 'UTC', conn: sqlite3.Connection = Db):
+    try:
+        garden.ZoneInfo(time_zone)
+    except (garden.ZoneInfoNotFoundError, ValueError):
+        raise HTTPException(422, 'Unknown time zone.')
     topics = garden.garden_topics(conn, None)
     overview = garden.topic_overview(conn, user(conn)['level'])
     # Show planted and learned words, including those outside the discovery level.
@@ -133,7 +137,7 @@ def home(conn: sqlite3.Connection = Db):
     plots.sort(key=lambda plot: plot['name'].casefold())
     return {'topics': [{**asdict(t), 'planted_pct': t.planted_pct, 'grown_pct': t.grown_pct, 'overview': overview.get(t.id, dict(unseen=0, seeds=0, planted=0, due=0, grown=0))} for t in topics],
             'plots': plots,
-            'summary': garden.home_summary(conn, user(conn)['level']), 'bag': bag(conn)}
+            'summary': garden.home_summary(conn, user(conn)['level'], time_zone), 'bag': bag(conn)}
 
 
 @app.get('/api/topics/{topic}')

@@ -425,3 +425,39 @@ input::placeholder, textarea::placeholder { color: #637d67; opacity: 1; }
   .collapsible-bag:not(.bag-open) > :not(.mobile-bag-toggle) { display: none; }
   .collapsible-bag.bag-open > .mobile-bag-toggle { margin-bottom: 16px; }
 }
+
+/* Keep the summary and forecast action on one balanced row. */
+.garden-progress { display: flex; align-items: center; gap: 32px; }
+.garden-progress .progress-totals { flex: 1; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.garden-progress > .button { flex-shrink: 0; }
+.upcoming-reviews { width: min(600px, calc(100vw - 32px)); max-height: 85dvh; overflow: auto; padding: 28px; border: 1px solid #d9dfcc; border-radius: 24px; background: #fffaf0; color: #34432e; box-shadow: 0 20px 80px #24352140; }
+.upcoming-reviews::backdrop { background: #172a2166; backdrop-filter: blur(3px); }
+.upcoming-reviews-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.garden-progress .upcoming-reviews-header h2 { margin: 0; font-size: 22px; }
+.upcoming-reviews p { line-height: 1.6; color: var(--muted); font-size: 14px; margin: 16px 0 24px; }
+.upcoming-review-counts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 0 0 28px; }
+.upcoming-review-counts > div { padding: 16px 20px; background: #edf1e4; border-radius: 16px; }
+.upcoming-review-counts dt { font-size: 13px; color: var(--muted); }
+.upcoming-review-counts dd { margin: 6px 0 0; font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.review-forecast { margin: 0; }
+.review-forecast figcaption { font-size: 14px; font-weight: 600; margin-bottom: 20px; }
+.review-forecast-bars { list-style: none; padding: 0; margin: 0; display: grid; gap: 16px; }
+.review-forecast-bars li { display: grid; grid-template-columns: 84px minmax(0, 1fr) 36px; align-items: center; gap: 14px; }
+.review-forecast-bars time { display: grid; gap: 3px; font-size: 14px; }
+.review-forecast-bars small { color: var(--muted); font-size: 11px; }
+.review-forecast-bars strong { text-align: right; font-size: 16px; font-variant-numeric: tabular-nums; }
+.review-forecast-track { height: 26px; background: #e8eddf; border-radius: 7px; overflow: hidden; }
+.review-forecast-bar { height: 100%; min-width: 3px; border-radius: 7px; background: #39664f; }
+@media (max-width: 900px) {
+  .garden-progress { flex-wrap: wrap; gap: 20px; }
+  .garden-progress .progress-totals { flex-basis: 100%; gap: 12px; }
+}
+@media (max-width: 480px) {
+  .garden-progress { padding: 20px; }
+  .garden-progress > .button { width: 100%; }
+  .upcoming-reviews { padding: 20px; }
+  .garden-progress .upcoming-reviews-header h2 { font-size: 19px; }
+  .upcoming-review-counts { gap: 10px; }
+  .upcoming-review-counts > div { padding: 14px; }
+  .review-forecast-bars li { grid-template-columns: 72px minmax(0, 1fr) 28px; gap: 10px; }
+}

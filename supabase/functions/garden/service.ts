@@ -91,7 +91,7 @@ export async function dispatch(
           ai_available: !!complete,
         };
       case '/garden':
-        return garden.home();
+        return garden.home(query.get('time_zone') || 'UTC');
       case '/review':
         return garden.review(scope, topic, excluded);
       case '/practice/summary':

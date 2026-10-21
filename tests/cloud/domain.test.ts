@@ -142,3 +142,51 @@ test('scheduler matches the original Python implementation over every stage and 
   const expected = JSON.parse(execFileSync('python3', ['-c', 'import json,sys; from app.garden import review_outcome,growth_stage; print(json.dumps([dict(outcome=review_outcome(c["state"],c["grade"]),growth=growth_stage(review_outcome(c["state"],c["grade"]))) for c in json.load(sys.stdin)]))'], { input: JSON.stringify(cases), encoding: 'utf8' }));
   cases.forEach((c, i) => { const outcome = reviewOutcome(c.state, c.grade); assert.deepEqual(outcome, expected[i].outcome); assert.equal(growth(outcome), expected[i].growth); });
 });
+
+test('today counts each planted word once across tracks, including overdue but excluding seeds and Learned words', () => {
+  const g = fixture();
+  g.now = Date.parse('2026-10-25T12:00:00Z');
+  for (let i = 0; i < 8; i++) {
+    g.add(`word-${i}`, 'home');
+    g.kept(`word-${i}`)!.planted_at = g.iso();
+    g.state.srs[`word-${i}`] = { ...initialSrs(), due_at: '2026-10-26T12:00:00Z' };
+  }
+  g.state.srs['word-0'].due_at = '2026-10-24T10:00:00Z'; // overdue
+  g.state.srs['word-1'].due_at = '2026-10-25T22:59:59Z'; // just before local midnight
+  g.state.srs['word-1'].production = { ...initialSrs(), due_at: '2026-10-25T20:00:00Z' };
+  g.state.srs['word-2'].production = { ...initialSrs(), due_at: '2026-10-25T18:00:00Z' };
+  g.state.srs['word-3'].due_at = '2026-10-25T23:00:00Z'; // tomorrow in Zurich, today in UTC
+  g.state.srs['word-4'].due_at = g.iso();
+  g.state.known.push('word-4');
+  g.state.srs['word-5'].due_at = g.iso();
+  g.state.learned.push('word-5');
+  g.state.srs['word-6'].due_at = g.iso();
+  g.kept('word-6')!.planted_at = null;
+  delete g.state.srs['word-7']; // unscheduled planted word
+  const before = structuredClone(g.state);
+  assert.deepEqual(g.home('Europe/Zurich').summary.upcoming_reviews, [{ date: '2026-10-25', count: 2 }, { date: '2026-10-26', count: 1 }]);
+  assert.equal(g.home('Europe/Zurich').summary.due_today, 4);
+  assert.equal(g.home('UTC').summary.due_today, 5);
+  assert.equal(g.home('Europe/Zurich').summary.due_now, 2);
+  assert.equal(g.review().remaining, 2); // upcoming words cannot be reviewed early
+  assert.deepEqual(g.state, before);
+  assert.throws(() => g.home('Not/AZone'), /Unknown time zone/);
+});
+
+test('today uses local calendar dates across DST and UTC date boundaries', () => {
+  for (const [now, zone, lastToday, tomorrow] of [
+    ['2026-03-28T23:30:00Z', 'Europe/Zurich', '2026-03-29T21:59:59Z', '2026-03-29T22:00:00Z'],
+    ['2026-10-24T22:30:00Z', 'Europe/Zurich', '2026-10-25T22:59:59Z', '2026-10-25T23:00:00Z'],
+    ['2026-10-26T02:00:00Z', 'America/Los_Angeles', '2026-10-26T06:59:59Z', '2026-10-26T07:00:00Z'],
+  ]) {
+    const g = fixture();
+    g.now = Date.parse(now);
+    g.add('word-0', 'home');
+    g.kept('word-0')!.planted_at = g.iso();
+    g.state.srs['word-0'] = { ...initialSrs(), due_at: lastToday };
+    assert.equal(g.home(zone).summary.due_today, 1);
+    assert.equal(g.home(zone).summary.due_now, 0);
+    g.state.srs['word-0'].due_at = tomorrow;
+    assert.equal(g.home(zone).summary.due_today, 0);
+  }
+});

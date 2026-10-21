@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { gardenQuery } from '../../queries/garden-query';
 import { ErrorNotice, Heading, Loading } from '../../components/feedback';
 import GardenScene from './garden-scene';
+import { UpcomingReviews } from './upcoming-reviews';
 import { SeedBag } from '../../components/seed-bag';
 
 export function HomePage() {
@@ -39,10 +40,17 @@ export function HomePage() {
                 <dd>{summary.planted_total}</dd>
               </div>
               <div>
-                <dt>Reviews due</dt>
+                <dt>Reviews due now</dt>
                 <dd>{summary.due_now}</dd>
               </div>
+              {summary.due_today !== undefined && (
+                <div>
+                  <dt>Reviews due today</dt>
+                  <dd>{summary.due_today}</dd>
+                </div>
+              )}
             </dl>
+            <UpcomingReviews summary={summary} />
           </section>
           <GardenScene
             plots={garden.plots}

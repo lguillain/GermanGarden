@@ -12,7 +12,13 @@ SM-2 variant; interval and ease update deterministically.
 from __future__ import annotations
 
 import sqlite3
+import json
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
+try:
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+except ImportError:  # Python 3.8 local environments
+    from backports.zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 SEED_BAG_CAP = 20
 
@@ -369,7 +375,63 @@ def next_review_card(conn: sqlite3.Connection, scope: str,
 # ---------------------------- summary for the home ----------------------------
 
 
-def home_summary(conn: sqlite3.Connection, level: str | None) -> dict:
+def reviews_due_today(conn: sqlite3.Connection, time_zone: str, now: datetime | None = None) -> int:
+    local_now = (now or datetime.now(timezone.utc)).astimezone(ZoneInfo(time_zone))
+    tomorrow = (local_now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    cutoff = tomorrow.astimezone(timezone.utc)
+    rows = conn.execute("""SELECT DISTINCT w.id, r.word_id, r.due_at, r.production
+        FROM words w JOIN swipes s ON s.word_id=w.id
+        LEFT JOIN word_srs r ON r.word_id=w.id
+        WHERE s.action='keep' AND s.planted_at IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM known_words k WHERE k.word_id=w.id)
+          AND NOT EXISTS (SELECT 1 FROM flashcard_learned f WHERE f.word_id=w.id)
+    """).fetchall()
+    count = 0
+    for row in rows:
+        if row['word_id'] is None:
+            count += 1
+            continue
+        production = json.loads(row['production']) if row['production'] else {}
+        for due_at in (row['due_at'], production.get('due_at')):
+            if not due_at:
+                continue
+            due = datetime.fromisoformat(due_at.replace('Z', '+00:00'))
+            if due.tzinfo is None:
+                due = due.replace(tzinfo=timezone.utc)
+            if due < cutoff:
+                count += 1
+                break
+    return count
+
+
+def upcoming_reviews(conn: sqlite3.Connection, time_zone: str, now: datetime | None = None) -> list[dict]:
+    current = now or datetime.now(timezone.utc)
+    zone = ZoneInfo(time_zone)
+    rows = conn.execute("""SELECT DISTINCT w.id, r.word_id, r.due_at, r.production
+        FROM words w JOIN swipes s ON s.word_id=w.id
+        LEFT JOIN word_srs r ON r.word_id=w.id
+        WHERE s.action='keep' AND s.planted_at IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM known_words k WHERE k.word_id=w.id)
+          AND NOT EXISTS (SELECT 1 FROM flashcard_learned f WHERE f.word_id=w.id)
+    """).fetchall()
+    counts = {}
+    for row in rows:
+        if row['word_id'] is None:
+            continue
+        production = json.loads(row['production']) if row['production'] else {}
+        dates = []
+        for value in (row['due_at'], production.get('due_at')):
+            if value:
+                due = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                dates.append(due if due.tzinfo else due.replace(tzinfo=timezone.utc))
+        if not dates or min(dates) <= current:
+            continue
+        date = min(dates).astimezone(zone).date().isoformat()
+        counts[date] = counts.get(date, 0) + 1
+    return [{"date": date, "count": count} for date, count in sorted(counts.items())]
+
+
+def home_summary(conn: sqlite3.Connection, level: str | None, time_zone: str = 'UTC') -> dict:
     """Everything the garden template needs in one shot."""
     bag_count = seed_bag_count(conn)
     due_now = review_remaining(conn, 'all')
@@ -382,6 +444,8 @@ def home_summary(conn: sqlite3.Connection, level: str | None) -> dict:
         "bag_count": bag_count,
         "bag_cap": SEED_BAG_CAP,
         "due_now": int(due_now or 0),
+        "due_today": reviews_due_today(conn, time_zone),
+        "upcoming_reviews": upcoming_reviews(conn, time_zone),
         "new_in_bag": int(new_in_bag or 0),
         "planted_total": int(planted_total or 0),
     }

@@ -12,3 +12,4 @@ python-multipart>=0.0.9
 # Shared
 python-dotenv>=1.0
 httpx>=0.27
+backports.zoneinfo>=0.2.1; python_version < "3.9"

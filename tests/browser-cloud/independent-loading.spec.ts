@@ -19,7 +19,7 @@ test.beforeEach(async ({ page }) => {
 test('Explore search stays editable while topics load and filters the arriving data', async ({ page }) => {
   let release!: () => void;
   const pending = new Promise<void>(resolve => { release = resolve; });
-  await page.route('**/functions/v1/garden/garden', async route => {
+  await page.route('**/functions/v1/garden/garden*', async route => {
     await pending;
     await route.fulfill({ json: { topics: [{ id: 'home', name: 'Home', overview: counts }, { id: 'work', name: 'Work', overview: counts }] } });
   });
@@ -70,7 +70,7 @@ test('Practice mode links work while counts are pending', async ({ page }) => {
 
 test('Home actions survive session and garden failures', async ({ page }) => {
   await page.route('**/functions/v1/garden/session', route => route.fulfill({ status: 500, json: { detail: 'Profile unavailable' } }));
-  await page.route('**/functions/v1/garden/garden', route => route.fulfill({ status: 500, json: { detail: 'Garden unavailable' } }));
+  await page.route('**/functions/v1/garden/garden*', route => route.fulfill({ status: 500, json: { detail: 'Garden unavailable' } }));
   await page.route('**/functions/v1/garden/practice/summary?*', route => route.fulfill({ status: 500, json: { detail: 'Counts unavailable' } }));
   await page.goto('/#/');
   await expect(page.getByText('Profile unavailable')).toBeVisible();

@@ -5,6 +5,7 @@ import {
   Sentence,
   ReviewSelection,
   ReviewTrack,
+  HttpError,
   freshLearner,
   requireThat,
   shuffle,
@@ -463,7 +464,54 @@ export class Garden {
         ),
     };
   }
-  home() {
+  reviewsDueToday(timeZone: string) {
+    let calendar: Intl.DateTimeFormat;
+    try {
+      calendar = new Intl.DateTimeFormat('en-CA', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      });
+    } catch {
+      throw new HttpError(422, 'Unknown time zone.');
+    }
+    const today = calendar.format(this.now);
+    return this.scope().filter((word) => {
+      if (this.learned(word.id)) return false;
+      if (this.due(word.id)) return true;
+      const schedule = this.state.srs[word.id];
+      return [schedule, schedule?.production].some((track) => {
+        const dueAt = Date.parse(track?.due_at || '');
+        return Number.isFinite(dueAt) && calendar.format(dueAt) === today;
+      });
+    }).length;
+  }
+  upcomingReviews(timeZone: string) {
+    const calendar = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const counts = new Map<string, number>();
+    for (const word of this.scope()) {
+      if (this.learned(word.id) || this.due(word.id)) continue;
+      const schedule = this.state.srs[word.id];
+      const dates = [schedule, schedule?.production]
+        .map((track) => Date.parse(track?.due_at || ''))
+        .filter(Number.isFinite);
+      if (!dates.length) continue;
+      const parts = calendar.formatToParts(Math.min(...dates));
+      const part = (type: string) => parts.find((item) => item.type === type)!.value;
+      const date = `${part('year')}-${part('month')}-${part('day')}`;
+      counts.set(date, (counts.get(date) || 0) + 1);
+    }
+    return [...counts]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, count]) => ({ date, count }));
+  }
+  home(timeZone = 'UTC') {
     const plots = [],
       topics = [];
     for (const activity of this.catalog.activities) {
@@ -498,6 +546,8 @@ export class Garden {
         bag_count: seedBag.length,
         bag_cap: SEED_BAG_CAPACITY,
         due_now: this.reviewWords().length,
+        due_today: this.reviewsDueToday(timeZone),
+        upcoming_reviews: this.upcomingReviews(timeZone),
         planted_total: this.catalog.words.filter((word) => this.kept(word.id)?.planted_at).length,
       },
     };
