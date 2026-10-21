@@ -75,7 +75,8 @@ table { width: 100%; border-collapse: collapse; text-align: left; }
 th { background: #eee9d9; color: var(--muted); font-size: 12px; font-weight: 600; }
 th, td { padding: 16px 22px; border-bottom: 1px solid var(--border); }
 tr:last-child td { border-bottom: 0; }
-.practice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.practice-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.practice-grid-activities { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .practice-grid .panel p { min-height: 46px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0; }
 .badge.used { color: #315a48; border-color: #9cbaa8; background: #edf4ee; }
@@ -490,31 +491,67 @@ input::placeholder, textarea::placeholder { color: #637d67; opacity: 1; }
 .study-word-card > .answer-context strong { font-weight: 500; }
 .study-word-card > .answer-context p { margin-top: 6px; }
 
-/* Separate garden totals, review, and discovery into one summary row. */
-.garden-dashboard { display: grid; grid-template-columns: auto minmax(0, 1.7fr) minmax(0, 1.15fr); gap: 16px; margin-bottom: 24px; }
-.garden-dashboard > .panel { padding: 22px; background: #fffaf0; margin: 0; min-width: 0; display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 20px; }
+/* Compact garden summary cards share one count-and-action layout. */
+.garden-dashboard { display: grid; grid-template-columns: .8fr 1.7fr 1.25fr 1.35fr; gap: 12px; margin-bottom: 24px; }
+.garden-dashboard > .panel { padding: 16px; background: #fffaf0; margin: 0; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-radius: 18px; box-shadow: 0 4px 12px #29443206; }
 .garden-dashboard dl { margin: 0; }
-.garden-dashboard dt { color: var(--muted); font-size: 13px; }
-.garden-dashboard dd { margin: 6px 0 0; font-size: 28px; font-weight: 600; }
-.garden-review-stats { display: flex; justify-content: space-between; align-items: center; gap: 24px; flex: 1; }
+.garden-dashboard dt { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.garden-dashboard dd { margin: 4px 0 0; font-size: 24px; font-weight: 600; line-height: 1.2; }
+.garden-dashboard > .panel > .button, .garden-review-action .button, .garden-card-action > .button, .garden-card-action > button { font-size: 12px; padding: 8px 12px; white-space: nowrap; }
+.garden-review-stats { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex: 1; }
 .garden-review-action { text-align: center; }
 .garden-card-action { flex-shrink: 0; }
-.garden-card-action > .button { font-size: 13px; white-space: nowrap; }
+.garden-dashboard > .garden-review-card, .garden-review-stats { gap: 8px; }
+.garden-card-action > .upcoming-reviews-trigger { width: 34px; height: 34px; padding: 0; border-radius: 50%; }
 .garden-dashboard .upcoming-reviews-header h2 { margin: 0; font-size: 22px; }
 .garden-dashboard .upcoming-review-counts dd { margin: 6px 0 0; }
 .garden-scene-layout { position: relative; }
-@media (max-width: 900px) {
-  .garden-dashboard { grid-template-columns: minmax(0, 1fr); }
-  .garden-dashboard > .garden-total { grid-column: 1 / -1; padding: 14px 20px; }
-  .garden-total dl > div { display: flex; align-items: baseline; gap: 14px; }
-  .garden-total dd { margin: 0; }
+@media (max-width: 1450px) {
+  .garden-dashboard { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@media (max-width: 540px) {
-  .garden-dashboard { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-  .garden-dashboard > .panel { padding: 18px; }
+@media (max-width: 760px) {
+  .garden-dashboard { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .garden-dashboard > .panel { padding: 14px; }
+}
+@media (max-width: 390px) {
+  .garden-dashboard > .garden-review-card { gap: 8px; }
+  .garden-review-stats { gap: 8px; }
+  .garden-review-action .button, .garden-card-action > button { padding: 8px; }
 }
 
+.weak-practice { margin: 24px 0; }
+.weak-practice > .panel { margin-bottom: 20px; }
+.weak-practice h2 { margin: 0 0 12px; font-size: 22px; }
+.practice-overview { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.practice-overview-copy { margin-right: auto; }
+.practice-overview-copy h2 { margin-bottom: 6px; }
+.practice-overview-copy p { margin: 0; }
+.practice-round-summary { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+.practice-round-summary p { margin: 6px 0 0; }
+.practice-round-summary > .small { max-width: 250px; }
+.practice-round-words { list-style: none; padding: 0; margin: 20px 0; }
+.practice-round-words li { display: flex; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.practice-round-words li > div { display: grid; gap: 4px; }
+.practice-activity-header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.practice-activity-header h2 { margin: 0; }
+.practice-activity-header .practice-text-action { margin-left: auto; }
+.practice-text-action { background: transparent; border-color: transparent; padding: 6px 0; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+.practice-direction select { width: auto; padding: 6px 10px; margin: 0; font-size: 13px; }
+.practice-flashcards > .practice-activity-content > .word-card { border: 0; box-shadow: none; background: transparent; padding: 20px 0; margin: 0; }
+.practice-flashcards .practice-activity-footer .card-actions { margin: 0; width: 100%; }
+.practice-flashcards > .practice-activity-content { padding: 0; }
+.practice-activity-content { padding: 20px 0; min-height: 160px; }
+.practice-activity-content > .reading { background: transparent; border: 0; box-shadow: none; padding: 0; margin-bottom: 0; }
+.practice-activity-footer { display: flex; justify-content: flex-end; padding-top: 16px; border-top: 1px solid var(--border); }
+.round-activity { margin: 20px 0; }
+
+.practice-alternatives-title { font-size: 18px; margin-top: 32px; }
 @media (max-width: 540px) {
-  .garden-dashboard > .garden-review-card { flex-wrap: wrap; }
-  .garden-review-stats { flex-basis: 100%; }
+  .practice-round-words li { flex-direction: column; gap: 6px; }
 }
+
+.active-practice-round { margin: 0; }
+.active-practice-round .practice-round-summary { margin-bottom: 20px; gap: 12px; }
+.practice-round-summary h1 { font-size: 18px; margin: 0; }
+.practice-round-summary p { font-size: 13px; color: var(--muted); }
+.active-practice-round > .practice-activity-card { width: 100%; margin-top: 0; }

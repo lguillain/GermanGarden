@@ -20,6 +20,7 @@ test.beforeEach(async ({ page }) => {
   );
   await page.route('https://auth-test.supabase.co/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
+    if (path.endsWith('/practice/weak')) return route.fulfill({ json: { words: [] } });
     if (path.endsWith('/session'))
       return route.fulfill({
         json: {
@@ -28,6 +29,7 @@ test.beforeEach(async ({ page }) => {
         },
       });
     if (path.endsWith('/practice/summary')) return route.fulfill({ json: { word_count: words.length, counts: { plants: 2, seeds: 0 } } });
+    if (path.endsWith('/garden')) return route.fulfill({ json: { plots: [], bag: [], topics: [] } });
     if (path.endsWith('/activities')) return route.fulfill({ json: [] });
     if (path.endsWith('/practice'))
       return route.fulfill({
@@ -111,7 +113,9 @@ test('practice pages keep their own state and reset it when the word set changes
     });
   }
   await page.goto('/#/practice?scope=bag');
-  await page.getByRole('link', { name: 'Start reading' }).click();
+  await page.getByRole('link', { name: 'Reading', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Practice activity' })).toContainText('Start reading');
+  await page.screenshot({ path: 'test-results/standalone-reading-activity.png', fullPage: true });
   await page.getByRole('button', { name: 'Start reading' }).click();
   await expect(page.locator('.reading')).toContainText('Der Baum ist grün.');
   await expect(page.locator('.chips .badge')).toHaveText(['der Baum', 'die Blume']);
@@ -119,7 +123,8 @@ test('practice pages keep their own state and reset it when the word set changes
   await page.getByRole('button', { name: 'Show English translation' }).click();
   await expect(page.locator('.reading .translation')).toHaveText('The tree is green.');
   await page.getByRole('link', { name: '← Practice', exact: true }).click();
-  await page.getByRole('link', { name: 'Start conversation' }).click();
+  await page.getByRole('link', { name: 'Conversation', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Practice activity' })).toContainText('Start conversation');
   await page.getByRole('button', { name: 'Start conversation' }).click();
   await expect(page.locator('.chat-log')).toContainText('Was wächst im Garten?');
   await expect(page.locator('.chips .badge')).toHaveText(['der Baum', 'die Blume']);
@@ -148,7 +153,7 @@ for (const path of ['/practice', '/practice/read', '/practice/chat']) {
     const unexpected: string[] = [];
     page.on('request', request => {
       const pathname = new URL(request.url()).pathname;
-      if (pathname.endsWith('/garden/practice') || pathname.endsWith('/activities')) unexpected.push(pathname);
+      if (pathname.endsWith('/garden/practice')) unexpected.push(pathname);
     });
     await page.route('**/functions/v1/garden/session', async route => {
       await pending;
@@ -161,11 +166,11 @@ for (const path of ['/practice', '/practice/read', '/practice/chat']) {
     await page.goto(`/#${path}`);
     try {
       await expect.poll(() => summaryReads).toBe(1);
-      await expect(page.getByRole('heading', { name: path === '/practice' ? 'Practice' : path.endsWith('/read') ? 'Reading' : 'Conversation', exact: true })).toBeVisible();
-      if (path === '/practice') await expect(page.getByRole('link', { name: 'Start flashcards' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: path === '/practice' ? 'Practice' : path.endsWith('/read') ? 'Reading' : 'Conversation', exact: true, level: 1 })).toBeVisible();
+      if (path === '/practice') await expect(page.getByRole('region', { name: 'Topic practice', exact: true })).toBeVisible();
       else await expect(page.getByRole('link', { name: '← Practice', exact: true })).toBeVisible();
     } finally { release(); }
-    await expect(page.getByRole('heading', { name: path === '/practice' ? 'Practice' : path.endsWith('/read') ? 'Reading' : 'Conversation', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: path === '/practice' ? 'Practice' : path.endsWith('/read') ? 'Reading' : 'Conversation', exact: true, level: 1 })).toBeVisible();
     expect(summaryReads).toBe(1);
     expect(unexpected).toEqual([]);
   });

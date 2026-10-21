@@ -1,24 +1,23 @@
+import { PracticeModeCards } from './practice-mode-cards';
+import { WeakPractice } from './weak-practice';
 import { Link, useOutletContext } from 'react-router-dom';
 import type { Session } from '../../api';
 import { Empty, ErrorNotice, Heading, Loading } from '../../components/feedback';
-import { WordSetSwitch } from '../../components/word-set-switch';
 import { usePracticeSummary } from './use-practice-summary';
+import { useQuery } from '@tanstack/react-query';
+import { gardenQuery } from '../../queries/garden-query';
+import GardenScene from '../../components/garden-scene';
+import { SeedBag } from '../../components/seed-bag';
 import { useScope } from '../../hooks/use-scope';
 
 export function PracticePage() {
-  const { scope, query, label } = useScope();
+  const { scope, topic, query, label } = useScope();
   const aiAvailable = useOutletContext<Session | undefined>()?.ai_available;
   const result = usePracticeSummary(query);
-  const modes = [
-    ['flashcards', 'Flashcards', 'Browse your words, reveal translations, and explore Forms.'],
-    ['chat', 'Conversation', 'Practise your words in a short German conversation.'],
-    ['read', 'Reading', 'Read a short passage written around your vocabulary.'],
-  ];
-  return (
+  const overview = (
     <>
       <div className="practice-heading-row">
-        <Heading title="Practice">{scope === 'topic' ? label : undefined}</Heading>
-        <WordSetSwitch page="/practice" counts={result.data?.counts} />
+        <Heading title="Practice">{scope !== 'all' ? label : undefined}</Heading>
       </div>
       {result.isPending && <Loading />}
       <ErrorNotice error={result.error} />
@@ -28,21 +27,50 @@ export function PracticePage() {
           <Link to="/practice?scope=bag">seed bag</Link>.
         </Empty>
       )}
-      <div className="practice-grid">
-        {modes.map(([path, title, description]) => (
-          <article className="panel" key={path}>
-            <h2>{title}</h2>
-            <p className="muted">{description}</p>
-            {path === 'flashcards' || aiAvailable !== false ? (
-              <Link className="button" to={`/practice/${path}${query}`}>
-                Start {title.toLowerCase()} →
-              </Link>
-            ) : (
-              <p className="muted small">Ask the garden owner to enable AI practice.</p>
-            )}
-          </article>
-        ))}
-      </div>
     </>
+  );
+  return (
+    <>
+      {scope !== 'all' && overview}
+      {scope === 'all' && (
+        <WeakPractice scope={scope} topic={topic} query={query} overview={overview}>
+          <TopicPracticeGarden />
+        </WeakPractice>
+      )}
+      {scope === 'topic' && (
+        <Link className="back" to="/practice">
+          ← All practice
+        </Link>
+      )}
+      {scope !== 'all' && (
+        <>
+          <PracticeModeCards query={query} aiAvailable={aiAvailable} />
+          {aiAvailable === false && (
+            <p className="muted small">Reading and conversation need AI practice enabled.</p>
+          )}
+        </>
+      )}
+    </>
+  );
+}
+
+function TopicPracticeGarden() {
+  const result = useQuery(gardenQuery());
+  return (
+    <section aria-label="Topic practice">
+      <h2>Topic practice</h2>
+      <ErrorNotice error={result.error} />
+      {result.isPending && <Loading />}
+      {result.data && (
+        <GardenScene
+          plots={result.data.plots}
+          bagCount={result.data.bag.length}
+          showBag={result.data.bag.length > 0}
+          bagContent={<SeedBag words={result.data.bag} />}
+          instruction="Choose a topic to practise"
+          topicHref={(topic) => `/practice?${new URLSearchParams({ scope: 'topic', topic })}`}
+        />
+      )}
+    </section>
   );
 }

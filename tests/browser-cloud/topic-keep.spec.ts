@@ -50,8 +50,9 @@ for (const outcome of ['added', 'duplicate', 'full'] as const) {
     await expect(page.getByRole('button', {name:'Add Blume to seed bag'})).toBeEnabled();
     expect(readsAfterSave).toEqual([]);
     if (outcome === 'added') {
-      await page.getByRole('link', {name:'Practice',exact:true}).first().click();
-      await expect(page.getByRole('group',{name:'Word set'}).getByRole('link',{name:/Seeds/})).toContainText('1');
+      await page.evaluate(() => { window.location.hash = '/practice?scope=bag'; });
+      await expect(page.getByRole('link', { name: 'Flashcards', exact: true })).toBeVisible();
+      await expect(page.getByText('No words in this set yet.', { exact: false })).toHaveCount(0);
       expect(readsAfterSave).toContain('/functions/v1/garden/practice/summary');
     }
   });

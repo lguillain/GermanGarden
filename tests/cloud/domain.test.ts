@@ -246,3 +246,49 @@ test('words found today counts first keeps in local time, including planted and 
   assert.equal(g.home('UTC').summary.found_today, 1);
   assert.deepEqual(g.state, before);
 });
+
+test('weak practice selects current difficulty once per planted word and excludes seeds, Learned and fresh production', () => {
+  const g = fixture();
+  for (let i = 0; i < 9; i++) {
+    g.add(`word-${i}`, 'home');
+    g.kept(`word-${i}`)!.planted_at = g.iso();
+    g.state.srs[`word-${i}`] = { ...initialSrs(), interval_days: 4, last_grade: 3 };
+  }
+  g.state.srs['word-0'].last_grade = 2; // Hard even with a long interval
+  g.state.srs['word-1'].production = { ...initialSrs(), last_grade: 1, last_review_at: g.iso(), interval_days: 1 / 1440 };
+  g.state.srs['word-1'].last_grade = 2; // both tracks qualify, one word
+  g.state.srs['word-2'].interval_days = 0.5;
+  g.state.srs['word-3'].interval_days = 1; // exactly one day doesn't qualify
+  g.state.srs['word-4'].production = initialSrs(); // newly unlocked
+  g.state.srs['word-5'].last_grade = 1;
+  g.state.learned.push('word-5');
+  g.state.srs['word-6'].last_grade = 1;
+  g.kept('word-6')!.planted_at = null;
+  g.state.reviews.push({ word_id: 'word-7', grade: 1, track: 'recognition', reviewed_at: '2020-01-01' }); // obsolete rating
+  const before = structuredClone(g.state);
+  assert.deepEqual(g.weakWords().map(word => word.id), ['word-1', 'word-0', 'word-2']);
+  assert.equal(g.weakWords()[0].practice_reasons.length, 2);
+  assert.deepEqual(g.weakWords('bag'), []);
+  assert.deepEqual(g.weakWords('topic', 'work'), []);
+  assert.deepEqual(g.state, before);
+});
+
+test('reading and chat preserve exact session targets, validate ownership, and never mutate progress', async () => {
+  const g = fixture();
+  for (let i = 0; i < 6; i++) { g.add(`word-${i}`, 'home'); g.kept(`word-${i}`)!.planted_at = g.iso(); }
+  const ids = ['word-4', 'word-2', 'word-0'];
+  const before = structuredClone(g.state);
+  const reading = await aiPractice('/reading', { target_ids: ids }, g, async () => ({ de: 'Text.', en: 'Text.' }));
+  assert.ok('targets' in reading && Array.isArray(reading.targets));
+  assert.deepEqual(reading.targets.map(word => word.id), ids);
+  const chat = await aiPractice('/chat', { target_ids: ids, start: true }, g, async () => ({ reply: 'Hallo!' }));
+  assert.ok('targets' in chat && Array.isArray(chat.targets) && 'history' in chat && Array.isArray(chat.history));
+  assert.deepEqual(chat.targets.map(word => word.id), ids);
+  assert.deepEqual(chat.history.map(message => message.role), ['assistant']);
+  for (const path of ['/reading', '/chat']) {
+    for (const target_ids of [['word-23'], ['word-0', 'word-0'], Array.from({ length: 6 }, (_, i) => `word-${i}`)]) {
+      await assert.rejects(aiPractice(path, { target_ids, start: true }, g, async () => { throw new Error('must not call AI'); }), /target words|practice set/);
+    }
+  }
+  assert.deepEqual(g.state, before);
+});

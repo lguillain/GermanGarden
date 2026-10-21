@@ -93,8 +93,9 @@ test('production graduates both tracks and Learned stays fully grown, unreviewab
     await page.getByRole('link', { name: 'Review', exact: true }).first().click();
     await expect(page.getByText('All caught up! No words are due for review.')).toBeVisible();
     await page.getByRole('link', { name: 'Practice', exact: true }).first().click();
-    await page.getByRole('link', { name: 'Start flashcards' }).click();
-    await page.getByRole('button', { name: 'EN → DE', exact: true }).click();
+    await page.getByRole('button', { name: /Open Home/ }).click();
+    await page.getByRole('link', { name: 'Flashcards', exact: true }).click();
+    await page.getByLabel('Flashcard direction').selectOption('production');
     await expect(page.locator('.word-card')).toBeVisible();
     if ((await page.locator('.word-card').getByRole('heading').innerText()) === 'flower')
       await page.getByRole('button', { name: 'Next', exact: true }).click();
@@ -103,13 +104,13 @@ test('production graduates both tracks and Learned stays fully grown, unreviewab
     await expect(page.locator('.word-card')).not.toContainText('Hint: B…');
     await page.getByRole('button', { name: 'Hint', exact: true }).click();
     await expect(page.locator('.word-card')).toContainText('Hint: B…');
-    await page.getByRole('button', { name: 'DE → EN', exact: true }).click();
-    await page.getByRole('button', { name: 'EN → DE', exact: true }).click();
+    await page.getByLabel('Flashcard direction').selectOption('recognition');
+    await page.getByLabel('Flashcard direction').selectOption('production');
     await expect(page.locator('.word-card')).not.toContainText('Hint: B…');
     await page.getByRole('button', { name: 'Show answer' }).click();
     await expect(page.locator('.word-card').getByRole('heading')).toHaveText('der Baum');
     await expect(page.getByText('The tree is tall.', { exact: true })).toHaveCount(1);
-    await page.getByRole('button', { name: 'DE → EN', exact: true }).click();
+    await page.getByLabel('Flashcard direction').selectOption('recognition');
     await expect(page.locator('.translation')).toHaveCount(0);
     await expect(page.locator('.word-card').getByRole('heading')).toHaveText('Baum');
     expect((await store().load()).data.reviews).toEqual([]); // History is checked directly below; snapshots omit it.

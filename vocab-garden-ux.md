@@ -60,13 +60,15 @@ Topic word lists apply the level visibility rules described below.
 - Practice never changes growth. Flashcards just show words one after another, with no grading.
 
 ## Home screen = the garden
+- Dashboard actions use dark green when actionable: **Practice hard words** when hard words exist, and **Find new words** when Words found today is zero. Find new words returns to the secondary style once a word has been added that day.
+- A fourth dashboard card shows the current hard-word count and offers **Practice hard words** only when that count is positive, opening the practice overview to start or resume a weak-word round. Zero words means no sessions and no button. Loading counts show a dash. The count uses the same current weak-word selection as practice and refreshes every minute.
 - The home screen is an illustrated garden. Topics containing planted or learned words appear as plots; selecting a plot opens its topic page.
 - **Find new words** opens the vocab matcher. **Review words** reviews planted words across all topics and appears as a button only when reviews are currently due, with the due count. Otherwise its position shows “Words due” and 0; while counts are unavailable it shows a dash.
 - Selecting the seed bag in the garden opens its word list, with **Practice** and **Plant** actions when it contains seeds. **Plant** starts a seed-bag review; it does not plant words without ratings.
 - The sidebar provides Garden, Explore topics, Find words, Practice, and Review navigation.
 - Above the garden, separate summary cards show total words planted at the far left, reviews in the middle, and words found today with Find new words on the right. The review card contains due-today counts, the Review words button only when currently due (otherwise Words due 0), and Upcoming. Counts and buttons sit side by side within each card, forming one compact desktop row. Cards stack on small screens. The planted count counts reviewed words, while plots also include words marked Learned.
 - Reviews due today includes overdue planted words and planted words scheduled before the end of the learner’s local calendar day, using the browser’s time zone. Each word counts once when either recognition or production is due; seeds and Learned words are excluded. This is a snapshot of current schedules, not a prediction of repeat reviews after ratings. Counts refresh every minute while the page is visible and after learning changes. Reviews remain available only when currently due.
-- **Upcoming** sits inside the review summary card. It opens a modal with the due-now count and a horizontal bar chart of future counts grouped by local calendar date. Each bar has a visible date and word count, with lengths scaled to the busiest scheduled day. Each planted word appears once, on the earliest of its recognition and unlocked production schedules. Already-due words appear only in the due-now count; seeds and Learned words are excluded. All scheduled future dates are shown, including later today. These are current schedules, not predictions of repeat reviews or future production unlocks. The modal supports Close, Escape, and backdrop dismissal.
+- **Upcoming** is a compact calendar icon inside the review summary card, with an accessible label and an Upcoming reviews tooltip. It opens a modal with the due-now count and a horizontal bar chart of future counts grouped by local calendar date. Each bar has a visible date and word count, with lengths scaled to the busiest scheduled day. Each planted word appears once, on the earliest of its recognition and unlocked production schedules. Already-due words appear only in the due-now count; seeds and Learned words are excluded. All scheduled future dates are shown, including later today. These are current schedules, not predictions of repeat reviews or future production unlocks. The modal supports Close, Escape, and backdrop dismissal.
 - The app does not track time spent learning or store activity-timer sessions.
 
 ## Explore topics and topic pages
@@ -119,3 +121,33 @@ Topic word lists apply the level visibility rules described below.
 - Revealed DE → EN cards use the same answer layout as revealed EN → DE cards: German word, plural, and example first, with English meaning and example in the subdued context block below.
 
 - Find new words sits in its own summary card alongside Words found today. This counts distinct words first added to the seed bag on the learner’s local calendar day, from either discovery or topic additions. Words still count after planting or becoming Learned. Skipped words and words marked Learned without being kept do not count. Counts refresh with the garden summary; repeated keeps never count a word twice.
+
+
+## Guided practice rounds
+- Practice defaults to words needing attention: planted, non-Learned words whose recognition or rated production track has a latest rating of Again/Hard, or a scheduled interval strictly shorter than one day. This is the interval, not time remaining until due. Newly unlocked, unrated production tracks do not qualify on their own. A word counts once across tracks; old ratings do not qualify a word after its current schedules improve.
+- Sort Again before Hard before other short-interval words, then shorter intervals and word ID. Weak-word sessions span the garden. Topic practice is a separate flow and does not filter by difficulty. Seed-bag practice remains a separate choice.
+- The practice overview states how many words need attention and how many sessions cover them once (ceiling of word count / 5). Starting a round snapshots that ordered list into stable groups of up to five; the final group can be smaller. New weak words join the next round.
+- Each session shows its words and selection reasons, then offers optional flashcards or Skip to activity. Flashcards support both directions and Forms. Next, choose Conversation or Reading; both use exactly the same group of words. AI runs only when explicitly starting or submitting an activity.
+- Finish session is explicit. Reading must have a successfully generated passage; conversation must have a successfully answered learner reply. Generating a chat greeting or finishing flashcards alone does not complete a session. Word-use checkmarks guide practice but do not gate completion.
+- Round completion is coverage, not mastery: show completed sessions, words practised, and sessions remaining. After completion offer another round, freshly selected from current schedules. No practice action changes review dates, ratings, planting, or growth.
+- Round groups, completion, current step, flashcard position/direction/reveal, reading passage, conversation and reply draft are saved in this browser, separately per account and word set. Leaving or refreshing resumes that round. This is not cross-device synchronization. If storage fails, show a warning and retain in-memory progress.
+- Every round step offers **Exit round**, which discards that word set’s saved round and returns to the practice overview without requiring activity completion. Starting again selects a fresh round. Navigating elsewhere still preserves the round for resuming.
+- Without AI, optional flashcards still work; the round waits for reading/conversation availability before it can finish. Failed requests retain the session and can be retried without advancing it.
+
+- The practice overview uses one compact guided-round panel with the attention count, session count, and Start session. Within topic and seed-bag practice, a row of three cards with short descriptions offers Flashcards, Reading, and Conversation; these modes do not require a guided round or words needing attention. It omits the explanatory rules paragraph and separate Other practice card. The overview has no Plants / Seeds switch; seed practice remains accessible from the seed bag, and scoped pages retain their word-set label.
+
+- Practice has two distinct entry points: garden-wide weak-word sessions and Topic practice. The main overview shows the weak-word panel and the garden as a topic picker. Clicking a garden topic plot, or opening Practice from a topic page, shows only that topic’s Flashcards, Reading, and Conversation cards, with no weak-word round panel. General practice uses the topic’s planted and Learned words regardless of difficulty. Seed-bag practice retains its own three modes.
+
+- Starting or resuming a weak-word round hides the topic-practice garden. Exit round restores the overview and garden. Both illustrated plots and mobile topic links open that topic’s practice cards.
+
+- The topic-practice garden hides the seed bag artwork, mobile seed-bag button, and bag panel when the bag is empty. A nonempty bag remains accessible there.
+
+- Garden dashboard cards share a compact layout: label and count on the left, actions on the right, consistent padding and button sizing. Four cards fit on wide screens, two per row on narrower desktops, and one per row on phones. Button labels remain on one line.
+
+- Guided and standalone topic/seed-bag activities share the same activity-card and flashcard components, with a dedicated card containing their header, content, and controls. Flashcard direction is a compact selector; Skip to activity and Change activity are secondary text actions in the header. Reading and conversation show target words before starting. Finish session appears in a separate card footer only once completion is available.
+
+- After skipping or completing flashcards, the guided activity chooser offers only the shared Conversation and Reading cards. Topic/seed-bag practice still offers all three modes. It has no separate instructional panel or Back to flashcards button.
+
+- Active rounds replace the large Practice page heading and boxed session summary with a compact session heading, word progress, and Exit round link aligned to the activity card. The overview heading returns on exit.
+
+- Practice activities and active-round progress use the available page width, without narrower fixed-width limits for flashcards or AI activities.

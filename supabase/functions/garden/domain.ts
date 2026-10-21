@@ -573,6 +573,71 @@ export class Garden {
       },
     };
   }
+  weakWords(scope = 'all', topic = '') {
+    if (scope === 'bag') return [];
+    return this.scope(scope, topic)
+      .flatMap((word) => {
+        if (this.learned(word.id)) return [];
+        const recognition = this.state.srs[word.id];
+        const reasons = (
+          [
+            ['recognition', recognition],
+            ['production', recognition?.production],
+          ] as const
+        ).flatMap(([track, schedule]) => {
+          // A newly unlocked production schedule is not evidence of difficulty.
+          if (
+            !schedule ||
+            (track === 'production' && !schedule.last_review_at && !schedule.last_grade)
+          )
+            return [];
+          const grade = schedule.last_grade;
+          if (grade !== 1 && grade !== 2 && schedule.interval_days >= 1) return [];
+          return [
+            {
+              track,
+              reason: grade === 1 ? 'Again' : grade === 2 ? 'Hard' : 'Under one day',
+              priority: grade === 1 ? 0 : grade === 2 ? 1 : 2,
+              interval: schedule.interval_days,
+            },
+          ];
+        });
+        if (!reasons.length) return [];
+        const priority = Math.min(...reasons.map((reason) => reason.priority));
+        return [
+          {
+            word,
+            reasons,
+            priority,
+            interval: Math.min(...reasons.map((reason) => reason.interval)),
+          },
+        ];
+      })
+      .sort(
+        (a, b) =>
+          a.priority - b.priority || a.interval - b.interval || a.word.id.localeCompare(b.word.id),
+      )
+      .map(({ word, reasons }) => ({
+        ...this.sentence(word, topic),
+        practice_reasons: reasons.map(({ track, reason }) => ({ track, reason })),
+      }));
+  }
+  practiceTargets(scope: string, topic: string, ids: unknown) {
+    requireThat(
+      Array.isArray(ids) &&
+        ids.length > 0 &&
+        ids.length <= 5 &&
+        ids.every((id) => typeof id === 'string') &&
+        new Set(ids).size === ids.length,
+      'Choose one to five distinct target words.',
+    );
+    const pool = new Set(this.scope(scope, topic).map((word) => word.id));
+    requireThat(
+      ids.every((id) => pool.has(id)),
+      'Choose words from the current practice set.',
+    );
+    return ids.map((id) => this.sentence(this.word(id), topic));
+  }
   practice(scope: string, topic: string) {
     return {
       words: this.scope(scope, topic).map((word) => this.details(word)),

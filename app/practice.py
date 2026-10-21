@@ -59,3 +59,29 @@ def _flashcard_rows(conn: sqlite3.Connection, scope: str, topic: str | None,
     import random as _r
     _r.shuffle(rows)
     return rows[:limit]
+
+
+def weak_words(conn, scope, topic):
+    from app import review_tracks
+    if scope == 'bag':
+        return []
+    candidates = []
+    for word in _practice_scope_words(conn, scope, topic):
+        if review_tracks.learned(conn, word['id']):
+            continue
+        recognition, production = review_tracks.schedules(conn, word['id'])
+        reasons = []
+        for track, schedule in [('recognition', recognition), ('production', production)]:
+            if not schedule or (track == 'production' and not schedule.get('last_review_at') and not schedule.get('last_grade')):
+                continue
+            grade = schedule.get('last_grade')
+            interval = schedule.get('interval_days', 0)
+            if grade not in (1, 2) and interval >= 1:
+                continue
+            reasons.append(dict(track=track, reason='Again' if grade == 1 else 'Hard' if grade == 2 else 'Under one day',
+                                priority=0 if grade == 1 else 1 if grade == 2 else 2, interval=interval))
+        if reasons:
+            word.update(review_tracks.details(conn, word['id']))
+            word['practice_reasons'] = [dict(track=r['track'], reason=r['reason']) for r in reasons]
+            candidates.append((min(r['priority'] for r in reasons), min(r['interval'] for r in reasons), word['id'], word))
+    return [entry[3] for entry in sorted(candidates)]

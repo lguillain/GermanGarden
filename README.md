@@ -430,3 +430,17 @@ flashcards at any time and on review cards after reveal. Old grammar URLs redire
 to flashcards, preserving the word set. The popup reuses the existing grammar
 exercises and is loaded on demand. Deploy the garden function and frontend together
 for the new `/grammar/options` endpoint; no database migration is needed.
+
+### Guided weak-word practice
+
+Practice groups planted words needing attention into stable sessions of up to five.
+A latest Again/Hard rating on either track, or a sub-day interval, qualifies;
+unrated production tracks and Learned words are excluded. Each session offers
+optional flashcards, then conversation or reading using the exact same targets.
+Completion tracks coverage only and never writes learning progress.
+
+Rounds resume from browser storage per account and word set, including the current
+activity. They do not sync between devices. `/practice/weak` reads the learner's
+current schedules, and reading/chat validate explicit target IDs against that
+learner's practice set. Deploy the garden function alongside the frontend; there
+is no database migration. Seed-bag practice and ordinary flashcards stay available.

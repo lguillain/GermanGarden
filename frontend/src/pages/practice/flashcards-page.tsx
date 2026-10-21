@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import type { Word } from '../../api';
 import { api } from '../../api';
 import { Empty, ErrorNotice, Heading, Loading } from '../../components/feedback';
-import { WordCard } from '../../components/word-card';
+import { FlashcardActivity } from './flashcard-activity';
 import { useScope } from '../../hooks/use-scope';
 
 export function FlashcardsPage() {
@@ -36,21 +36,7 @@ export function FlashcardsPage() {
         {label}
         {cards.length && index < cards.length ? ` · ${index + 1} / ${cards.length}` : ''}
       </Heading>
-      <div className="actions" role="group" aria-label="Flashcard direction">
-        {(['recognition', 'production'] as const).map((value) => (
-          <button
-            key={value}
-            aria-pressed={direction === value}
-            onClick={() => {
-              setDirection(value);
-              setRevealed(false);
-            }}
-          >
-            {value === 'recognition' ? 'DE → EN' : 'EN → DE'}
-          </button>
-        ))}
-      </div>
-      <div className="study">
+      <div>
         {result.isPending ? (
           <Loading />
         ) : result.error ? (
@@ -58,23 +44,21 @@ export function FlashcardsPage() {
         ) : !cards.length ? (
           <Empty>No words in this deck yet.</Empty>
         ) : index < cards.length ? (
-          <>
-            <WordCard
-              forms="practice"
-              direction={direction}
-              word={cards[index]}
-              revealed={revealed}
-              onReveal={() => setRevealed(true)}
-            />
-            <div className="card-actions">
-              <button disabled={index === 0} onClick={() => move(index - 1)}>
-                Previous
-              </button>
-              <button className="primary" onClick={() => move(index + 1)}>
-                {index === cards.length - 1 ? 'Finish deck' : 'Next'}
-              </button>
-            </div>
-          </>
+          <FlashcardActivity
+            word={cards[index]}
+            index={index}
+            count={cards.length}
+            direction={direction}
+            revealed={revealed}
+            onDirection={(value) => {
+              setDirection(value);
+              setRevealed(false);
+            }}
+            onReveal={() => setRevealed(true)}
+            onPrevious={() => move(index - 1)}
+            onNext={() => move(index + 1)}
+            nextLabel={index === cards.length - 1 ? 'Finish deck' : 'Next'}
+          />
         ) : (
           <Empty>
             <h2>Deck complete</h2>

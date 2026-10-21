@@ -10,12 +10,14 @@ test('garden distinguishes reviews due now from today and refreshes the counts',
     user: { id: 'test-user', email: 'test@vocab-garden.test', user_metadata: {} },
   })));
   let dueNow = 0;
+  let hardWordCount = 2;
   const timeZones: (string | null)[] = [];
   await page.route('https://auth-test.supabase.co/**', async route => {
     const url = new URL(route.request().url());
     if (url.pathname.endsWith('/session')) return route.fulfill({ json: {
       user: { name: 'Test', level: 'A2' }, ai_available: false,
     } });
+    if (url.pathname.endsWith('/practice/weak')) return route.fulfill({ json: { words: Array.from({ length: hardWordCount }, (_, i) => ({ id: `word-${i}` })) } });
     if (url.pathname.endsWith('/garden')) {
       timeZones.push(url.searchParams.get('time_zone'));
       return route.fulfill({ json: {
@@ -25,10 +27,14 @@ test('garden distinguishes reviews due now from today and refreshes the counts',
     }
     throw new Error(`Unexpected request: ${url.pathname}`);
   });
+  await page.setViewportSize({ width: 1600, height: 1000 });
   await page.goto('/#/');
   const summary = page.getByRole('region', { name: 'Learning progress' });
   await expect(summary.locator('.garden-due-today dd')).toHaveText('5');
   await expect(summary.locator('.garden-total dd')).toHaveText('12');
+  await expect(summary.locator(':scope > .panel')).toHaveCount(4);
+  await expect(summary.locator('.garden-practice-card dd')).toHaveText('2');
+  await expect(summary.getByRole('link', { name: 'Practice hard words' })).toHaveAttribute('href', '#/practice');
   await expect(page.getByRole('link', { name: /^Review words/ })).toHaveCount(0);
   await expect(summary.locator('.garden-review-action')).toContainText('Words due');
   await expect(summary.locator('.garden-review-action dd')).toHaveText('0');
@@ -57,8 +63,14 @@ test('garden distinguishes reviews due now from today and refreshes the counts',
   await page.clock.fastForward(60_000);
 
   await expect(page.getByRole('link', { name: 'Review words 2 due' })).toBeVisible();
+  await page.screenshot({ path: 'test-results/garden-dashboard-mobile.png', fullPage: true });
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await page.screenshot({ path: 'test-results/garden-dashboard-desktop.png', fullPage: true });
   dueNow = 0;
+  hardWordCount = 0;
   await page.clock.fastForward(60_000);
   await expect(page.getByRole('link', { name: /^Review words/ })).toHaveCount(0);
   await expect(summary.locator('.garden-review-action dd')).toHaveText('0');
+  await expect(summary.locator('.garden-practice-card dd')).toHaveText('0');
+  await expect(summary.getByRole('link', { name: 'Practice hard words' })).toHaveCount(0);
 });

@@ -43,7 +43,7 @@ for (const mode of ['practice', 'recognition', 'production']) {
     expect(optionsReads).toBe(0);
     await page.screenshot({ path: `test-results/card-${mode}.png`, fullPage: true });
     if (mode === 'practice') {
-      await page.getByRole('button', { name: 'EN → DE', exact: true }).click();
+      await page.getByLabel('Flashcard direction').selectOption('production');
       await card.getByRole('button', { name: 'Hint', exact: true }).click();
     } else {
       await expect(page.getByRole('button', { name: 'Forms', exact: true })).toHaveCount(0);

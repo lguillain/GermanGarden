@@ -12,6 +12,7 @@ test('signed-in navigation and sign-out work while session bootstrap is stalled'
   const pageRequests: string[] = [];
   await page.route('https://auth-test.supabase.co/**', async route => {
     const url = new URL(route.request().url());
+    if (url.pathname.endsWith('/practice/weak')) return route.fulfill({ json: { words: [] } });
     if (url.pathname === '/functions/v1/garden/session') {
       requested = true;
       // Leave bootstrap pending until the page closes.
@@ -35,8 +36,7 @@ test('signed-in navigation and sign-out work while session bootstrap is stalled'
   await page.getByRole('link', { name: 'Practice', exact: true }).click();
   await expect(page).toHaveURL(/#\/practice$/);
   await expect.poll(() => pageRequests).toContain('/functions/v1/garden/practice/summary');
-  await expect(page.getByRole('link', { name: 'Start flashcards' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Start reading' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Topic practice', exact: true })).toBeVisible();
   await page.locator('.profile-button').click();
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
 });

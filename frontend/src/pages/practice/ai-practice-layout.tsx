@@ -1,3 +1,4 @@
+import { PracticeActivityCard } from './practice-activity-card';
 import type { ReactNode } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import type { Session } from '../../api';
@@ -33,7 +34,7 @@ export function AiPracticeLayout({
           No words in this practice set yet. <Link to="/matcher">Find words</Link>.
         </Empty>
       ) : (
-        <div className="study wide ai-study">{children}</div>
+        <PracticeActivityCard title={<h2>{title}</h2>}>{children}</PracticeActivityCard>
       )}
     </>
   );

@@ -8,6 +8,7 @@ test.beforeEach(async ({ page }) => {
     expires_at: Math.floor(Date.now() / 1000) + 3600,
     user: { id: 'test-user', email: 'test@vocab-garden.test', user_metadata: {} },
   })));
+  await page.route('**/functions/v1/garden/practice/weak?*', route => route.fulfill({ json: { words: [] } }));
   await page.route('https://auth-test.supabase.co/**', async route => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith('/session')) return route.fulfill({ json: { user: { name: 'Test', level: 'A2' }, ai_available: true } });
@@ -60,10 +61,10 @@ test('Topic navigation and filters stay usable while its words load', async ({ p
 test('Practice mode links work while counts are pending', async ({ page }) => {
   await page.route('**/functions/v1/garden/practice/summary?*', async () => {});
   await page.route('**/functions/v1/garden/flashcards?*', route => route.fulfill({ json: { cards: [] } }));
-  await page.goto('/#/practice');
+  await page.goto('/#/practice?scope=topic&topic=home');
   await expect(page.getByRole('status')).toHaveText('Loading…');
-  await expect(page.getByRole('link', { name: 'Start reading' })).toBeVisible();
-  await page.getByRole('link', { name: 'Start flashcards' }).click();
+  await expect(page.getByRole('link', { name: 'Reading', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Flashcards', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Flashcards' })).toBeVisible();
   await expect(page.getByText('No words in this deck yet.')).toBeVisible();
 });
@@ -77,7 +78,7 @@ test('Home actions survive session and garden failures', async ({ page }) => {
   await expect(page.getByText('Garden unavailable')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Find new words', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Practice', exact: true }).click();
-  await expect(page.getByRole('link', { name: 'Start flashcards' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Topic practice', exact: true })).toBeVisible();
   await expect(page.getByText('Counts unavailable')).toBeVisible();
 });
 
@@ -90,4 +91,8 @@ test('Matcher guidance drafts and seed bag navigation remain usable while a card
   await expect(page.getByRole('button', { name: 'Match a topic', exact: true })).toBeDisabled();
   await expect(page.getByRole('complementary', { name: 'Seed bag' }).getByRole('link', { name: 'Practice' })).toBeVisible();
   await expect(page.getByText('Your seed bag is empty.')).toHaveCount(0);
+});
+
+test.beforeEach(async ({ page }) => {
+  await page.route('**/functions/v1/garden/practice/weak?*', route => route.fulfill({ json: { words: [] } }));
 });

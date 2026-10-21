@@ -34,6 +34,8 @@ test('farmer signs out only this session and allows signing back in or switching
       await route.fulfill({ status: 204 });
     } else if (url.pathname === '/functions/v1/garden/session') {
       await route.fulfill({ json: { user: { name: username, level: 'A2' }, ai_available: false } });
+    } else if (url.pathname === '/functions/v1/garden/practice/weak') {
+      await route.fulfill({ json: { words: [] } });
     } else if (url.pathname === '/functions/v1/garden/garden') {
       await route.fulfill({ json: { plots: [], topics: [], bag: [], summary: { bag_count: 0, bag_cap: 20, due_now: 0, planted_total: 0 } } });
     } else {

@@ -2,15 +2,24 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { gardenQuery } from '../../queries/garden-query';
 import { ErrorNotice, Heading, Loading } from '../../components/feedback';
-import GardenScene from './garden-scene';
+import GardenScene from '../../components/garden-scene';
 import { UpcomingReviews } from './upcoming-reviews';
 import { SeedBag } from '../../components/seed-bag';
+import { api } from '../../api';
+import type { PracticeWord } from '../practice/practice-round';
 
 export function HomePage() {
   const result = useQuery(gardenQuery());
+  const hardWords = useQuery({
+    queryKey: ['practice', 'weak', '?scope=all&topic='],
+    queryFn: () => api<{ words: PracticeWord[] }>('/practice/weak?scope=all&topic='),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+  const hardWordCount = hardWords.data?.words.length;
   const garden = result.data;
   const summary = garden?.summary;
-  const active = !summary || summary.planted_total > 0;
+  const highlightDiscovery = summary?.found_today === 0;
   return (
     <div className="garden-home">
       <div className="garden-intro">
@@ -62,10 +71,24 @@ export function HomePage() {
             </div>
           </dl>
           <div className="garden-card-action">
-            <Link className={`button${active ? '' : ' primary'}`} to="/matcher">
+            <Link className={`button${highlightDiscovery ? ' primary' : ''}`} to="/matcher">
               Find new words
             </Link>
           </div>
+        </div>
+        <div className="panel garden-practice-card">
+          <dl>
+            <div>
+              <dt>Hard words</dt>
+              <dd>{hardWordCount ?? '—'}</dd>
+            </div>
+          </dl>
+          {hardWordCount !== undefined && hardWordCount > 0 && (
+            <Link className="button primary" to="/practice">
+              Practice hard words
+            </Link>
+          )}
+          <ErrorNotice error={hardWords.error} />
         </div>
       </section>
       {garden && summary && (

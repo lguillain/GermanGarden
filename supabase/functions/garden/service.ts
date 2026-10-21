@@ -97,6 +97,8 @@ export async function dispatch(
         return garden.review(scope, topic, excluded);
       case '/practice/summary':
         return { word_count: garden.scope(scope, topic).length, counts: garden.counts(topic) };
+      case '/practice/weak':
+        return { words: garden.weakWords(scope, topic) };
       case '/practice':
         return garden.practice(scope, topic);
       case '/flashcards':

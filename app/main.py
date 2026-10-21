@@ -17,7 +17,7 @@ from pipeline.llm import LLMUnavailable, available
 from . import garden, learn, onboarding
 from .db import COOKIE, RequiresProfile, create_profile, list_profiles, request_db
 from .feed import best_topic_for_level, ensure_user_state, next_card, record_swipe, set_topic
-from .practice import _flashcard_rows, _practice_scope_words
+from .practice import _flashcard_rows, _practice_scope_words, weak_words
 from .text import used_lemmas
 
 app = FastAPI(title="Vocab Garden")
@@ -332,6 +332,12 @@ def practice(scope: Scope = 'all', topic: str = '', conn: sqlite3.Connection = D
             'counts': practice_summary(scope, topic, conn)['counts']}
 
 
+@app.get('/api/practice/weak')
+def practice_weak(scope: Scope = 'all', topic: str = '', conn: sqlite3.Connection = Db):
+    validate_scope(conn, scope, topic)
+    return {'words': weak_words(conn, scope, topic or None)}
+
+
 @app.get('/api/flashcards')
 def flashcards(scope: Scope = 'all', topic: str = '', conn: sqlite3.Connection = Db):
     validate_scope(conn, scope, topic)
@@ -351,11 +357,19 @@ def flashcard_learned(body: LearnedInput, conn: sqlite3.Connection = Db):
 class PracticeInput(BaseModel):
     scope: Scope = 'all'
     topic: str = ''
+    target_ids: Optional[List[str]] = Field(default=None, max_length=5)
 
 
 def targets_for(conn, body):
     validate_scope(conn, body.scope, body.topic)
     pool = _practice_scope_words(conn, body.scope, body.topic or None)
+    if body.target_ids is not None:
+        if not body.target_ids or len(set(body.target_ids)) != len(body.target_ids):
+            raise HTTPException(422, 'Choose one to five distinct target words.')
+        selected = {word['id']: word for word in pool}
+        if any(wid not in selected for wid in body.target_ids):
+            raise HTTPException(422, 'Choose words from the current practice set.')
+        return [selected[wid] for wid in body.target_ids]
     if not pool:
         raise HTTPException(422, 'Keep or plant some words first.')
     random.shuffle(pool)
@@ -377,20 +391,17 @@ class Message(BaseModel):
 class ChatInput(PracticeInput):
     message: str = Field(default='', max_length=3000)
     history: List[Message] = Field(default_factory=list, max_length=100)
-    target_ids: List[str] = Field(default_factory=list, max_length=5)
+    start: bool = False
 
 
 @app.post('/api/chat')
 def chat(body: ChatInput, conn: sqlite3.Connection = Db):
     level = user(conn)['level'] or 'A2'
-    if not body.target_ids:
-        targets = targets_for(conn, body)
+    if not body.target_ids or body.start:
+        targets = targets_for(conn, body.model_copy(update={'target_ids': body.target_ids or None}))
         history = [{'role': 'assistant', 'content': learn.chat_opener(level, [w['lemma'] for w in targets])}]
     else:
-        pool = {w['id']: w for w in _practice_scope_words(conn, body.scope, body.topic or None)}
-        if any(wid not in pool for wid in body.target_ids):
-            raise HTTPException(422, 'Choose words from the current practice set.')
-        targets = [pool[wid] for wid in body.target_ids]
+        targets = targets_for(conn, body)
         if not body.message.strip():
             raise HTTPException(422, 'Write a message first.')
         history = learn.chat_turn(level, [w['lemma'] for w in targets], [m.model_dump() for m in body.history], body.message.strip())

@@ -47,7 +47,10 @@ export async function aiPractice(path: string, body: Body, garden: Garden, compl
     targets: '',
   };
   if (path === '/reading') {
-    const targets = garden.targets(text(body, 'scope', 'all'), text(body, 'topic'));
+    const targets =
+      body.target_ids === undefined
+        ? garden.targets(text(body, 'scope', 'all'), text(body, 'topic'))
+        : garden.practiceTargets(text(body, 'scope', 'all'), text(body, 'topic'), body.target_ids);
     const result = await complete(
       format(READ_SYSTEM, values),
       'Target words: ' +
@@ -82,7 +85,7 @@ export async function aiPractice(path: string, body: Body, garden: Garden, compl
       'Choose words from the current practice set.',
     );
     const targets = ids.length
-      ? [...new Set(ids)].map((id) => garden.sentence(garden.word(id)))
+      ? garden.practiceTargets(text(body, 'scope', 'all'), text(body, 'topic'), ids)
       : garden.targets(text(body, 'scope', 'all'), text(body, 'topic'));
     values.targets = targets.map((w) => w.lemma).join(', ');
     const history = body.history ?? [];
@@ -98,21 +101,26 @@ export async function aiPractice(path: string, body: Body, garden: Garden, compl
         ),
       'Invalid conversation.',
     );
+    requireThat(
+      body.start === undefined || typeof body.start === 'boolean',
+      'Invalid conversation start.',
+    );
+    const starting = !ids.length || body.start === true;
     const message = text(body, 'message').trim();
-    if (ids.length) requireThat(message, 'Write a message first.');
+    if (!starting) requireThat(message, 'Write a message first.');
     const result = await complete(
       format(CHAT_SYSTEM, values),
-      ids.length
+      !starting
         ? message
         : 'Open with a greeting and a friendly question inviting use of a target word.',
-      ids.length ? history : [],
+      !starting ? history : [],
     );
     requireThat(
       typeof result.reply === 'string',
       'The AI returned an incomplete reply. Try again.',
       502,
     );
-    const updated: Message[] = ids.length
+    const updated: Message[] = !starting
       ? [
           ...history,
           { role: 'user', content: message, corrections: corrections(result, message) },
