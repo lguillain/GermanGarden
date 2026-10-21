@@ -29,7 +29,7 @@ Vocabulary data must exist at `data/vocab.sqlite`. This checkout includes a loca
 - **Find words:** topic selection sits on the left, the word card in the centre, and the seed bag on the right. Selecting a topic applies immediately; expand “Describe a situation” for free-text guidance. Keep, set aside, or mark known words using the original adaptive feed logic.
 - **Seed bag:** practise new words without changing progress; rating a seed in Review plants it automatically. A bag holds up to 20 seeds; review one to make room when full.
 - **Review:** reveal the meaning and grade Again / Hard / Good / Easy to update the existing spaced-repetition scheduler. Review finishes when no new or currently due words remain.
-- **Practice:** flashcards, conversation, reading, and grammar. Practice does not change growth or planting.
+- **Practice:** flashcards with a word-specific Forms popup, conversation, and reading. Practice does not change growth or planting.
 - **Profiles:** use the name button in the header to switch learners. New profiles choose a level before learning.
 
 AI guidance, conversations, reading, and grammar use the existing Anthropic integration. The local `.env` configuration was copied from GermanMatch without changing the original. For a fresh setup, copy `.env.example` to `.env` and set `ANTHROPIC_API_KEY`. Standard discovery, flashcards, and reviews work without AI. Keys stay on the Python server.
@@ -79,7 +79,7 @@ Product behavior is documented in `vocab-garden-ux.md`; repository commands and 
 - `pages/home/`: home page and its interactive garden view.
 - `pages/explore/`: Explore page and its topic list.
 - `pages/topic/`: topic page, scope links, and its selectable plot view.
-- `pages/practice/`: practice menu, flashcards, conversation, reading, and grammar,
+- `pages/practice/`: practice menu, flashcards, conversation, and reading,
   together with their layout, corrections, query hook, and route wrapper.
   Each practice page owns its state and API mutations.
 - Other `pages/` files: self-contained discovery, review, login, and profile flows.
@@ -224,9 +224,7 @@ level, plus the AI availability flag; `/activities` separately returns cached
 topic IDs and names when a page needs them. The garden skips sentences too.
 The practice menu, Reading, and Conversation call `/practice/summary`, backed by
 `load_practice_summary`, which counts seeds/plants without loading word details
-or scheduling history. Grammar uses `/practice`: it reads kept progress and
-then only those words from `load_practice_catalog`, without sentences. That
-learner-specific catalogue is never cached between accounts. Signed-in pages mount alongside session bootstrap, so their data requests run
+or scheduling history. Forms loads `/grammar/options` only when opened and uses `/grammar` for examples and sentence feedback for the current card. Opening it never calls AI or changes progress. Signed-in pages mount alongside session bootstrap, so their data requests run
 concurrently. Headings, navigation, and independent controls stay visible; only
 data-dependent content waits for its API response. Browser queries stay fresh for 30 seconds; keep/review
 mutations invalidate the affected counts and word lists.
@@ -424,3 +422,11 @@ and their RPCs, and removes time fields from progress reads and imports.
 Vocabulary progress, review history, and review schedules are preserved.
 Existing SQLite databases drop their old `sessions` table when opened through
 the app's schema initialization. Exports no longer include time-tracking data.
+
+### Forms popup
+
+Forms replaces the standalone grammar playground. It is available on practice
+flashcards at any time and on review cards after reveal. Old grammar URLs redirect
+to flashcards, preserving the word set. The popup reuses the existing grammar
+exercises and is loaded on demand. Deploy the garden function and frontend together
+for the new `/grammar/options` endpoint; no database migration is needed.

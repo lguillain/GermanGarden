@@ -10,10 +10,9 @@ export function PracticePage() {
   const aiAvailable = useOutletContext<Session | undefined>()?.ai_available;
   const result = usePracticeSummary(query);
   const modes = [
-    ['flashcards', 'Flashcards', 'Browse your words and reveal their translations.'],
+    ['flashcards', 'Flashcards', 'Browse your words, reveal translations, and explore Forms.'],
     ['chat', 'Conversation', 'Practise your words in a short German conversation.'],
     ['read', 'Reading', 'Read a short passage written around your vocabulary.'],
-    ['grammar', 'Grammar playground', 'Explore word forms and get feedback on your own sentences.'],
   ];
   return (
     <>

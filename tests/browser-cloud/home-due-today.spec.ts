@@ -20,19 +20,23 @@ test('garden distinguishes reviews due now from today and refreshes the counts',
       timeZones.push(url.searchParams.get('time_zone'));
       return route.fulfill({ json: {
         plots: [], topics: [], bag: [],
-        summary: { bag_count: 0, bag_cap: 20, planted_total: 12, due_now: dueNow, due_today: 5, upcoming_reviews: [{ date: "2026-10-22", count: 7 }, { date: "2026-10-23", count: 3 }] },
+        summary: { bag_count: 0, bag_cap: 20, planted_total: 12, due_now: dueNow, due_today: 5, found_today: 4, upcoming_reviews: [{ date: "2026-10-22", count: 7 }, { date: "2026-10-23", count: 3 }] },
       } });
     }
     throw new Error(`Unexpected request: ${url.pathname}`);
   });
   await page.goto('/#/');
   const summary = page.getByRole('region', { name: 'Learning progress' });
-  await expect(summary.locator('div').filter({ has: page.getByText('Reviews due today', { exact: true }) }).locator('dd')).toHaveText('5');
-  await expect(summary.locator('div').filter({ has: page.getByText('Reviews due now', { exact: true }) }).locator('dd')).toHaveText('0');
-  await expect(page.getByRole('link', { name: 'Review words', exact: true })).toBeVisible();
+  await expect(summary.locator('.garden-due-today dd')).toHaveText('5');
+  await expect(summary.locator('.garden-total dd')).toHaveText('12');
+  await expect(page.getByRole('link', { name: /^Review words/ })).toHaveCount(0);
+  await expect(summary.locator('.garden-review-action')).toContainText('Words due');
+  await expect(summary.locator('.garden-review-action dd')).toHaveText('0');
+  await expect(summary.getByRole('link', { name: 'Find new words' })).toBeVisible();
+  await expect(summary.locator('.garden-found-today dd')).toHaveText('4');
   expect(timeZones).toEqual(['Europe/Zurich']);
   await page.screenshot({ path: 'test-results/reviews-due-today.png', fullPage: true });
-  const upcomingButton = page.getByRole('button', { name: 'Upcoming reviews', exact: true });
+  const upcomingButton = page.getByRole('button', { name: 'Upcoming', exact: true });
   await upcomingButton.click();
   const dialog = page.getByRole('dialog', { name: 'Upcoming reviews' });
   await expect(dialog).toBeVisible();
@@ -51,6 +55,10 @@ test('garden distinguishes reviews due now from today and refreshes the counts',
   await expect(dialog).not.toBeVisible();
   dueNow = 2;
   await page.clock.fastForward(60_000);
-  await expect(summary.locator('div').filter({ has: page.getByText('Reviews due now', { exact: true }) }).locator('dd')).toHaveText('2');
+
   await expect(page.getByRole('link', { name: 'Review words 2 due' })).toBeVisible();
+  dueNow = 0;
+  await page.clock.fastForward(60_000);
+  await expect(page.getByRole('link', { name: /^Review words/ })).toHaveCount(0);
+  await expect(summary.locator('.garden-review-action dd')).toHaveText('0');
 });

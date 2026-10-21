@@ -431,6 +431,21 @@ def upcoming_reviews(conn: sqlite3.Connection, time_zone: str, now: datetime | N
     return [{"date": date, "count": count} for date, count in sorted(counts.items())]
 
 
+def words_found_today(conn: sqlite3.Connection, time_zone: str, now: datetime | None = None) -> int:
+    current = now or datetime.now(timezone.utc)
+    zone = ZoneInfo(time_zone)
+    today = current.astimezone(zone).date()
+    first_kept = {}
+    for row in conn.execute("SELECT s.word_id, s.swiped_at FROM swipes s JOIN words w ON w.id=s.word_id WHERE s.action='keep'"):
+        if not row['swiped_at']:
+            continue
+        kept = datetime.fromisoformat(row['swiped_at'].replace('Z', '+00:00'))
+        if kept.tzinfo is None:
+            kept = kept.replace(tzinfo=timezone.utc)
+        first_kept[row['word_id']] = min(first_kept.get(row['word_id'], kept), kept)
+    return sum(kept <= current and kept.astimezone(zone).date() == today for kept in first_kept.values())
+
+
 def home_summary(conn: sqlite3.Connection, level: str | None, time_zone: str = 'UTC') -> dict:
     """Everything the garden template needs in one shot."""
     bag_count = seed_bag_count(conn)
@@ -445,6 +460,7 @@ def home_summary(conn: sqlite3.Connection, level: str | None, time_zone: str = '
         "bag_cap": SEED_BAG_CAP,
         "due_now": int(due_now or 0),
         "due_today": reviews_due_today(conn, time_zone),
+        "found_today": words_found_today(conn, time_zone),
         "upcoming_reviews": upcoming_reviews(conn, time_zone),
         "new_in_bag": int(new_in_bag or 0),
         "planted_total": int(planted_total or 0),

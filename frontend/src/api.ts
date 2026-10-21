@@ -110,6 +110,7 @@ export interface Garden {
     bag_cap: number;
     due_now: number;
     due_today?: number;
+    found_today?: number;
     upcoming_reviews?: { date: string; count: number }[];
     planted_total: number;
   };

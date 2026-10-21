@@ -13,7 +13,7 @@ A German vocabulary web app. Users discover words they care about, practise them
 | **Seed bag** | The user's current set of newly kept words, not yet planted. At most 20. |
 | **Garden** | All words the user has planted, organised by topic. It is also the home screen. |
 | **Growth stage** | How well a user remembers a word, from seedling to fully grown. Determined by spaced repetition. |
-| **Practice** | Flashcards, chat, reading or the grammar playground. Never changes growth stages. |
+| **Practice** | Flashcards (including Forms), chat, or reading. Never changes growth stages. |
 | **Review** | A short knowledge check on a set of words. The only thing that changes growth stages. |
 
 ## Users and context
@@ -25,7 +25,7 @@ A German vocabulary web app. Users discover words they care about, practise them
 - The local Python version retains its on-device profile chooser.
 - The signed-in sidebar appears from browser login state while profile and page data load. Session bootstrap reads only the learner name, level, and AI availability, never vocabulary or learning progress. Topic names load separately when needed. Signed-in pages mount alongside session bootstrap. Headings, navigation, search/filter inputs, and practice-mode links stay available while independent data loads; loading/error messages are scoped to the affected content. AI actions wait for confirmed availability. Card decisions and review ratings remain disabled during saves to avoid conflicting writes. Server requests still verify authentication.
 - Supports laptops and phones. At phone widths (760px and below), navigation becomes a compact header with an expandable menu, and study flows use the full screen width. Opening another page closes the menu.
-- On phones, Find words starts with collapsed topic selection and seed bag panels, review ratings use a two-by-two grid, grammar's scrollable word picker sits above the exercise, and topic word tables become stacked rows while retaining sorting.
+- On phones, Find words starts with collapsed topic selection and seed bag panels, review ratings use a two-by-two grid, Forms opens as a full-width popup, and topic word tables become stacked rows while retaining sorting.
 - The phone garden includes visible topic links and a labelled seed-bag button alongside the illustration, so navigation does not require hovering or selecting small artwork targets.
 - Not in scope: social features and adding your own vocabulary.
 
@@ -61,12 +61,12 @@ Topic word lists apply the level visibility rules described below.
 
 ## Home screen = the garden
 - The home screen is an illustrated garden. Topics containing planted or learned words appear as plots; selecting a plot opens its topic page.
-- **Find new words** opens the vocab matcher. **Review words** reviews planted words across all topics and shows a due count when there are reviews due. Once home data loads, this action is hidden if there are no planted words.
+- **Find new words** opens the vocab matcher. **Review words** reviews planted words across all topics and appears as a button only when reviews are currently due, with the due count. Otherwise its position shows “Words due” and 0; while counts are unavailable it shows a dash.
 - Selecting the seed bag in the garden opens its word list, with **Practice** and **Plant** actions when it contains seeds. **Plant** starts a seed-bag review; it does not plant words without ratings.
 - The sidebar provides Garden, Explore topics, Find words, Practice, and Review navigation.
-- The home summary shows words planted, reviews due now, and reviews due today. The planted count counts reviewed words, while plots also include words marked Learned.
+- Above the garden, separate summary cards show total words planted at the far left, reviews in the middle, and words found today with Find new words on the right. The review card contains due-today counts, the Review words button only when currently due (otherwise Words due 0), and Upcoming. Counts and buttons sit side by side within each card, forming one compact desktop row. Cards stack on small screens. The planted count counts reviewed words, while plots also include words marked Learned.
 - Reviews due today includes overdue planted words and planted words scheduled before the end of the learner’s local calendar day, using the browser’s time zone. Each word counts once when either recognition or production is due; seeds and Learned words are excluded. This is a snapshot of current schedules, not a prediction of repeat reviews after ratings. Counts refresh every minute while the page is visible and after learning changes. Reviews remain available only when currently due.
-- **Upcoming reviews** beside the home summary aligns with the three summary counts on desktop and wraps below them on small screens. It opens a modal with the due-now count and a horizontal bar chart of future counts grouped by local calendar date. Each bar has a visible date and word count, with lengths scaled to the busiest scheduled day. Each planted word appears once, on the earliest of its recognition and unlocked production schedules. Already-due words appear only in the due-now count; seeds and Learned words are excluded. All scheduled future dates are shown, including later today. These are current schedules, not predictions of repeat reviews or future production unlocks. The modal supports Close, Escape, and backdrop dismissal.
+- **Upcoming** sits inside the review summary card. It opens a modal with the due-now count and a horizontal bar chart of future counts grouped by local calendar date. Each bar has a visible date and word count, with lengths scaled to the busiest scheduled day. Each planted word appears once, on the earliest of its recognition and unlocked production schedules. Already-due words appear only in the due-now count; seeds and Learned words are excluded. All scheduled future dates are shown, including later today. These are current schedules, not predictions of repeat reviews or future production unlocks. The modal supports Close, Escape, and backdrop dismissal.
 - The app does not track time spent learning or store activity-timer sessions.
 
 ## Explore topics and topic pages
@@ -95,10 +95,10 @@ Topic word lists apply the level visibility rules described below.
 - **Side panel:** the seed bag as a list of kept words, with actions to practise or review seeds.
 
 ## Practice and review
-- The practice menu, Reading, and Conversation load only word counts before starting. Grammar loads its word list and form options; generated exercises fetch their own target words.
+- The practice menu, Reading, and Conversation load only word counts before starting. Forms loads its code and form options only when opened from a card; exercises use only that card’s word.
 - Both support planted words across the whole garden, planted words in one topic, or the seed bag. The **Plants / Seeds** switch keeps seeds separate from planted words and preserves the selected topic when switching back to plants.
 - Topic practice includes its planted and Learned words, including words marked Learned directly in the matcher. Unseen and Not now words must first be added to the seed bag to practise them.
-- Practice flashcards show each word's growth stage; AI practice shows its target vocabulary.
+- Practice flashcards and review cards show each word's growth with the garden’s plant icon inside the card header, without a visible growth-stage or production-progress label. The icon retains an accessible description. AI practice shows its target vocabulary.
 - Review format: flip the card, then self-grade how well you knew it. That grade updates the word's growth stage.
 - Review mixes both directions and labels every card. Each word appears at most once per session; production takes priority when both tracks are due. Good or Easy production also applies the same rating to recognition, even if recognition is not due. Hard and Again production affect production only.
 - A session covers one visit to Review for one selected word set. Refresh resumes the session; leaving Review or switching sets starts a new session. Session progress is local to the browser tab and account.
@@ -107,3 +107,15 @@ Topic word lists apply the level visibility rules described below.
 - Immediately after a rating makes both tracks mature, Review offers **Mark as Learned** or **Keep reviewing**. Learned permanently completes both tracks, stops review and wilting, and remains available for practice. The choice is also offered after later mature ratings.
 - Practice flashcards have a DE → EN / EN → DE toggle for both plants and seeds, including words whose production review is locked. Switching direction hides the answer again; practice never changes schedules or growth.
 - In review and practice flashcards, noun articles are hidden in the word heading until the card is flipped.
+
+- The grammar playground is part of the **Forms** popup, not a separate practice mode. Practice flashcards offer Forms at any time; Review offers it only after reveal, in either direction. Existing grammar links redirect to flashcards with the selected word set preserved.
+- Forms opens a side popup for the current word, with the existing part-of-speech form selectors, Generate example, and sentence feedback. There is no word picker and no separately generated reference table. Examples and feedback use AI only when requested; opening the popup does not call AI.
+- Closing Forms (Close, Escape, or backdrop) returns focus to its button and preserves the card, direction, hint, reveal state, and review progress. Popup drafts and results survive reopening on the same card; changing words starts a fresh workspace. Forms never rates, plants, or changes schedules or growth. Learned words remain usable for this practice.
+
+- Practice and review cards group level/part of speech and direction in a compact header. The word and example remain central; reveal and Forms share a footer, with Forms styled as a secondary tool.
+
+- Revealing an EN → DE card promotes the German answer (with its article) to the main heading, followed by its plural and German example. The English meaning and example move to a subdued context block below. This applies to practice and review.
+
+- Revealed DE → EN cards use the same answer layout as revealed EN → DE cards: German word, plural, and example first, with English meaning and example in the subdued context block below.
+
+- Find new words sits in its own summary card alongside Words found today. This counts distinct words first added to the seed bag on the learner’s local calendar day, from either discovery or topic additions. Words still count after planting or becoming Learned. Skipped words and words marked Learned without being kept do not count. Counts refresh with the garden summary; repeated keeps never count a word twice.

@@ -1,4 +1,4 @@
-import type { Correction } from '../../api';
+import type { Correction } from '../api';
 export function Corrections({ items }: { items?: Correction[] }) {
   return (
     <>

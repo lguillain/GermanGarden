@@ -65,7 +65,8 @@ test('production graduates both tracks and Learned stays fully grown, unreviewab
     await expect(card).toContainText('Hint: B…');
     await expect(card).not.toContainText('Baum');
     await page.getByRole('button', { name: 'Show answer', exact: true }).click();
-    await expect(card.locator('.translation')).toContainText('der Baum');
+    await expect(card.getByRole('heading')).toHaveText('der Baum');
+    await expect(card.locator('.answer-context')).toContainText('tree');
     await page.getByRole('button', { name: /^Good In/ }).click();
     await expect(page.getByRole('heading', { name: 'Fully grown: Baum' })).toBeVisible();
     await page.reload();
@@ -106,7 +107,7 @@ test('production graduates both tracks and Learned stays fully grown, unreviewab
     await page.getByRole('button', { name: 'EN → DE', exact: true }).click();
     await expect(page.locator('.word-card')).not.toContainText('Hint: B…');
     await page.getByRole('button', { name: 'Show answer' }).click();
-    await expect(page.locator('.translation')).toContainText('der Baum');
+    await expect(page.locator('.word-card').getByRole('heading')).toHaveText('der Baum');
     await expect(page.getByText('The tree is tall.', { exact: true })).toHaveCount(1);
     await page.getByRole('button', { name: 'DE → EN', exact: true }).click();
     await expect(page.locator('.translation')).toHaveCount(0);

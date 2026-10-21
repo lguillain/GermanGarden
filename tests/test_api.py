@@ -429,5 +429,24 @@ class ApiTests(unittest.TestCase):
             self.assertEqual(self.client.post('/api/grammar', json={'word_id': word['id']}).status_code, 200)
 
 
+    def test_forms_options_and_learned_word_exercises_preserve_progress(self):
+        self.assertEqual(self.client.get('/api/grammar/options').status_code, 401)
+        self.login()
+        options = self.client.get('/api/grammar/options')
+        self.assertEqual(options.status_code, 200)
+        self.assertIn('tense', options.json()['verb'])
+        word_id = self.client.get('/api/matcher').json()['card']['word_id']
+        with patch('app.main.learn.grammar_generate', return_value={'de': 'Hallo.'}) as generate:
+            self.assertEqual(self.client.post('/api/grammar', json={'word_id': word_id}).status_code, 404)
+            generate.assert_not_called()
+            with db.open_app_db('test_learner') as conn:
+                conn.execute('INSERT INTO known_words(word_id) VALUES (?)', (word_id,))
+                conn.commit()
+                before = list(conn.iterdump())
+            self.assertEqual(self.client.post('/api/grammar', json={'word_id': word_id}).status_code, 200)
+            with db.open_app_db('test_learner') as conn:
+                self.assertEqual(list(conn.iterdump()), before)
+
+
 if __name__ == '__main__':
     unittest.main()

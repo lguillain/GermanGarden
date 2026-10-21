@@ -139,7 +139,7 @@ export async function aiPractice(path: string, body: Body, garden: Garden, compl
   }
   if (path === '/grammar') {
     const word = garden.word(text(body, 'word_id'));
-    requireThat(garden.kept(word.id), 'Kept word not found.', 404);
+    requireThat(garden.kept(word.id) || garden.learned(word.id), 'Practice word not found.', 404);
     const supplied = body.config ?? {};
     requireThat(
       supplied && typeof supplied === 'object' && !Array.isArray(supplied),

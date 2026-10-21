@@ -9,7 +9,7 @@ export function UpcomingReviews({ summary }: { summary: Garden['summary'] }) {
   return (
     <>
       <button className="button" onClick={() => dialog.current?.showModal()}>
-        Upcoming reviews
+        Upcoming
       </button>
       <dialog
         ref={dialog}

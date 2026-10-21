@@ -315,17 +315,8 @@ input::placeholder, textarea::placeholder { color: #637d67; opacity: 1; }
 
 .ai-study { margin-left: 0; margin-right: 0; }
 
-.study.grammar-study { max-width: none; margin: 0; }
-.grammar-layout { display: grid; grid-template-columns: 230px minmax(0, 790px); gap: 28px; align-items: start; }
-.grammar-word-picker { position: sticky; top: 24px; }
-.grammar-word-list { list-style: none; margin: 14px 0 0; padding: 0; max-height: calc(100svh - 280px); overflow-y: auto; }
-.grammar-word-list li { margin-bottom: 6px; }
-.grammar-word-list button { width: 100%; flex-direction: column; align-items: flex-start; text-align: left; gap: 3px; padding: 12px; border: 1px solid transparent; border-radius: 12px; background: transparent; }
-.grammar-word-list button:hover { background: #e7eddc; }
-.grammar-word-list button[aria-pressed="true"] { background: #dce8ce; border-color: #91ad78; }
 .grammar-workspace { min-width: 0; }
 .grammar-workspace .grammar-options { flex-wrap: wrap; }
-@media (max-width: 900px) { .grammar-layout { grid-template-columns: 180px minmax(0, 1fr); gap: 18px; } }
 
 .review-progress { margin-bottom: 20px; }
 .review-progress-counts { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 8px; font-size: 13px; color: var(--muted); }
@@ -375,9 +366,6 @@ input::placeholder, textarea::placeholder { color: #637d67; opacity: 1; }
   .sentence, .message, .reading { overflow-wrap: anywhere; }
   .grade-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .card-actions { flex-wrap: wrap; }
-  .grammar-layout { grid-template-columns: minmax(0, 1fr); }
-  .grammar-word-picker { position: static; }
-  .grammar-word-list { max-height: 180px; }
   .practice-grid .panel { padding: 22px; }
   .topic-page-heading { flex-wrap: wrap; gap: 12px; }
   .topic-word-controls { align-items: stretch; gap: 10px; }
@@ -460,4 +448,73 @@ input::placeholder, textarea::placeholder { color: #637d67; opacity: 1; }
   .upcoming-review-counts { gap: 10px; }
   .upcoming-review-counts > div { padding: 14px; }
   .review-forecast-bars li { grid-template-columns: 72px minmax(0, 1fr) 28px; gap: 10px; }
+}
+
+.card-forms { margin: 0; }
+.forms-dialog { position: fixed; inset: 0 0 0 auto; margin: 0; width: min(540px, 100vw); max-width: 100vw; height: 100dvh; max-height: 100dvh; overflow-y: auto; padding: 24px; border: 0; border-left: 1px solid #d9dfcc; border-radius: 24px 0 0 24px; background: #fffaf0; color: #35483a; text-align: left; box-shadow: -12px 0 60px #24352130; }
+.forms-dialog::backdrop { background: #172a2155; }
+.forms-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
+.word-card .forms-dialog h2 { font-size: 24px; margin: 0; }
+.forms-dialog .grammar-workspace { display: grid; gap: 16px; }
+.forms-dialog .grammar-options { margin: 24px 0; }
+.forms-dialog .grammar-options label { min-width: 0; flex: 1 1 180px; }
+.forms-dialog .grammar-options select { width: 100%; }
+.forms-dialog textarea { width: 100%; margin: 12px 0; }
+.forms-dialog .panel { padding: 20px; }
+@media (max-width: 480px) {
+  .forms-dialog { padding: 20px 16px; border-radius: 0; }
+}
+
+/* Study cards separate context, the word, and secondary tools. */
+.study-word-card { padding: 24px 28px; }
+.study-word-card .word-card-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; margin-bottom: 20px; }
+.study-word-card .review-direction { color: var(--muted); font-size: 12px; letter-spacing: .04em; background: #edf0e4; border-radius: 8px; padding: 4px 9px; white-space: nowrap; }
+.study-word-card > h2 { font-size: 38px; margin: 10px 0 6px; }
+.study-word-card > .word-detail { font-size: 13px; margin: 0 0 16px; }
+.study-word-card > .sentence { max-width: 36em; margin: 16px 0 24px; font-size: 18px; }
+.study-word-card > .word-card-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; width: 100%; margin-top: 16px; padding-top: 18px; border-top: 1px solid var(--border); }
+.study-word-card .card-forms { margin-left: auto; }
+.study-word-card .card-forms > button { font-size: 13px; padding: 7px 12px; background: transparent; border-color: transparent; color: var(--muted); }
+.study-word-card .card-forms > button:hover { background: #edf0e4; color: var(--accent); }
+.study-word-card .word-card-footer .actions > p { margin: 0; font-size: 13px; }
+@media (max-width: 480px) {
+  .study-word-card { padding: 20px; }
+  .study-word-card > h2 { font-size: 30px; }
+  .study-word-card > .sentence { font-size: 16px; }
+}
+
+.word-card-context { display: flex; align-items: center; gap: 12px; }
+.word-card-context .plant-stage-icon { width: 36px; height: 36px; flex-basis: 36px; }
+
+.study-word-card > .answer-context { border-top: 0; margin-top: 0; padding: 14px 18px; border-radius: 12px; background: #f0f1e7; color: var(--muted); font-size: 14px; }
+.study-word-card > .answer-context strong { font-weight: 500; }
+.study-word-card > .answer-context p { margin-top: 6px; }
+
+/* Separate garden totals, review, and discovery into one summary row. */
+.garden-dashboard { display: grid; grid-template-columns: auto minmax(0, 1.7fr) minmax(0, 1.15fr); gap: 16px; margin-bottom: 24px; }
+.garden-dashboard > .panel { padding: 22px; background: #fffaf0; margin: 0; min-width: 0; display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 20px; }
+.garden-dashboard dl { margin: 0; }
+.garden-dashboard dt { color: var(--muted); font-size: 13px; }
+.garden-dashboard dd { margin: 6px 0 0; font-size: 28px; font-weight: 600; }
+.garden-review-stats { display: flex; justify-content: space-between; align-items: center; gap: 24px; flex: 1; }
+.garden-review-action { text-align: center; }
+.garden-card-action { flex-shrink: 0; }
+.garden-card-action > .button { font-size: 13px; white-space: nowrap; }
+.garden-dashboard .upcoming-reviews-header h2 { margin: 0; font-size: 22px; }
+.garden-dashboard .upcoming-review-counts dd { margin: 6px 0 0; }
+.garden-scene-layout { position: relative; }
+@media (max-width: 900px) {
+  .garden-dashboard { grid-template-columns: minmax(0, 1fr); }
+  .garden-dashboard > .garden-total { grid-column: 1 / -1; padding: 14px 20px; }
+  .garden-total dl > div { display: flex; align-items: baseline; gap: 14px; }
+  .garden-total dd { margin: 0; }
+}
+@media (max-width: 540px) {
+  .garden-dashboard { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .garden-dashboard > .panel { padding: 18px; }
+}
+
+@media (max-width: 540px) {
+  .garden-dashboard > .garden-review-card { flex-wrap: wrap; }
+  .garden-review-stats { flex-basis: 100%; }
 }

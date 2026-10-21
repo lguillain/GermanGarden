@@ -2,7 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api, type Chat } from '../../api';
 import { AiPracticeLayout } from './ai-practice-layout';
-import { Corrections } from './corrections';
+import { Corrections } from '../../components/corrections';
 import { ErrorNotice } from '../../components/feedback';
 import { TargetWords } from './target-words';
 import { usePracticeSummary } from './use-practice-summary';
@@ -32,7 +32,6 @@ export function ConversationPage() {
       title="Conversation"
       result={summary}
       wordCount={summary.data?.word_count ?? 0}
-      grammar={false}
     >
       {summary.data && (
         <>

@@ -405,9 +405,17 @@ class GrammarInput(BaseModel):
     action: Literal['generate', 'correct'] = 'generate'
 
 
+@app.get('/api/grammar/options')
+def grammar_options(conn: sqlite3.Connection = Db):
+    return learn.GRAMMAR_CONFIG_OPTIONS
+
+
 @app.post('/api/grammar')
 def grammar(body: GrammarInput, conn: sqlite3.Connection = Db):
-    row = learn.kept_word(conn, body.word_id)
+    row = conn.execute("""SELECT w.* FROM words w WHERE w.id=? AND (
+        EXISTS (SELECT 1 FROM swipes s WHERE s.word_id=w.id AND s.action='keep')
+        OR EXISTS (SELECT 1 FROM known_words k WHERE k.word_id=w.id)
+        OR EXISTS (SELECT 1 FROM flashcard_learned f WHERE f.word_id=w.id))""", (body.word_id,)).fetchone()
     if row is None:
         raise HTTPException(404, 'Kept word not found.')
     word = dict(row)

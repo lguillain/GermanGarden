@@ -159,6 +159,7 @@ function ReviewSession({ storageKey }: { storageKey: string }) {
         ) : card ? (
           <>
             <WordCard
+              forms="review"
               key={card.word_id}
               word={card}
               revealed={revealed}

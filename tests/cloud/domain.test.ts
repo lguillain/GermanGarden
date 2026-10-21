@@ -6,6 +6,7 @@ import { Catalog, freshLearner } from '../../supabase/functions/garden/model.ts'
 import { growth, initialSrs, reviewOutcome } from '../../supabase/functions/garden/scheduler.ts';
 import { dispatch, Store } from '../../supabase/functions/garden/service.ts';
 import { aiPractice } from '../../supabase/functions/garden/ai.ts';
+import { createCompletion } from '../../supabase/functions/garden/anthropic.ts';
 
 export const catalog: Catalog = {
   words: Array.from({ length: 24 }, (_, i) => ({ id: `word-${i}`, lemma: `Wort${i}`, article: 'das', pos: 'noun', english: `word ${i}`, level: 'A2' })),
@@ -14,6 +15,23 @@ export const catalog: Catalog = {
   sentences: Array.from({ length: 24 }, (_, i) => ({ id: i + 1, word_id: `word-${i}`, activity_id: i < 22 ? 'home' : 'work', text: `Ein Wort${i}.`, english: `A word ${i}.` })),
 };
 function fixture() { const state = freshLearner('Test'); state.user.level = 'A2'; return new Garden(catalog, state, Date.parse('2026-10-19T12:00:00Z')); }
+
+test('Forms generation supplies a valid JSON example that the provider parser accepts', async (t) => {
+  const g = fixture();
+  g.add('word-0', 'home');
+  const before = structuredClone(g.state);
+  let example: Record<string, string> | undefined;
+  t.mock.method(globalThis, 'fetch', async (_url: unknown, init: RequestInit) => {
+    const request = JSON.parse(init.body as string);
+    const raw = request.system.slice(request.system.lastIndexOf('\n') + 1);
+    example = JSON.parse(raw);
+    return Response.json({ content: [{ type: 'text', text: raw }] });
+  });
+  const result = await aiPractice('/grammar', { word_id: 'word-0', action: 'generate' }, g, createCompletion('test-key')!);
+  assert.deepEqual(Object.keys(result), ['case_trigger', 'expected_form', 'de', 'en', 'focus']);
+  assert.deepEqual(result, example);
+  assert.deepEqual(g.state, before);
+});
 function memoryStore(garden = fixture()): Store & { state: typeof garden.state } {
   let version = 0;
   return { state: structuredClone(garden.state), async load() { return { version, data: structuredClone(this.state) }; }, async save(expected, data) { if (version !== expected) return false; this.state = structuredClone(data); version++; return true; } };
@@ -189,4 +207,42 @@ test('today uses local calendar dates across DST and UTC date boundaries', () =>
     g.state.srs['word-0'].due_at = tomorrow;
     assert.equal(g.home(zone).summary.due_today, 0);
   }
+});
+
+test('Forms options bypass progress reads and exercises preserve schedules for seeds, plants and Learned words', async () => {
+  const g = fixture();
+  const store = memoryStore(g);
+  store.load = async () => { throw new Error('Options must not load progress'); };
+  const options = await dispatch('/grammar/options', 'GET', new URLSearchParams(), {}, store, catalog);
+  assert.ok('noun' in options);
+  g.add('word-0', 'home');
+  g.add('word-1', 'home');
+  g.grade('word-1', 3, 'bag');
+  g.state.known.push('word-2');
+  const before = structuredClone(g.state);
+  for (const id of ['word-0', 'word-1', 'word-2']) {
+    for (const action of ['generate', 'correct']) {
+      await aiPractice('/grammar', { word_id: id, config: { case: 'Dativ' }, action, sentence: 'Ein Wort.' }, g,
+        async () => ({ expected_form: 'dem Wort', de: 'Mit dem Wort.', corrections: [] }));
+    }
+  }
+  assert.deepEqual(g.state, before);
+  await assert.rejects(aiPractice('/grammar', { word_id: 'word-3' }, g, async () => ({})), /Practice word not found/);
+});
+
+test('words found today counts first keeps in local time, including planted and Learned words', () => {
+  const g = fixture();
+  g.now = Date.parse('2026-10-25T12:00:00Z');
+  for (let i = 0; i < 3; i++) g.add(`word-${i}`, 'home');
+  g.state.swipes[0].swiped_at = '2026-10-24T22:30:00Z'; // today in Zurich, yesterday UTC
+  g.state.swipes[1].swiped_at = '2026-10-24T21:30:00Z';
+  g.state.swipes[2].planted_at = g.iso();
+  g.state.learned.push('word-2');
+  g.state.known.push('word-4'); // never kept
+  g.state.swipes.push({ ...g.state.swipes[1], swiped_at: g.iso() }); // duplicate old keep
+  g.state.swipes.push({ ...g.state.swipes[0], word_id: 'word-3', action: 'drop', swiped_at: g.iso() });
+  const before = structuredClone(g.state);
+  assert.equal(g.home('Europe/Zurich').summary.found_today, 2);
+  assert.equal(g.home('UTC').summary.found_today, 1);
+  assert.deepEqual(g.state, before);
 });

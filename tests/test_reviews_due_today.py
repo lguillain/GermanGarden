@@ -3,7 +3,7 @@ import sqlite3
 import unittest
 from datetime import datetime
 
-from app.garden import reviews_due_today, upcoming_reviews
+from app.garden import reviews_due_today, upcoming_reviews, words_found_today
 from pipeline.db import ensure_schema
 
 
@@ -32,3 +32,24 @@ class ReviewsDueTodayTests(unittest.TestCase):
                 {"date": "2026-10-25", "count": 2},
                 {"date": "2026-10-26", "count": 1},
             ])
+
+    def test_words_found_today_uses_first_keep_and_local_date(self):
+        with sqlite3.connect(':memory:') as conn:
+            conn.row_factory = sqlite3.Row
+            ensure_schema(conn)
+            for i in range(5):
+                conn.execute("INSERT INTO words(id,lemma,pos,english,level) VALUES (?,?,'noun','word','A2')", (f'word-{i}', f'word-{i}'))
+            for word, action, timestamp in [
+                ('word-0', 'keep', '2026-10-24 22:30:00'),
+                ('word-1', 'keep', '2026-10-24 21:30:00'),
+                ('word-2', 'keep', '2026-10-25 10:00:00'),
+                ('word-1', 'keep', '2026-10-25 11:00:00'),
+                ('word-3', 'drop', '2026-10-25 11:00:00'),
+            ]:
+                conn.execute('INSERT INTO swipes(word_id,action,swiped_at) VALUES (?,?,?)', (word, action, timestamp))
+            conn.execute("UPDATE swipes SET planted_at='2026-10-25' WHERE word_id='word-2'")
+            conn.execute("INSERT INTO flashcard_learned(word_id) VALUES ('word-2')")
+            conn.execute("INSERT INTO known_words(word_id) VALUES ('word-4')")
+            now = datetime.fromisoformat('2026-10-25T12:00:00+00:00')
+            self.assertEqual(words_found_today(conn, 'Europe/Zurich', now), 2)
+            self.assertEqual(words_found_today(conn, 'UTC', now), 1)

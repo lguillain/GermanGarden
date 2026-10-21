@@ -102,7 +102,8 @@ export async function handler(request: Request): Promise<Response> {
     if (path === '/activities' && request.method === 'GET')
       return respond(await measure('activities', activities));
     if (
-      ((path === '/review' || path === '/practice/summary') && request.method === 'GET') ||
+      ((path === '/review' || path === '/practice/summary' || path === '/grammar/options') &&
+        request.method === 'GET') ||
       topicKeepRequest(path, request.method)
     ) {
       return respond(

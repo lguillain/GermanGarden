@@ -7,13 +7,11 @@ export function AiPracticeLayout({
   title,
   result,
   wordCount,
-  grammar,
   children,
 }: {
   title: string;
   result: { isPending: boolean; error: unknown };
   wordCount: number;
-  grammar: boolean;
   children: ReactNode;
 }) {
   const { scope, query, label } = useScope();
@@ -35,7 +33,7 @@ export function AiPracticeLayout({
           No words in this practice set yet. <Link to="/matcher">Find words</Link>.
         </Empty>
       ) : (
-        <div className={`study wide${grammar ? ' grammar-study' : ' ai-study'}`}>{children}</div>
+        <div className="study wide ai-study">{children}</div>
       )}
     </>
   );

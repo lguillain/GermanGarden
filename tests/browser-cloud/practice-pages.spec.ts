@@ -43,7 +43,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-for (const mode of ['chat', 'read', 'grammar']) {
+for (const mode of ['chat', 'read']) {
   test(`${mode} handles delayed and empty practice data without rendering errors`, async ({
     page,
   }) => {
@@ -53,7 +53,7 @@ for (const mode of ['chat', 'read', 'grammar']) {
     const pending = new Promise<void>((resolve) => {
       release = resolve;
     });
-    await page.route(mode === 'grammar' ? '**/functions/v1/garden/practice?*' : '**/functions/v1/garden/practice/summary?*', async (route) => {
+    await page.route('**/functions/v1/garden/practice/summary?*', async (route) => {
       await pending;
       await route.fulfill({
         json: { word_count: 0, words: [], counts: { plants: 0, seeds: 0 }, grammar_options: {} },
@@ -134,19 +134,8 @@ test('practice pages keep their own state and reset it when the word set changes
   await expect(page.getByRole('button', { name: 'Start conversation' })).toBeVisible();
   await expect(page.locator('.chat-log')).toHaveCount(0);
   await page.getByRole('link', { name: '← Practice', exact: true }).click();
-  await page.getByRole('link', { name: 'Start grammar playground' }).click();
-  await page.getByRole('combobox', { name: 'Case', exact: true }).selectOption('Dativ');
-  await page.getByRole('button', { name: 'Generate example' }).click();
-  await expect(page.locator('.grammar-result')).toContainText('dem Baum');
-  await page.locator('.grammar-word-list button').nth(1).click();
-  await expect(page.locator('.grammar-result')).toHaveCount(0);
-  await expect(page.getByRole('combobox', { name: 'Case', exact: true })).toHaveValue('Nominativ');
   expect(requests.find((request) => request.path === 'reading')?.body).toMatchObject({
     scope: 'bag',
-  });
-  expect(requests.find((request) => request.path === 'grammar')?.body).toMatchObject({
-    word_id: 'tree',
-    config: { case: 'Dativ' },
   });
   expect(errors).toEqual([]);
 });

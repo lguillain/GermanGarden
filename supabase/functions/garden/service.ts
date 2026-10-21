@@ -1,6 +1,6 @@
 import { topicKeepRequest, topicKeepResponse, type TopicKeepResult } from './topic-keep.ts';
 import { matcherPreview } from './matcher-preview.ts';
-import { Garden, reviewSelectionResponse } from './domain.ts';
+import { Garden, grammarOptions, reviewSelectionResponse } from './domain.ts';
 import { Body, Complete, text, aiPractice, guidance } from './ai.ts';
 import { Catalog, Learner, ReviewSelection, HttpError, requireThat, shuffle } from './model.ts';
 export interface Store {
@@ -81,6 +81,7 @@ export async function dispatch(
   const keep = topicKeepRequest(path, method);
   if (keep && store.keepTopicWord)
     return topicKeepResponse(await store.keepTopicWord(keep.wordId, keep.topic));
+  if (path === '/grammar/options' && method === 'GET') return grammarOptions;
   const snapshot = initial ?? (await store.load());
   const garden = new Garden(catalog, snapshot.data);
   if (method === 'GET') {

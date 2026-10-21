@@ -511,6 +511,26 @@ export class Garden {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, count]) => ({ date, count }));
   }
+  wordsFoundToday(timeZone: string) {
+    const calendar = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const today = calendar.format(this.now);
+    const firstKept = new Map<string, number>();
+    for (const swipe of this.state.swipes) {
+      if (swipe.action !== 'keep') continue;
+      const keptAt = Date.parse(swipe.swiped_at);
+      if (!Number.isFinite(keptAt)) continue;
+      firstKept.set(swipe.word_id, Math.min(firstKept.get(swipe.word_id) ?? Infinity, keptAt));
+    }
+    return this.catalog.words.filter((word) => {
+      const keptAt = firstKept.get(word.id);
+      return keptAt !== undefined && keptAt <= this.now && calendar.format(keptAt) === today;
+    }).length;
+  }
   home(timeZone = 'UTC') {
     const plots = [],
       topics = [];
@@ -547,6 +567,7 @@ export class Garden {
         bag_cap: SEED_BAG_CAPACITY,
         due_now: this.reviewWords().length,
         due_today: this.reviewsDueToday(timeZone),
+        found_today: this.wordsFoundToday(timeZone),
         upcoming_reviews: this.upcomingReviews(timeZone),
         planted_total: this.catalog.words.filter((word) => this.kept(word.id)?.planted_at).length,
       },

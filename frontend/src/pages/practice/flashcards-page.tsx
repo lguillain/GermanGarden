@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 import type { Word } from '../../api';
 import { api } from '../../api';
 import { Empty, ErrorNotice, Heading, Loading } from '../../components/feedback';
-import { plantLabel } from '../../components/garden-artwork';
 import { WordCard } from '../../components/word-card';
 import { useScope } from '../../hooks/use-scope';
 
@@ -60,8 +59,8 @@ export function FlashcardsPage() {
           <Empty>No words in this deck yet.</Empty>
         ) : index < cards.length ? (
           <>
-            <p>{plantLabel(cards[index])}</p>
             <WordCard
+              forms="practice"
               direction={direction}
               word={cards[index]}
               revealed={revealed}

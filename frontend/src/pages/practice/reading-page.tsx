@@ -20,12 +20,7 @@ export function ReadingPage() {
     onSuccess: () => setShowTranslation(false),
   });
   return (
-    <AiPracticeLayout
-      title="Reading"
-      result={summary}
-      wordCount={summary.data?.word_count ?? 0}
-      grammar={false}
-    >
+    <AiPracticeLayout title="Reading" result={summary} wordCount={summary.data?.word_count ?? 0}>
       {summary.data && (
         <>
           <button className="primary" disabled={reading.isPending} onClick={() => reading.mutate()}>
