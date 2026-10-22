@@ -30,7 +30,7 @@ const cards: {
     title: 'Extra care',
     count: 4,
     detail: 'words to practise',
-    action: 'Practise these words',
+    action: 'Practice hard words',
   },
 ];
 

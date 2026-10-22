@@ -19,20 +19,19 @@ Use the shared `Heading` component’s `navigation` and `actions` props for page
   the nearest common page group; keep each page's business logic with its flow.
 - `supabase/migrations/`: PostgreSQL schema, RLS policies and atomic write functions.
 - `supabase/functions/garden/`: TypeScript Edge Function, domain rules and AI prompts.
-- `app/`: original Python/FastAPI backend, retained for local use and parity checks.
 - `pipeline/`, `schema.sql`: offline SQLite vocabulary pipeline.
 - `scripts/export-supabase.py`: read-only SQLite-to-PostgreSQL export.
 - `scripts/import-local.ts`: bulk local import, including automatic login accounts.
 - `tests/cloud/`: TypeScript domain, PostgreSQL and local Supabase integration tests.
-- `tests/test_*.py`: original API and migration tests; `tests/browser/`: Playwright.
+- `tests/test_*.py`: dataset tests; `tests/browser-cloud/`: Playwright.
+- `tests/fixtures/scheduler-parity.json`: captured original scheduler results.
 - `.github/workflows/pages.yml`: manually triggered GitHub Pages deployment.
 - `data/`: ignored private SQLite databases and generated exports; never publish.
 
 ## Commands (repository root)
 
 - Install frontend/test dependencies: `npm ci`.
-- Install legacy backend: `python3 -m venv .venv`, then `.venv/bin/pip install -r requirements.txt`.
-- Legacy development: `./scripts/dev.sh`.
+- Install dataset dependencies: `python3 -m venv .venv`, then `.venv/bin/pip install -r requirements.txt`.
 - Cloud development: `supabase start`, `supabase functions serve garden`, then `npm run dev` with `.env.local` configured as described in README.
 - Configure local frontend environment: `npm run configure:local` (requires the local Supabase stack).
 - Import all local profiles and vocabulary: `npm run import:local` (requires the local Supabase stack; credentials are saved privately under `data/`).
@@ -42,8 +41,8 @@ Use the shared `Heading` component’s `navigation` and `actions` props for page
 - Format cloud TypeScript: `npm run format:cloud`; verify formatting: `npm run check:format:cloud`.
 - Cloud tests: `npm run test:cloud` (Node 22+ and Python 3; no Docker required).
 - Local Auth/API integration: `node --import tsx tests/cloud/local-integration.ts` (local Supabase and function must be running).
-- Legacy API tests: `.venv/bin/python -m unittest discover -s tests -v`.
-- Legacy browser tests: `npm run build`, then `npm run test:e2e` (requires Playwright Chromium and no cloud variables in the build).
+- Dataset tests: `.venv/bin/python -m unittest discover -s tests -v`.
+- Browser tests: `npm run test:e2e` (requires Playwright Chromium; uses mocked Supabase).
 - No separate lint tool is configured; run typechecks and `git diff --check`.
 
 ## Style and tests
@@ -52,7 +51,7 @@ Use strict TypeScript, clear domain names, and lowercase hyphenated new filename
 Keep learning rules in `domain.ts` and pure scheduling rules in `scheduler.ts`.
 Keep HTTP/authentication in `index.ts`, routing and atomic retries in `service.ts`,
 database access in `store.ts`, and provider transport in `anthropic.ts`.
-Match the original scheduler using parity tests.
+Match the original scheduler using the captured parity fixtures.
 Never accept a user ID from the browser to choose whose progress to read or write.
 
 Verify meaningful behavior changes, especially:

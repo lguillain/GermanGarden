@@ -1,9 +1,11 @@
+import { topicWordList, statuses, statusLabel, type TopicWordSort } from './topic-word-list';
+import { invalidateProgress } from '../../queries/invalidate-progress';
 import { TopicScene } from './topic-scene';
 import { gardenGnomeCount } from '../../components/garden-gnome-count';
 import { useGardenTime } from '../../hooks/use-garden-time';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Link, useLocation, useOutletContext } from 'react-router-dom';
+import { Link, useParams, useOutletContext } from 'react-router-dom';
 import type { Activity, Session, Word } from '../../api';
 import { api } from '../../api';
 import { Empty, ErrorNotice, Heading, Loading } from '../../components/feedback';
@@ -15,15 +17,12 @@ import { WordTitle } from '../../components/word-card';
 export function TopicPage() {
   const now = useGardenTime();
   const user = useOutletContext<Session | undefined>()?.user;
-  const topic = decodeURIComponent(useLocation().pathname.split('/').pop() || '');
+  const { topic = '' } = useParams<{ topic: string }>();
   const cache = useQueryClient();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [showOtherLevels, setShowOtherLevels] = useState(false);
-  const [sort, setSort] = useState<{
-    key: 'lemma' | 'english' | 'level' | 'status';
-    descending: boolean;
-  } | null>(null);
+  const [sort, setSort] = useState<TopicWordSort | null>(null);
   const [notice, setNotice] = useState('');
   const result = useQuery({
     queryKey: ['topic', topic],
@@ -54,8 +53,7 @@ export function TopicPage() {
       );
       // The confirmed word is already visible. Other screens refresh when opened;
       // profile, topic names and timers do not depend on seed-bag changes.
-      for (const key of ['topic', 'garden', 'matcher', 'practice', 'review', 'flashcards'])
-        void cache.invalidateQueries({ queryKey: [key], refetchType: 'none' });
+      invalidateProgress(cache, 'topic-addition');
     },
   });
   const activity = result.data?.activity;
@@ -70,55 +68,13 @@ export function TopicPage() {
       },
       { unseen: 0, seeds: 0, planted: 0, due: 0, grown: 0 },
     );
-  const statuses: Record<string, string> = {
-    new: 'Unseen',
-    not_now: 'Not now',
-    learned: 'Learned',
-    bag: 'In seed bag',
-    planted: 'Planted',
-    due: 'Review due',
-    grown: 'Grown',
-  };
-  const visibleWords = words.filter(
-    (w) =>
-      showOtherLevels || w.level === user?.level || (w.status !== 'new' && w.status !== 'not_now'),
-  );
-  const matching = visibleWords.filter(
-    (w) =>
-      (filter === 'all' ||
-        (filter === 'due'
-          ? w.review_due
-          : filter === 'grown'
-            ? w.visual_stage === 'grown'
-            : filter === 'learned'
-              ? w.learned
-              : w.status === filter)) &&
-      `${w.article || ''} ${w.lemma} ${w.english}`
-        .toLowerCase()
-        .includes(search.trim().toLowerCase()),
-  );
-  const statusLabel = (word: Word) => {
-    const status = word.review_due
-      ? 'Review due'
-      : word.learned
-        ? 'Learned'
-        : statuses[word.status || 'new'];
-    return status;
-  };
-  if (sort)
-    matching.sort((a, b) => {
-      const valueA = sort.key === 'status' ? statusLabel(a) : a[sort.key];
-      const valueB = sort.key === 'status' ? statusLabel(b) : b[sort.key];
-      const order = valueA.localeCompare(valueB, sort.key === 'lemma' ? 'de' : 'en', {
-        numeric: true,
-        sensitivity: 'base',
-      });
-      return (
-        (sort.descending ? -order : order) ||
-        a.lemma.localeCompare(b.lemma, 'de') ||
-        a.id.localeCompare(b.id)
-      );
-    });
+  const { visibleWords, matching } = topicWordList(words, {
+    level: user?.level,
+    showOtherLevels,
+    filter,
+    search,
+    sort,
+  });
   const columns = [
     ['lemma', 'Word'],
     ['english', 'Meaning'],

@@ -28,19 +28,11 @@ test.beforeEach(async ({ page }) => {
           ai_available: true,
         },
       });
-    if (path.endsWith('/practice/summary')) return route.fulfill({ json: { word_count: words.length, counts: { plants: 2, seeds: 0 } } });
-    if (path.endsWith('/garden')) return route.fulfill({ json: { plots: [], bag: [], topics: [] } });
+    if (path.endsWith('/practice/summary'))
+      return route.fulfill({ json: { word_count: words.length, counts: { plants: 2, seeds: 0 } } });
+    if (path.endsWith('/garden'))
+      return route.fulfill({ json: { plots: [], bag: [], topics: [] } });
     if (path.endsWith('/activities')) return route.fulfill({ json: [] });
-    if (path.endsWith('/practice'))
-      return route.fulfill({
-        json: {
-          words,
-          counts: { plants: 2, seeds: 0 },
-          grammar_options: {
-            noun: { case: ['Nominativ', 'Dativ'], number: ['Singular', 'Plural'] },
-          },
-        },
-      });
     throw new Error(`Unexpected request ${path}`);
   });
 });
@@ -58,7 +50,7 @@ for (const mode of ['chat', 'read']) {
     await page.route('**/functions/v1/garden/practice/summary?*', async (route) => {
       await pending;
       await route.fulfill({
-        json: { word_count: 0, words: [], counts: { plants: 0, seeds: 0 }, grammar_options: {} },
+        json: { word_count: 0, counts: { plants: 0, seeds: 0 } },
       });
     });
     await page.goto(`/#/practice/${mode}?scope=bag`);
@@ -78,7 +70,7 @@ test('practice pages keep their own state and reset it when the word set changes
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   const requests: { path: string; body: Record<string, unknown> }[] = [];
-  for (const path of ['chat', 'reading', 'grammar']) {
+  for (const path of ['chat', 'reading']) {
     await page.route(`**/functions/v1/garden/${path}`, async (route) => {
       const body = route.request().postDataJSON();
       requests.push({ path, body });
@@ -102,19 +94,13 @@ test('practice pages keep their own state and reset it when the word set changes
               : [{ role: 'assistant', content: 'Was wächst im Garten?' }],
           },
         });
-      return route.fulfill({
-        json: {
-          expected_form: 'dem Baum',
-          de: 'Unter dem Baum.',
-          en: 'Under the tree.',
-          focus: 'Dative form.',
-        },
-      });
     });
   }
   await page.goto('/#/practice?scope=bag');
   await page.getByRole('link', { name: 'Reading', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Practice activity' })).toContainText('Start reading');
+  await expect(page.getByRole('region', { name: 'Practice activity' })).toContainText(
+    'Start reading',
+  );
   await page.screenshot({ path: 'test-results/standalone-reading-activity.png', fullPage: true });
   await page.getByRole('button', { name: 'Start reading' }).click();
   await expect(page.locator('.reading')).toContainText('Der Baum ist grün.');
@@ -124,7 +110,9 @@ test('practice pages keep their own state and reset it when the word set changes
   await expect(page.locator('.reading .translation')).toHaveText('The tree is green.');
   await page.getByRole('link', { name: '← Practice', exact: true }).click();
   await page.getByRole('link', { name: 'Conversation', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Practice activity' })).toContainText('Start conversation');
+  await expect(page.getByRole('region', { name: 'Practice activity' })).toContainText(
+    'Start conversation',
+  );
   await page.getByRole('button', { name: 'Start conversation' }).click();
   await expect(page.locator('.chat-log')).toContainText('Was wächst im Garten?');
   await expect(page.locator('.chips .badge')).toHaveText(['der Baum', 'die Blume']);
@@ -146,31 +134,54 @@ test('practice pages keep their own state and reset it when the word set changes
 });
 
 for (const path of ['/practice', '/practice/read', '/practice/chat']) {
-  test(`${path} starts a counts-only request before session completes and reuses it`, async ({ page }) => {
+  test(`${path} starts a counts-only request before session completes and reuses it`, async ({
+    page,
+  }) => {
     let release!: () => void;
-    const pending = new Promise<void>(resolve => { release = resolve; });
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     let summaryReads = 0;
     const unexpected: string[] = [];
-    page.on('request', request => {
+    page.on('request', (request) => {
       const pathname = new URL(request.url()).pathname;
       if (pathname.endsWith('/garden/practice')) unexpected.push(pathname);
     });
-    await page.route('**/functions/v1/garden/session', async route => {
+    await page.route('**/functions/v1/garden/session', async (route) => {
       await pending;
       await route.fulfill({ json: { user: { name: 'Test', level: 'A2' }, ai_available: true } });
     });
-    await page.route('**/functions/v1/garden/practice/summary?*', async route => {
+    await page.route('**/functions/v1/garden/practice/summary?*', async (route) => {
       summaryReads++;
       await route.fulfill({ json: { word_count: 2, counts: { plants: 2, seeds: 0 } } });
     });
     await page.goto(`/#${path}`);
     try {
       await expect.poll(() => summaryReads).toBe(1);
-      await expect(page.getByRole('heading', { name: path === '/practice' ? 'Practice' : path.endsWith('/read') ? 'Reading' : 'Conversation', exact: true, level: 1 })).toBeVisible();
-      if (path === '/practice') await expect(page.getByRole('region', { name: 'Topic practice', exact: true })).toBeVisible();
+      await expect(
+        page.getByRole('heading', {
+          name:
+            path === '/practice' ? 'Practice' : path.endsWith('/read') ? 'Reading' : 'Conversation',
+          exact: true,
+          level: 1,
+        }),
+      ).toBeVisible();
+      if (path === '/practice')
+        await expect(
+          page.getByRole('region', { name: 'Topic practice', exact: true }),
+        ).toBeVisible();
       else await expect(page.getByRole('link', { name: '← Practice', exact: true })).toBeVisible();
-    } finally { release(); }
-    await expect(page.getByRole('heading', { name: path === '/practice' ? 'Practice' : path.endsWith('/read') ? 'Reading' : 'Conversation', exact: true, level: 1 })).toBeVisible();
+    } finally {
+      release();
+    }
+    await expect(
+      page.getByRole('heading', {
+        name:
+          path === '/practice' ? 'Practice' : path.endsWith('/read') ? 'Reading' : 'Conversation',
+        exact: true,
+        level: 1,
+      }),
+    ).toBeVisible();
     expect(summaryReads).toBe(1);
     expect(unexpected).toEqual([]);
   });

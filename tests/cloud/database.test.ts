@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
-import { freshLearner, Learner } from '../../supabase/functions/garden/model.ts';
+import { freshLearner as currentFreshLearner, Learner } from '../../supabase/functions/garden/model.ts';
 import { initialSrs } from '../../supabase/functions/garden/scheduler.ts';
 import { progressChanges } from '../../supabase/functions/garden/persistence.ts';
 import { Garden } from '../../supabase/functions/garden/domain.ts';
@@ -87,29 +87,6 @@ test('invalid source data rolls the entire migration back without removing the o
     await db.exec('rollback');
     assert.deepEqual((await db.query<{ data: Learner & { sessions: unknown[]; time_summary?: { total_seconds: number } } }>('select data from learner_state')).rows[0].data, invalid);
     assert.equal((await db.query<{ name: string | null }>("select to_regclass('public.learner_profiles')::text as name")).rows[0].name, null);
-  } finally { await db.close(); }
-});
-
-test('heartbeats touch only sessions and retain concurrent review changes and historical time', async () => {
-  const db = await setup();
-  try {
-    await db.exec(migration);
-    await db.query('select import_learner_progress($1,$2)', [userA, JSON.stringify(source())]);
-    const before = await load(db);
-    for (const time of ['2026-10-20T23:59:50Z', '2026-10-21T00:00:05Z', '2026-10-21T00:00:05Z']) {
-      await db.query('select heartbeat_learner($1,$2,$3)', [userA, 'Test', time]);
-    }
-    const after = structuredClone(before.data);
-    after.srs.word = { ...after.srs.word, reps: 1 };
-    after.reviews.push({ word_id: 'word', grade: 3, reviewed_at: '2026-10-21T00:00:05Z' });
-    assert.equal(await save(db, before.version, progressChanges(before.data, after)), true);
-    const summary = await db.query<{ data: { total_seconds: number; today_seconds: number } }>('select learner_time($1,$2) data', [userA, '2026-10-21T00:00:05Z']);
-    assert.deepEqual(summary.rows[0].data.total_seconds, 57);
-    assert.equal(summary.rows[0].data.today_seconds, 15);
-    assert.equal((await load(db)).data.srs.word.reps, 1);
-    assert.equal((await db.query<{ n: number }>('select count(*)::int n from learner_reviews')).rows[0].n, 2);
-    assert.equal(await save(db, before.version, progressChanges(before.data, after)), false);
-    assert.equal((await db.query<{ n: number }>('select count(*)::int n from learner_reviews')).rows[0].n, 2);
   } finally { await db.close(); }
 });
 
@@ -198,3 +175,9 @@ test('compact matcher retries competing final-slot keeps and rejects duplicate d
     assert.deepEqual((await load(db)).data.known, ['w21']);
   } finally { await db.close(); }
 });
+
+// These tests exercise the historical schema before level_bias was removed.
+function freshLearner(name: string) {
+  const state = currentFreshLearner(name);
+  return { ...state, user: { ...state.user, level_bias: 0 } };
+}

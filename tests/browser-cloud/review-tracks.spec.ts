@@ -1,47 +1,6 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { tracksDatabase, account } from '../helpers/review-tracks';
-import { dispatch } from '../../supabase/functions/garden/service';
-import { HttpError } from '../../supabase/functions/garden/model';
-
-async function connectPage(
-  page: Page,
-  { catalog, store }: Pick<Awaited<ReturnType<typeof tracksDatabase>>, 'catalog' | 'store'>,
-) {
-  await page.addInitScript(() =>
-    localStorage.setItem(
-      'sb-auth-test-auth-token',
-      JSON.stringify({
-        access_token: 'test-token',
-        refresh_token: 'test-refresh',
-        token_type: 'bearer',
-        expires_at: Math.floor(Date.now() / 1000) + 3600,
-        user: { id: 'test-user', email: 'test@example.test', user_metadata: {} },
-      }),
-    ),
-  );
-  await page.route('https://auth-test.supabase.co/**', async (route) => {
-    const request = route.request(),
-      url = new URL(request.url());
-    const path = url.pathname.replace('/functions/v1/garden', '');
-    if (path === '/activities') return route.fulfill({ json: catalog.activities });
-    try {
-      const result = await dispatch(
-        path,
-        request.method(),
-        url.searchParams,
-        request.postDataJSON() || {},
-        store(),
-        catalog,
-      );
-      await route.fulfill({ json: result });
-    } catch (error) {
-      await route.fulfill({
-        status: error instanceof HttpError ? error.status : 500,
-        json: { detail: String(error) },
-      });
-    }
-  });
-}
+import { connectPage } from '../helpers/cloud-page';
 
 test('production graduates both tracks and Learned stays fully grown, unreviewable and available for practice', async ({
   page,
@@ -108,7 +67,9 @@ test('production graduates both tracks and Learned stays fully grown, unreviewab
     await expect(page.locator('.word-card')).not.toContainText('B _ _ _', { useInnerText: true });
     await page.getByRole('button', { name: 'Show answer' }).click();
     await expect(page.locator('.word-card').getByRole('heading')).toHaveText('der Baum');
-    await expect(page.locator('.word-card p:visible').filter({ hasText: /^The tree is tall\.$/ })).toHaveCount(1);
+    await expect(
+      page.locator('.word-card p:visible').filter({ hasText: /^The tree is tall\.$/ }),
+    ).toHaveCount(1);
     await page.getByLabel('Flashcard direction').selectOption('recognition');
     await expect(page.locator('.translation:visible')).toHaveCount(0);
     await expect(page.locator('.word-card').getByRole('heading')).toHaveText('Baum');

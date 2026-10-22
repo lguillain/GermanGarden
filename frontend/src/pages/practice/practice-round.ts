@@ -16,7 +16,14 @@ export interface PracticeRound {
   draft: string;
   reading: ReadingResult | null;
 }
-export const sessionCount = (words: number) => Math.ceil(words / 5);
+export const PRACTICE_SESSION_SIZE = 5;
+export const sessionCount = (words: number) => Math.ceil(words / PRACTICE_SESSION_SIZE);
+export const practisedWordCount = (round: PracticeRound) =>
+  Math.min(round.completed * PRACTICE_SESSION_SIZE, round.words.length);
+export function currentSessionWords(round: PracticeRound) {
+  const start = round.completed * PRACTICE_SESSION_SIZE;
+  return round.words.slice(start, start + PRACTICE_SESSION_SIZE);
+}
 export function startRound(words: PracticeWord[]): PracticeRound {
   return {
     version: 1,
@@ -56,7 +63,7 @@ export function readRound(key: string): PracticeRound | null {
     !['meet', 'flashcards', 'choose', 'chat', 'read', 'finished'].includes(value.step) ||
     !Number.isInteger(value.cardIndex) ||
     value.cardIndex < 0 ||
-    value.cardIndex > 4 ||
+    value.cardIndex >= PRACTICE_SESSION_SIZE ||
     !['recognition', 'production'].includes(value.direction) ||
     typeof value.revealed !== 'boolean' ||
     typeof value.draft !== 'string' ||

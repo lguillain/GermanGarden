@@ -16,7 +16,6 @@ export function AppShell() {
       if (error) throw error;
       return data.session?.user ?? null;
     },
-    enabled: !!supabase,
   });
   const session = useQuery({ queryKey: ['session'], queryFn: () => api<Session>('/session') });
   const location = useLocation();
@@ -30,14 +29,17 @@ export function AppShell() {
       (heading as HTMLElement).focus();
     }
   }, [location.pathname]);
-  const switchProfile = useMutation({
-    mutationFn: () => api('/profile', undefined, 'DELETE'),
+  const signOut = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase!.auth.signOut({ scope: 'local' });
+      if (error) throw error;
+    },
     onSuccess: () => {
       cache.clear();
       navigate('/profile');
     },
   });
-  if (supabase && auth.isSuccess && !auth.data) return <Navigate to="/profile" replace />;
+  if (auth.isSuccess && !auth.data) return <Navigate to="/profile" replace />;
   if (session.isPending && !auth.data)
     return (
       <div className="welcome">
@@ -60,17 +62,15 @@ export function AppShell() {
         className="skip"
         href="#main"
         onClick={(e) => {
-          if (supabase) {
-            e.preventDefault();
-            document.getElementById('main')?.focus();
-          }
+          e.preventDefault();
+          document.getElementById('main')?.focus();
         }}
       >
         Skip to content
       </a>
       <aside className={`app-sidebar${menuOpen ? ' menu-open' : ''}`} aria-label="App navigation">
         <Link className="brand" to="/">
-          Vocab Garden
+          German Garden
         </Link>
         <button
           className="mobile-menu"
@@ -91,8 +91,8 @@ export function AppShell() {
         </nav>
         <button
           className="profile-button"
-          disabled={switchProfile.isPending}
-          onClick={() => switchProfile.mutate()}
+          disabled={signOut.isPending}
+          onClick={() => signOut.mutate()}
         >
           <svg className="farmer-icon" viewBox="0 0 40 40" aria-hidden="true">
             <rect width="40" height="40" rx="14" fill="#c6d9b6" />
@@ -124,7 +124,7 @@ export function AppShell() {
       </aside>
       <div className="app-content">
         <main id="main" tabIndex={-1} className="container">
-          <ErrorNotice error={switchProfile.error} />
+          <ErrorNotice error={signOut.error} />
           {session.error && (
             <>
               <ErrorNotice error={session.error} />

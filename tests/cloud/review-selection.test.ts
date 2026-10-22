@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
 import { Garden, reviewSelectionResponse } from '../../supabase/functions/garden/domain.ts';
-import { Catalog, freshLearner, Learner, ReviewSelection } from '../../supabase/functions/garden/model.ts';
+import { Catalog, freshLearner as currentFreshLearner, Learner, ReviewSelection } from '../../supabase/functions/garden/model.ts';
 import { initialSrs } from '../../supabase/functions/garden/scheduler.ts';
 import { dispatch } from '../../supabase/functions/garden/service.ts';
 
@@ -118,3 +118,9 @@ test('compact review and practice queries match domain counts, selection and rat
   } finally { await db.close(); }
 });
 
+
+// These tests exercise the historical schema before level_bias was removed.
+function freshLearner(name: string) {
+  const state = currentFreshLearner(name);
+  return { ...state, user: { ...state.user, level_bias: 0 } };
+}

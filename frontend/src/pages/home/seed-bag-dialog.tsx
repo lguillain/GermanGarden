@@ -1,3 +1,4 @@
+import { closeOnBackdropClick } from '../../components/dialog-backdrop';
 import { useId, useRef } from 'react';
 import type { Word } from '../../api';
 import { SeedBag } from '../../components/seed-bag';
@@ -27,17 +28,7 @@ export function SeedBagDialog({ words }: { words?: Word[] }) {
         ref={dialog}
         className="upcoming-reviews garden-seed-bag-dialog"
         aria-labelledby={title}
-        onClick={(event) => {
-          if (event.target !== event.currentTarget) return;
-          const bounds = event.currentTarget.getBoundingClientRect();
-          if (
-            event.clientX < bounds.left ||
-            event.clientX > bounds.right ||
-            event.clientY < bounds.top ||
-            event.clientY > bounds.bottom
-          )
-            dialog.current?.close();
-        }}
+        onClick={closeOnBackdropClick}
       >
         <div className="garden-seed-bag-dialog-header">
           <span id={title} className="sr-only">

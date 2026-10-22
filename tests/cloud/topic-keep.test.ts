@@ -31,7 +31,7 @@ test('atomic topic keep matches domain rules, protects versions, and preserves h
       create schema auth; create table auth.users(id uuid primary key);
       create function auth.uid() returns uuid language sql as $$ select null::uuid $$;
       insert into auth.users values ('${first}'),('${second}');`);
-    for (const name of ['202610190001_garden','202610200001_normalize_learners','202610200002_catalog_reads','202610200004_matcher_progress','202610200006_scoped_progress','202610200008_keep_topic_word','202610200005_review_selection','202610200009_review_tracks'])
+    for (const name of ['202610190001_garden','202610200001_normalize_learners','202610200002_catalog_reads','202610200004_matcher_progress','202610200006_scoped_progress','202610200008_keep_topic_word','202610200005_review_selection','202610200009_review_tracks','202610210001_remove_time_tracking','202610220001_remove_level_bias'])
       await db.exec(readFileSync(`supabase/migrations/${name}.sql`, 'utf8'));
     await db.exec(`insert into activities values ('home','Home',null),('work','Work',null);
       insert into words(id,lemma,pos,english,level) select 'w'||n,'Wort'||n,'noun','word','A2' from generate_series(0,29) n;

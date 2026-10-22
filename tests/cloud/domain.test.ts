@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import { gardenGnomeCount } from '../../frontend/src/components/garden-gnome-count.ts';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { Garden } from '../../supabase/functions/garden/domain.ts';
 import { Catalog, freshLearner } from '../../supabase/functions/garden/model.ts';
 import { growth, initialSrs, reviewOutcome } from '../../supabase/functions/garden/scheduler.ts';
@@ -156,10 +156,14 @@ test('practice AI preserves state and rejects out-of-scope words', async () => {
 
 
 test('scheduler matches the original Python implementation over every stage and rating', () => {
-  const states = [initialSrs(), { ...initialSrs(), state: 'relearning', reps: 0, lapses: 2 }, ...[1, 7, 21, 45, 60].map(interval_days => ({ ...initialSrs(), state: interval_days >= 60 ? 'graduated' : 'review', interval_days, reps: 4 }))];
-  const cases = states.flatMap(state => [1, 2, 3, 4].map(grade => ({ state, grade })));
-  const expected = JSON.parse(execFileSync('python3', ['-c', 'import json,sys; from app.garden import review_outcome,growth_stage; print(json.dumps([dict(outcome=review_outcome(c["state"],c["grade"]),growth=growth_stage(review_outcome(c["state"],c["grade"]))) for c in json.load(sys.stdin)]))'], { input: JSON.stringify(cases), encoding: 'utf8' }));
-  cases.forEach((c, i) => { const outcome = reviewOutcome(c.state, c.grade); assert.deepEqual(outcome, expected[i].outcome); assert.equal(growth(outcome), expected[i].growth); });
+  // Captured from app.garden.review_outcome/growth_stage before retiring the Python app.
+  const cases: { state: ReturnType<typeof initialSrs>; grade: number; outcome: ReturnType<typeof initialSrs>; growth: number }[] =
+    JSON.parse(readFileSync('tests/fixtures/scheduler-parity.json', 'utf8'));
+  for (const c of cases) {
+    const outcome = reviewOutcome(c.state, c.grade);
+    assert.deepEqual(outcome, c.outcome);
+    assert.equal(growth(outcome), c.growth);
+  }
 });
 
 test('today counts each planted word once across tracks, including overdue but excluding seeds and Learned words', () => {

@@ -81,7 +81,7 @@ export function DesignPage() {
   const dialog = useRef<HTMLDialogElement>(null);
   return (
     <div className="design-page">
-      <p className="eyebrow">VOCAB GARDEN · DESIGN REFERENCE</p>
+      <p className="eyebrow">GERMAN GARDEN · DESIGN REFERENCE</p>
       <Heading title="A garden of familiar elements">
         The current visual language, where it belongs, and what could be clearer.
       </Heading>

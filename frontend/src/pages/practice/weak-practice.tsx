@@ -1,8 +1,7 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { type ReactNode, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { type ReactNode } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { api, type Session } from '../../api';
-import { supabase } from '../../supabase';
+import { type Session } from '../../api';
 import { ErrorNotice, Loading } from '../../components/feedback';
 import { WordTitle } from '../../components/word-card';
 import { PracticeModeCards } from './practice-mode-cards';
@@ -11,13 +10,12 @@ import { PracticeActivityCard } from './practice-activity-card';
 import { TargetWords } from './target-words';
 import { ConversationActivity, ReadingActivity } from './practice-activities';
 import {
-  nextSession,
-  readRound,
+  PRACTICE_SESSION_SIZE,
+  currentSessionWords,
+  practisedWordCount,
   sessionCount,
-  startRound,
-  type PracticeRound,
-  type PracticeWord,
 } from './practice-round';
+import { usePracticeRound } from './use-practice-round';
 
 export function WeakPractice({
   scope,
@@ -34,7 +32,7 @@ export function WeakPractice({
 }) {
   const cache = useQueryClient();
   const session = useOutletContext<Session | undefined>();
-  const account = supabase ? cache.getQueryData<{ id: string }>(['auth'])?.id : session?.user.name;
+  const account = cache.getQueryData<{ id: string }>(['auth'])?.id;
   if (!account)
     return (
       <>
@@ -74,54 +72,18 @@ function WeakPracticeRound({
   overview?: ReactNode;
   aiAvailable?: boolean;
 }) {
-  const [round, setRound] = useState<PracticeRound | null>(() => {
-    try {
-      return readRound(storageKey);
-    } catch {
-      return null;
-    }
-  });
-  const [storageError, setStorageError] = useState(false);
-  useEffect(() => {
-    if (!round) return;
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(round));
-      setStorageError(false);
-    } catch {
-      setStorageError(true);
-    }
-  }, [round, storageKey]);
-  const candidates = useQuery({
-    queryKey: ['practice', 'weak', query],
-    queryFn: () => api<{ words: PracticeWord[] }>(`/practice/weak${query}`),
-    staleTime: 30_000,
-  });
-  const [starting, setStarting] = useState(false);
-  const exitRound = () => {
-    setRound(null);
-    try {
-      localStorage.removeItem(storageKey);
-      setStorageError(false);
-    } catch {
-      setStorageError(true);
-    }
-  };
-  const begin = async () => {
-    setStarting(true);
-    try {
-      const fresh = await candidates.refetch();
-      if (!fresh.error) setRound(fresh.data?.words.length ? startRound(fresh.data.words) : null);
-      if (!fresh.error && !fresh.data?.words.length) {
-        try {
-          localStorage.removeItem(storageKey);
-        } catch {
-          setStorageError(true);
-        }
-      }
-    } finally {
-      setStarting(false);
-    }
-  };
+  const {
+    round,
+    storageError,
+    candidates,
+    starting,
+    exitRound,
+    begin,
+    update,
+    finish,
+    canFinish,
+    advanceSession,
+  } = usePracticeRound(storageKey, query);
   if (!round)
     return (
       <>
@@ -145,7 +107,7 @@ function WeakPracticeRound({
                   <p className="muted">
                     {sessionCount(candidates.data.words.length)}{' '}
                     {sessionCount(candidates.data.words.length) === 1 ? 'session' : 'sessions'} · up
-                    to 5 words each
+                    to {PRACTICE_SESSION_SIZE} words each
                   </p>
                 </div>
                 {candidates.data.words.length ? (
@@ -167,18 +129,7 @@ function WeakPracticeRound({
 
   const total = sessionCount(round.words.length);
   const complete = round.completed >= total;
-  const words = round.words.slice(round.completed * 5, round.completed * 5 + 5);
-  const update = (patch: Partial<PracticeRound>) =>
-    setRound((current) =>
-      current && current.words === round.words && current.completed === round.completed
-        ? { ...current, ...patch }
-        : current,
-    );
-  const finish = () => update({ completed: round.completed + 1, step: 'finished' });
-  const canFinish =
-    round.step === 'read'
-      ? !!round.reading
-      : round.step === 'chat' && !!round.chat?.history.some((message) => message.role === 'user');
+  const words = currentSessionWords(round);
   return (
     <section
       className={`weak-practice active-practice-round${round.step === 'flashcards' ? ' active-practice-flashcards' : ''}`}
@@ -188,8 +139,7 @@ function WeakPracticeRound({
         <div>
           <h1>{complete ? 'Round complete' : `Session ${round.completed + 1} of ${total}`}</h1>
           <p>
-            {Math.min(round.completed * 5, round.words.length)} of {round.words.length} words
-            practised
+            {practisedWordCount(round)} of {round.words.length} words practised
           </p>
         </div>
         {round.step === 'flashcards' && (
@@ -233,7 +183,7 @@ function WeakPracticeRound({
                 {starting ? 'Checking words…' : 'Start another round'}
               </button>
             ) : (
-              <button className="primary" onClick={() => setRound(nextSession(round))}>
+              <button className="primary" onClick={advanceSession}>
                 Next session
               </button>
             )}

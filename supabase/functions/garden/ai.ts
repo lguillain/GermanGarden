@@ -79,11 +79,6 @@ export async function aiPractice(path: string, body: Body, garden: Garden, compl
       Array.isArray(ids) && ids.length <= 5 && ids.every((id) => typeof id === 'string'),
       'Invalid target words.',
     );
-    const pool = garden.scope(text(body, 'scope', 'all'), text(body, 'topic'));
-    requireThat(
-      ids.every((id) => pool.some((w) => w.id === id)),
-      'Choose words from the current practice set.',
-    );
     const targets = ids.length
       ? garden.practiceTargets(text(body, 'scope', 'all'), text(body, 'topic'), ids)
       : garden.targets(text(body, 'scope', 'all'), text(body, 'topic'));

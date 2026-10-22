@@ -70,7 +70,6 @@ export interface Learner {
     current_topic: string | null;
     affinity_below: number;
     affinity_above: number;
-    level_bias: number;
   };
   swipes: Swipe[];
   known: string[];
@@ -101,7 +100,6 @@ export function freshLearner(name: string): Learner {
       current_topic: null,
       affinity_below: 1,
       affinity_above: 1,
-      level_bias: 0,
     },
     swipes: [],
     known: [],

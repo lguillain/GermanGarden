@@ -72,6 +72,19 @@ const LEVELS = ['A1', 'A2', 'B1'];
 const SECONDS_PER_DAY = 86_400;
 const PRACTICE_TARGET_COUNT = 5;
 
+function localCalendar(timeZone: string): Intl.DateTimeFormat {
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+  } catch {
+    throw new HttpError(422, 'Unknown time zone.');
+  }
+}
+
 export class Garden {
   constructor(
     public catalog: Catalog,
@@ -441,7 +454,6 @@ export class Garden {
     });
     if (action === 'learned') {
       this.state.known.push(id);
-      user.level_bias = Math.min(2, user.level_bias + 0.1);
     }
     this.updateDiscoveryPreferences(word, action);
     user.swipe_count++;
@@ -475,17 +487,7 @@ export class Garden {
     };
   }
   reviewsDueToday(timeZone: string) {
-    let calendar: Intl.DateTimeFormat;
-    try {
-      calendar = new Intl.DateTimeFormat('en-CA', {
-        timeZone,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      });
-    } catch {
-      throw new HttpError(422, 'Unknown time zone.');
-    }
+    const calendar = localCalendar(timeZone);
     const today = calendar.format(this.now);
     return this.scope().filter((word) => {
       if (this.learned(word.id)) return false;
@@ -498,12 +500,7 @@ export class Garden {
     }).length;
   }
   upcomingReviews(timeZone: string) {
-    const calendar = new Intl.DateTimeFormat('en-CA', {
-      timeZone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
+    const calendar = localCalendar(timeZone);
     const counts = new Map<string, number>();
     for (const word of this.scope()) {
       if (this.learned(word.id) || this.due(word.id)) continue;
@@ -522,12 +519,7 @@ export class Garden {
       .map(([date, count]) => ({ date, count }));
   }
   wordsFoundToday(timeZone: string) {
-    const calendar = new Intl.DateTimeFormat('en-CA', {
-      timeZone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
+    const calendar = localCalendar(timeZone);
     const today = calendar.format(this.now);
     const firstKept = new Map<string, number>();
     for (const swipe of this.state.swipes) {
@@ -560,11 +552,6 @@ export class Garden {
         overview,
         total: all.length,
         planted: plants.length,
-        planted_pct: all.length ? (plants.length / all.length) * 100 : 0,
-        grown_pct: all.length
-          ? (plants.reduce((sum, word) => sum + word.growth / 5, 0) / all.length) * 100
-          : 0,
-        seed_bag_here: all.filter((word) => word.status === 'bag').length,
       });
     }
     const seedBag = this.bag();

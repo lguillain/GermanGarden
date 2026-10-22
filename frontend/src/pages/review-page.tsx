@@ -1,7 +1,8 @@
+import { invalidateProgress } from '../queries/invalidate-progress';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { Card, Word, Session } from '../api';
+import type { Card, Word } from '../api';
 import { api } from '../api';
 import { Empty, ErrorNotice, Heading, Loading } from '../components/feedback';
 import { WordCard } from '../components/word-card';
@@ -24,17 +25,14 @@ interface ReviewResult {
 export function ReviewPage() {
   const { query } = useScope();
   const cache = useQueryClient();
-  const user =
-    cache.getQueryData<{ id: string }>(['auth'])?.id ||
-    cache.getQueryData<Session>(['session'])?.user.name ||
-    'local';
+  const user = cache.getQueryData<{ id: string }>(['auth'])?.id || 'pending';
   return <ReviewSession key={`${user}:${query}`} storageKey={`garden-review:${user}:${query}`} />;
 }
 function ReviewSession({ storageKey }: { storageKey: string }) {
   const { scope, topic, query, label } = useScope();
   const cache = useQueryClient();
   const [revealed, setRevealed] = useState(false);
-  const [session, setSession] = useState<{ reviewed: string[]; graduated: Word | null }>(() => {
+  const [session, saveSession] = useState<{ reviewed: string[]; graduated: Word | null }>(() => {
     try {
       const saved = JSON.parse(sessionStorage.getItem(storageKey) || 'null');
       if (saved && Array.isArray(saved.reviewed)) return saved;
@@ -43,20 +41,14 @@ function ReviewSession({ storageKey }: { storageKey: string }) {
     }
     return { reviewed: [], graduated: null };
   });
-  const saveSession = (next: typeof session) => {
-    setSession(next);
-    try {
-      sessionStorage.setItem(storageKey, JSON.stringify(next));
-    } catch {
-      /* Memory remains usable. */
-    }
-  };
   useEffect(() => {
     try {
       sessionStorage.setItem(storageKey, JSON.stringify(session));
     } catch {
       /* Storage is optional. */
     }
+  }, [storageKey, session]);
+  useEffect(() => {
     return () => {
       try {
         sessionStorage.removeItem(storageKey);
@@ -64,7 +56,7 @@ function ReviewSession({ storageKey }: { storageKey: string }) {
         /* Storage is optional. */
       }
     };
-  }, [storageKey, session]);
+  }, [storageKey]);
   const reviewed = new Set(session.reviewed);
   const key = ['review', storageKey];
   const result = useQuery({
@@ -77,15 +69,11 @@ function ReviewSession({ storageKey }: { storageKey: string }) {
     staleTime: Infinity,
     refetchOnMount: 'always',
   });
-  const refreshGarden = () => {
-    for (const name of ['garden', 'topic', 'matcher', 'practice', 'flashcards'])
-      cache.invalidateQueries({ queryKey: [name] });
-  };
   const learn = useMutation({
     mutationFn: () => api<Word>('/review/learned', { word_id: session.graduated!.id }),
     onSuccess: () => {
       saveSession({ ...session, graduated: null });
-      refreshGarden();
+      invalidateProgress(cache, 'review');
     },
   });
   const grade = useMutation({
@@ -102,7 +90,7 @@ function ReviewSession({ storageKey }: { storageKey: string }) {
       const reviewedId = result.data!.card!.word_id;
       cache.setQueryData(key, data);
       cache.invalidateQueries({ queryKey: ['review'], refetchType: 'none' });
-      refreshGarden();
+      invalidateProgress(cache, 'review');
       setRevealed(false);
       saveSession({
         reviewed: [...session.reviewed, reviewedId],
@@ -120,10 +108,7 @@ function ReviewSession({ storageKey }: { storageKey: string }) {
   };
   return (
     <>
-      <Heading
-        title="Review"
-        actions={<WordSetSwitch page="/review" counts={result.data?.counts} />}
-      >
+      <Heading title="Review" actions={<WordSetSwitch counts={result.data?.counts} />}>
         {scope === 'topic' ? label : undefined}
       </Heading>
       <div className="study">

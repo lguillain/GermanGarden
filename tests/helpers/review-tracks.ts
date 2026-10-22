@@ -1,7 +1,7 @@
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync, readdirSync } from 'node:fs';
 import {
-  freshLearner,
+  freshLearner as currentFreshLearner,
   type Catalog,
   type Learner,
   type ReviewSelection,
@@ -86,4 +86,10 @@ export async function tracksDatabase() {
     };
   }
   return { db, catalog, store };
+}
+
+// Seed the pre-migration schema with its historical required field.
+function freshLearner(name: string) {
+  const state = currentFreshLearner(name);
+  return { ...state, user: { ...state.user, level_bias: 0 } };
 }

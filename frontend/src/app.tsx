@@ -1,6 +1,7 @@
+import { lazy, Suspense } from 'react';
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppShell } from './app-shell';
-import { Empty } from './components/feedback';
+import { Empty, Loading } from './components/feedback';
 import { AiRoute } from './pages/practice/practice-route';
 import { CloudLogin } from './pages/cloud-login-page';
 import { ExplorePage } from './pages/explore/explore-page';
@@ -8,11 +9,12 @@ import { FlashcardsPage } from './pages/practice/flashcards-page';
 import { HomePage } from './pages/home/home-page';
 import { MatcherPage } from './pages/matcher-page';
 import { PracticePage } from './pages/practice/practice-page';
-import { ProfilePage } from './pages/profile-page';
 import { ReviewPage } from './pages/review-page';
 import { TopicPage } from './pages/topic/topic-page';
 import { supabase } from './supabase';
-import { DesignPage } from './pages/design/design-page';
+const DesignPage = lazy(() =>
+  import('./pages/design/design-page').then(({ DesignPage }) => ({ default: DesignPage })),
+);
 
 export function App() {
   return (
@@ -21,12 +23,14 @@ export function App() {
         path="/design"
         element={
           <main className="container">
-            <DesignPage />
+            <Suspense fallback={<Loading />}>
+              <DesignPage />
+            </Suspense>
           </main>
         }
       />
-      <Route path="/profile" element={supabase ? <CloudLogin /> : <ProfilePage />} />
-      <Route element={<AppShell />}>
+      <Route path="/profile" element={supabase ? <CloudLogin /> : <MissingConfiguration />} />
+      <Route element={supabase ? <AppShell /> : <MissingConfiguration />}>
         <Route index element={<HomePage />} />
         <Route path="explore" element={<ExplorePage />} />
         <Route path="topics/:topic" element={<TopicPage />} />
@@ -53,4 +57,14 @@ export function App() {
 function GrammarRedirect() {
   const { search } = useLocation();
   return <Navigate to={`/practice/flashcards${search}`} replace />;
+}
+
+function MissingConfiguration() {
+  return (
+    <main className="container">
+      <Empty>
+        Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to connect to your garden.
+      </Empty>
+    </main>
+  );
 }

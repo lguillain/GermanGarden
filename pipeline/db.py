@@ -1,4 +1,4 @@
-"""SQLite helpers: open the DB, load schema, give the app a connection."""
+"""SQLite helpers for the vocabulary dataset and existing source databases."""
 
 from __future__ import annotations
 

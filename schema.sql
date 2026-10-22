@@ -39,7 +39,8 @@ CREATE INDEX IF NOT EXISTS idx_sentences_word_activity
 CREATE INDEX IF NOT EXISTS idx_word_activities_activity
   ON word_activities(activity_id);
 
--- Runtime state (populated by the app).
+-- Legacy profile schema retained for read-only import compatibility and fixtures.
+-- The vocabulary pipeline does not populate learner progress.
 
 CREATE TABLE IF NOT EXISTS user_state (
   id              INTEGER PRIMARY KEY CHECK (id = 1),   -- singleton per profile DB
@@ -47,7 +48,6 @@ CREATE TABLE IF NOT EXISTS user_state (
   level           TEXT CHECK (level IN ('A1','A2','B1')),
   swipe_count     INTEGER NOT NULL DEFAULT 0,
   drop_streak     INTEGER NOT NULL DEFAULT 0,           -- consecutive drops within current bucket
-  level_bias      REAL NOT NULL DEFAULT 0.0,            -- raised by reflection on 'known' drops
   current_topic   TEXT REFERENCES activities(id),       -- active (topic, level) bucket
   cards_in_bucket INTEGER NOT NULL DEFAULT 0,           -- cards shown since entering current bucket
   affinity_below  REAL NOT NULL DEFAULT 1.0,            -- multiplier on prob of showing declared-1 cards

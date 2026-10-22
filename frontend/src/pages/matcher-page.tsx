@@ -1,3 +1,4 @@
+import { invalidateProgress } from '../queries/invalidate-progress';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
@@ -28,8 +29,7 @@ export function MatcherPage() {
   });
   const update = (data: Matcher) => {
     cache.setQueryData(key, data);
-    cache.invalidateQueries({ queryKey: ['garden'] });
-    cache.invalidateQueries({ queryKey: ['practice'] });
+    invalidateProgress(cache, 'matcher');
     setRevealed(false);
   };
   const guide = useMutation({

@@ -1,3 +1,4 @@
+import { closeOnBackdropClick } from './dialog-backdrop';
 import { lazy, Suspense, useId, useRef, useState } from 'react';
 import type { Word } from '../api';
 import { Loading } from './feedback';
@@ -24,17 +25,7 @@ export function FormsButton({ word }: { word: Word }) {
         ref={dialog}
         className="forms-dialog"
         aria-labelledby={titleId}
-        onClick={(event) => {
-          if (event.target !== event.currentTarget) return;
-          const bounds = event.currentTarget.getBoundingClientRect();
-          if (
-            event.clientX < bounds.left ||
-            event.clientX > bounds.right ||
-            event.clientY < bounds.top ||
-            event.clientY > bounds.bottom
-          )
-            dialog.current?.close();
-        }}
+        onClick={closeOnBackdropClick}
       >
         <header className="forms-dialog-header">
           <h2 id={titleId}>Forms</h2>

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
 
 test('SQLite export preserves Unicode, quotes, review dates, progress without overwriting accounts', async () => {
@@ -33,8 +33,8 @@ with tempfile.TemporaryDirectory() as directory:
       create schema auth; create table auth.users(id uuid primary key);
       create function auth.uid() returns uuid language sql as $$ select null::uuid $$;
       insert into auth.users values ('${userId}');`);
-    await db.exec(readFileSync('supabase/migrations/202610190001_garden.sql', 'utf8'));
-    await db.exec(readFileSync('supabase/migrations/202610200001_normalize_learners.sql', 'utf8'));
+    for (const file of readdirSync('supabase/migrations').filter(f => f.endsWith('.sql')).sort())
+      await db.exec(readFileSync(`supabase/migrations/${file}`, 'utf8'));
     await db.exec(sql);
     const { rows } = await db.query<{ data: { user: { name: string }; srs: Record<string, { due_at: string; reps: number }>; swipes: { planted_at: string }[] } }>("select load_learner_progress(user_id,'Test')->'data' as data from learner_profiles");
     assert.equal(rows[0].data.user.name, 'Léa');
@@ -83,8 +83,8 @@ with tempfile.TemporaryDirectory() as directory:
       create schema auth; create table auth.users(id uuid primary key);
       create function auth.uid() returns uuid language sql as $$ select null::uuid $$;
       insert into auth.users values ('${ids[0]}'), ('${ids[1]}');`);
-    await db.exec(readFileSync('supabase/migrations/202610190001_garden.sql', 'utf8'));
-    await db.exec(readFileSync('supabase/migrations/202610200001_normalize_learners.sql', 'utf8'));
+    for (const file of readdirSync('supabase/migrations').filter(f => f.endsWith('.sql')).sort())
+      await db.exec(readFileSync(`supabase/migrations/${file}`, 'utf8'));
     await db.exec(sql);
     const result = await db.query<{ user_id: string; data: { user: { name: string }; swipes: unknown[]; known: string[] } }>("select user_id,load_learner_progress(user_id,'Test')->'data' as data from learner_profiles order by user_id");
     assert.equal(result.rows.length, 2);

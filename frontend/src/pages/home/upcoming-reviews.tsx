@@ -1,3 +1,4 @@
+import { closeOnBackdropClick } from '../../components/dialog-backdrop';
 import { useRef } from 'react';
 import type { Garden } from '../../api';
 
@@ -14,18 +15,7 @@ export function UpcomingReviews({ summary }: { summary: Garden['summary'] }) {
         className="upcoming-reviews"
         aria-labelledby="upcoming-reviews-title"
         aria-describedby="upcoming-reviews-description"
-        onClick={(event) => {
-          if (event.target === event.currentTarget) {
-            const bounds = event.currentTarget.getBoundingClientRect();
-            if (
-              event.clientX < bounds.left ||
-              event.clientX > bounds.right ||
-              event.clientY < bounds.top ||
-              event.clientY > bounds.bottom
-            )
-              dialog.current?.close();
-          }
-        }}
+        onClick={closeOnBackdropClick}
       >
         <div className="upcoming-reviews-header">
           <h2 id="upcoming-reviews-title">Upcoming reviews</h2>

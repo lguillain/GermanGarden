@@ -23,7 +23,7 @@ def learner(conn):
     original = users[0] if users else {}
     defaults = dict(name='Learner', level=None, swipe_count=0, drop_streak=0,
                     cards_in_bucket=0, current_topic=None, affinity_below=1,
-                    affinity_above=1, level_bias=0)
+                    affinity_above=1)
     user = {key: original.get(key, default) for key, default in defaults.items()}
     swipes = rows(conn, 'swipes')
     for swipe in swipes:

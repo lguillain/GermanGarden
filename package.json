@@ -7,7 +7,7 @@
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test --config playwright.cloud.config.ts",
     "test:cloud": "node --import tsx --test tests/cloud/*.test.ts",
     "check:cloud": "tsc -p tsconfig.cloud.json",
     "import:local": "node --import tsx scripts/import-local.ts",

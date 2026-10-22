@@ -36,7 +36,7 @@ test('garden distinguishes reviews due now from today and refreshes the counts',
   await expect(page.locator('.garden-planted-count strong')).toHaveText('12');
   await expect(summary.locator(':scope > .panel')).toHaveCount(3);
   await expect(extraCare.locator('.garden-dashboard-value strong')).toHaveText('2');
-  await expect(summary.getByRole('link', { name: 'Practise these words' })).toHaveAttribute('href', '#/practice');
+  await expect(summary.getByRole('link', { name: 'Practice hard words' })).toHaveAttribute('href', '#/practice');
   await expect(page.getByRole('link', { name: /^Review \d+ words?/ })).toHaveCount(0);
   await expect(tending).toContainText('words due now');
   await expect(tending.locator('.garden-dashboard-value strong')).toHaveText('0');
@@ -74,5 +74,5 @@ test('garden distinguishes reviews due now from today and refreshes the counts',
   await expect(page.getByRole('link', { name: /^Review \d+ words?/ })).toHaveCount(0);
   await expect(tending.locator('.garden-dashboard-value strong')).toHaveText('0');
   await expect(extraCare.locator('.garden-dashboard-value strong')).toHaveText('0');
-  await expect(summary.getByRole('link', { name: 'Practise these words' })).toHaveCount(0);
+  await expect(summary.getByRole('link', { name: 'Practice hard words' })).toHaveCount(0);
 });

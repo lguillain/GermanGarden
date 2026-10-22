@@ -9,22 +9,16 @@ export class ApiError extends Error {
 }
 export async function api<T>(path: string, body?: unknown, method?: string): Promise<T> {
   const requestMethod = method ?? (body === undefined ? 'GET' : 'POST');
-  if (supabase && path === '/profile' && requestMethod === 'DELETE') {
-    const { error } = await supabase.auth.signOut({ scope: 'local' });
-    if (error) throw new ApiError(503, error.message);
-    return { ok: true } as T;
-  }
   const headers: Record<string, string> =
     body === undefined ? {} : { 'Content-Type': 'application/json' };
-  if (supabase) {
-    const { data, error } = await supabase.auth.getSession();
-    if (error || !data.session) throw new ApiError(401, 'Please sign in.');
-    headers.Authorization = `Bearer ${data.session.access_token}`;
-    headers.apikey = publishableKey;
-  }
+  if (!supabase) throw new ApiError(503, 'Supabase is not configured.');
+  const { data, error } = await supabase.auth.getSession();
+  if (error || !data.session) throw new ApiError(401, 'Please sign in.');
+  headers.Authorization = `Bearer ${data.session.access_token}`;
+  headers.apikey = publishableKey;
   let response: Response;
   try {
-    response = await fetch(`${supabase ? cloudApiUrl : '/api'}${path}`, {
+    response = await fetch(`${cloudApiUrl}${path}`, {
       method: requestMethod,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -93,9 +87,6 @@ export interface Topic extends Activity {
   overview: Record<'unseen' | 'seeds' | 'planted' | 'due' | 'grown', number>;
   total: number;
   planted: number;
-  grown_pct: number;
-  planted_pct: number;
-  seed_bag_here: number;
 }
 export interface GardenPlot {
   id: string;

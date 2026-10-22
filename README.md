@@ -1,76 +1,79 @@
-# Vocab Garden
+# German Garden
 
-A local German vocabulary app with a React + TypeScript interface and a Python/FastAPI backend. The interface uses English controls and a fixed isometric garden inspired by Forest’s soft miniature worlds. The interactive garden artwork is drawn with SVG, so it stays sharp without a separate 3D engine or downloaded image assets.
+A German vocabulary app with a React/TypeScript frontend and a Supabase backend.
+Python is used only for the offline vocabulary dataset and read-only SQLite exports;
+there is no Python web server or local profile chooser.
 
-## Run locally
+## Vocabulary dataset workflow
 
-The local Python environment and copied vocabulary/profile databases have been prepared in this checkout.
-
-```bash
-./scripts/dev.sh
-```
-
-Open **http://127.0.0.1:5173**. Select your existing learner profile or create a new one. The backend listens on `127.0.0.1:8000`; Vite forwards `/api` requests to it.
-
-For a fresh environment (Node 22 and Python 3.10+ recommended):
+Requires Python 3.10+. The pipeline builds `data/vocab.sqlite` from Goethe word lists,
+Tatoeba examples, topic definitions, and optional AI enrichment. Inputs, generated
+snapshots, databases, and SQL exports remain private under ignored `data/`.
 
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-npm ci
-./scripts/dev.sh
+# Optional, for matching Tatoeba examples:
+.venv/bin/python -m spacy download de_core_news_sm
 ```
 
-Vocabulary data must exist at `data/vocab.sqlite`. This checkout includes a local copy from GermanMatch; data and learner databases are excluded from version control. Existing profiles live in `data/profiles/`. These are independent copies: changes here do not sync back to GermanMatch.
+Provide `data/goethe/Goethe_{A1,A2,B1}_Wortliste.json` and, optionally,
+`data/tatoeba/sentences.csv` plus `data/tatoeba/links.csv`. Topic definitions live
+in `activities.yaml`. Copy `.env.example` to `.env` for the pipeline's optional
+Anthropic key and `DB_PATH` override.
 
-## Learning flow
+```bash
+.venv/bin/python -m pipeline.build --skip-llm  # free source imports
+.venv/bin/python -m pipeline.build            # include AI enrichment
+.venv/bin/python -m pipeline.verify --strict
+```
 
-- **Garden:** each planted topic is a raised patch of land, with one plant per word. Select a patch for a closer view, then select a plant to see its vocabulary and growth. Reviews grow plants through six stages; learned words display sunflowers. A word belonging to several topics appears in each relevant patch, sharing the same progress. All planted levels remain visible. The seed bag, unexplored topics, and progress totals expand on demand.
-- **Find words:** topic selection sits on the left, the word card in the centre, and the seed bag on the right. Selecting a topic applies immediately; expand “Describe a situation” for free-text guidance. Keep, set aside, or mark known words using the original adaptive feed logic.
-- **Seed bag:** practise new words without changing progress; rating a seed in Review plants it automatically. A bag holds up to 20 seeds; review one to make room when full.
-- **Review:** reveal the meaning and grade Again / Hard / Good / Easy to update the existing spaced-repetition scheduler. Review finishes when no new or currently due words remain.
-- **Practice:** flashcards with a word-specific Forms popup, conversation, and reading. Practice does not change growth or planting.
-- **Profiles:** use the name button in the header to switch learners. New profiles choose a level before learning.
+`--skip-tatoeba` omits Tatoeba; `--limit 20` limits each AI step. `--dry-run` reports
+pending AI work without making AI calls, but still imports free sources into the
+local dataset. Completed AI work is snapshot-backed for reuse. For a standalone
+sample dataset, use `DB_PATH=/tmp/garden-sample.sqlite .venv/bin/python -m pipeline.build --seed`.
+Builds no longer update legacy learner-profile databases automatically.
 
-AI guidance, conversations, reading, and grammar use the existing Anthropic integration. The local `.env` configuration was copied from GermanMatch without changing the original. For a fresh setup, copy `.env.example` to `.env` and set `ANTHROPIC_API_KEY`. Standard discovery, flashcards, and reviews work without AI. Keys stay on the Python server.
+Export vocabulary for Supabase without including learner progress:
+
+```bash
+python3 scripts/export-supabase.py --content data/vocab.sqlite --output data/vocabulary.sql
+```
+
+This reads the dataset without modifying it and writes transactional SQL. Apply it
+explicitly with `psql` or the Supabase SQL editor. The exporter inserts missing rows;
+it does not overwrite existing vocabulary rows or cloud progress. Existing private
+SQLite profiles can still be imported using the optional migration commands below.
+No dataset build or export deploys anything automatically.
 
 ## Build and verify
 
 ```bash
+npm ci
 npm run build
-.venv/bin/python -m unittest discover -s tests -v
-```
-
-API tests use temporary database copies and mock AI calls, so they do not change your profiles or spend API credits.
-
-Browser flow checks (requires Playwright Chromium and permission to open a local port):
-
-```bash
+npm run check:cloud
+npm run test:cloud
+.venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v
 npx playwright install chromium
-npm run build
 npm run test:e2e
 ```
 
-The browser test server also uses disposable profiles and disables AI calls.
-
-After building, serve the full app with one process:
-
-```bash
-.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
-```
-
-Then open **http://127.0.0.1:8000**. Restart that process after rebuilding frontend assets.
+Browser tests use mocked authentication and either fixture responses or the real
+TypeScript domain and embedded PostgreSQL. They require no Python web server,
+private learner databases, live accounts, or AI calls. Cloud import tests use
+Python's standard library to verify SQLite exports.
 
 ## Code layout
 
-- `frontend/src/`: React screens, API types, and plain CSS.
-- `app/main.py`: JSON API and built frontend serving.
-- `app/{feed,garden,learn,onboarding}.py`: learning logic carried over from GermanMatch.
-- `app/practice.py`: scoped practice and flashcard selection.
-- `pipeline/`, `schema.sql`, `activities.yaml`: original vocabulary pipeline and schema. Raw pipeline inputs are not duplicated here.
-- `tests/`: API integration tests using Python’s built-in unittest runner.
+- `frontend/src/`: React screens, API types, CSS, and SVG garden artwork.
+- `supabase/functions/garden/`: authenticated API, learning rules, and AI integration.
+- `supabase/migrations/`: PostgreSQL schema and atomic progress functions.
+- `pipeline/`, `schema.sql`, `activities.yaml`, `samples/`: vocabulary creation.
+- `scripts/export-supabase.py`: read-only dataset and legacy-profile export.
+- `tests/cloud/`, `tests/browser-cloud/`: domain, database, and browser tests.
+- `tests/test_*.py`: isolated dataset tests.
 
-Product behavior is documented in `vocab-garden-ux.md`; repository commands and conventions are in `AGENTS.md`.
+Product behavior is documented in `vocab-garden-ux.md`; repository conventions are in `AGENTS.md`.
 
 ### Frontend structure
 
@@ -82,7 +85,7 @@ Product behavior is documented in `vocab-garden-ux.md`; repository commands and 
 - `pages/practice/`: practice menu, flashcards, conversation, and reading,
   together with their layout, corrections, query hook, and route wrapper.
   Each practice page owns its state and API mutations.
-- Other `pages/` files: self-contained discovery, review, login, and profile flows.
+- Other `pages/` files: self-contained discovery, review, login flows.
 - `components/`: UI used across page groups—word cards, seed bag, topic progress,
   feedback, word-set switch, and the shared SVG artwork.
 - `hooks/`: shared word-set selection and topic-name queries.
@@ -104,7 +107,7 @@ Start with `supabase/functions/garden/domain.ts` for the learning flows:
 `scope` chooses the word set, `reviewWords` checks eligibility, `grade` updates
 the schedule and plants the rated seed, and `swipe` records a seed-bank decision.
 `scheduler.ts` contains the pure growth-stage and rating calculations, checked
-against the Python scheduler. Practice reads these rules without changing growth.
+against fixtures captured from the original Python scheduler. Practice reads these rules without changing growth.
 
 The request flow is `index.ts` → `service.ts` → `domain.ts`.
 `index.ts` verifies the learner and chooses the data-loading path;
@@ -126,8 +129,8 @@ runs in the deployment workflow.
 
 The cloud version serves the static React app on GitHub Pages and runs the API in
 `supabase/functions/garden/`. Supabase Auth provides email/password login;
-PostgreSQL holds shared vocabulary and private progress. The original Python app
-still works when the frontend has no Supabase environment variables.
+PostgreSQL holds shared vocabulary and private progress. Configure the Supabase
+URL and publishable key for development as well as hosted builds.
 
 For this private garden, accounts are created by the owner. There is no public
 signup screen. Disable **Allow new users to sign up** in the hosted Supabase Auth
@@ -290,7 +293,7 @@ npx playwright test --config playwright.cloud.config.ts
 ```
 
 The cloud logic tests run without Docker or network access, using embedded PostgreSQL for
-migration/RLS tests. They cover scheduler parity with Python, all planting ratings,
+migration/RLS tests. They cover captured scheduler parity, all planting ratings,
 practice immutability, review completion, learned words, concurrent writes and
 account isolation. With `supabase start` and `supabase functions serve garden`
 running, also run:
@@ -410,8 +413,8 @@ supabase functions deploy garden
 Both tracks mature at a 60-day interval. Review offers **Mark as Learned** immediately
 after both mature; choosing it permanently ends reviews. Session exclusions survive
 refresh in the same tab and reset when leaving Review or changing the word set.
-The local Python backend uses additive SQLite columns on opening a profile. Exports
-preserve production schedules and review direction; import into the upgraded schema.
+Exports preserve existing production schedules and review direction; import into
+the upgraded schema.
 
 Run the graduation browser test with
 `npx playwright test --config playwright.cloud.config.ts tests/browser-cloud/review-tracks.spec.ts`.
@@ -425,8 +428,7 @@ Deploy the frontend and garden function from this version, then apply
 `202610210001_remove_time_tracking.sql` deletes stored learning-time sessions
 and their RPCs, and removes time fields from progress reads and imports.
 Vocabulary progress, review history, and review schedules are preserved.
-Existing SQLite databases drop their old `sessions` table when opened through
-the app's schema initialization. Exports no longer include time-tracking data.
+Dataset schema initialization drops old SQLite `sessions` tables. Exports no longer include time-tracking data.
 
 ### Forms popup
 
@@ -449,3 +451,17 @@ activity. They do not sync between devices. `/practice/weak` reads the learner's
 current schedules, and reading/chat validate explicit target IDs against that
 learner's practice set. Deploy the garden function alongside the frontend; there
 is no database migration. Seed-bag practice and ordinary flashcards stay available.
+
+### Remove unused level bias
+
+Apply `202610220001_remove_level_bias.sql`, then deploy the matching backend:
+
+```bash
+supabase db push --linked
+supabase functions deploy garden
+```
+
+This removes the unused `level_bias` profile column and its write handling.
+Discovery still adapts through `affinity_below` and `affinity_above`; learning
+progress and declared levels are unchanged. Regenerate older import SQL with
+the current exporter before importing. No frontend deployment is required.

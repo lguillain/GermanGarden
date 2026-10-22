@@ -12,7 +12,7 @@ export function WelcomeLayout({
 }) {
   return (
     <div className="welcome">
-      <span className="brand">Vocab Garden</span>
+      <span className="brand">German Garden</span>
       <Heading title={title}>{description}</Heading>
       {children}
     </div>

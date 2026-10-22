@@ -9,15 +9,12 @@ import { useGardenTime } from '../../hooks/use-garden-time';
 import { DashboardCard, PlantedCount } from './dashboard-card';
 import { UpcomingReviews } from './upcoming-reviews';
 import { SeedBagDialog } from './seed-bag-dialog';
-import { api } from '../../api';
-import type { PracticeWord } from '../practice/practice-round';
+import { weakWordsQuery } from '../../queries/weak-words-query';
 
 export function HomePage() {
   const result = useQuery(gardenQuery());
   const hardWords = useQuery({
-    queryKey: ['practice', 'weak', '?scope=all&topic='],
-    queryFn: () => api<{ words: PracticeWord[] }>('/practice/weak?scope=all&topic='),
-    staleTime: 30_000,
+    ...weakWordsQuery(),
     refetchInterval: 60_000,
   });
   const hardWordCount = hardWords.data?.words.length;
@@ -75,7 +72,7 @@ export function HomePage() {
           >
             {hardWordCount !== undefined && hardWordCount > 0 && (
               <Link className="button primary" to="/practice">
-                Practise these words
+                Practice hard words
               </Link>
             )}
             <ErrorNotice error={hardWords.error} />
