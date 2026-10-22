@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom';
 import { gardenQuery } from '../../queries/garden-query';
 import { ErrorNotice, Heading, Loading } from '../../components/feedback';
 import GardenScene from '../../components/garden-scene';
+import { gardenGnomeCount } from '../../components/garden-gnome-count';
+import { GnomeReviewIcon } from '../../components/gnome-review-icon';
+import { useGardenTime } from '../../hooks/use-garden-time';
 import { DashboardCard, PlantedCount } from './dashboard-card';
 import { UpcomingReviews } from './upcoming-reviews';
 import { SeedBagDialog } from './seed-bag-dialog';
@@ -19,6 +22,9 @@ export function HomePage() {
   });
   const hardWordCount = hardWords.data?.words.length;
   const garden = result.data;
+  const now = useGardenTime();
+  const gnomeCount =
+    garden?.plots.reduce((total, plot) => total + gardenGnomeCount(plot.words, now), 0) ?? 0;
   const summary = garden?.summary;
   const highlightDiscovery = summary?.found_today === 0;
   return (
@@ -37,6 +43,7 @@ export function HomePage() {
           >
             {summary && summary.due_now > 0 && (
               <Link className="button primary" to="/review">
+                {gnomeCount > 0 && <GnomeReviewIcon />}
                 Review {summary.due_now} {summary.due_now === 1 ? 'word' : 'words'}
               </Link>
             )}

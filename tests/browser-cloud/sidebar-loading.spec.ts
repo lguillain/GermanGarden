@@ -28,7 +28,7 @@ test('signed-in navigation and sign-out work while session bootstrap is stalled'
   await page.goto('/#/');
   await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible();
   await expect(page.locator('.profile-identity')).toContainText('Test');
-  await expect(page.getByRole('status')).toHaveText('Loading…');
+  await expect(page.getByRole('status').locator('.sr-only')).toHaveText('Loading…');
   await expect(page.getByRole('heading', { name: 'Your garden' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Find new words', exact: true })).toBeVisible();
   expect(requested).toBe(true);

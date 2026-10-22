@@ -28,7 +28,7 @@ test('Explore search stays editable while topics load and filters the arriving d
   try {
     await expect(page.getByRole('heading', { name: 'Explore more topics' })).toBeVisible();
     await page.getByRole('textbox', { name: 'Find a topic to explore' }).fill('work');
-    await expect(page.getByRole('status')).toHaveText('Loading…');
+    await expect(page.getByRole('status').locator('.sr-only')).toHaveText('Loading…');
     await expect(page.getByText('No topics match your search.')).toHaveCount(0);
   } finally { release(); }
   await expect(page.locator('.topic-row')).toHaveCount(1);
@@ -62,7 +62,7 @@ test('Practice mode links work while counts are pending', async ({ page }) => {
   await page.route('**/functions/v1/garden/practice/summary?*', async () => {});
   await page.route('**/functions/v1/garden/flashcards?*', route => route.fulfill({ json: { cards: [] } }));
   await page.goto('/#/practice?scope=topic&topic=home');
-  await expect(page.getByRole('status')).toHaveText('Loading…');
+  await expect(page.getByRole('status').locator('.sr-only')).toHaveText('Loading…');
   await expect(page.getByRole('link', { name: 'Reading', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Flashcards', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Flashcards' })).toBeVisible();

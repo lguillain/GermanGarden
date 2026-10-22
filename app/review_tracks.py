@@ -38,7 +38,10 @@ def details(conn, word_id):
     complete = learned(conn, word_id)
     planted = conn.execute("SELECT 1 FROM swipes WHERE word_id=? AND action='keep' AND planted_at IS NOT NULL", (word_id,)).fetchone()
     stage = 5 if complete else plant_growth(recognition, production)
+    overdue_dates = [track['due_at'] for track in (recognition, production)
+                     if track and track.get('due_at') and due(track)] if planted and not complete else []
     return dict(growth=stage, learned=complete, production_unlocked=complete or production is not None,
+                overdue_since=datetime.fromisoformat(min(overdue_dates)).replace(tzinfo=timezone.utc).isoformat() if overdue_dates else None,
                 production_growth=5 if complete else garden.growth_stage(production or {}),
                 review_due=bool(planted and not complete and (due(recognition) or production and due(production))),
                 can_mark_learned=not complete and stage == 5)

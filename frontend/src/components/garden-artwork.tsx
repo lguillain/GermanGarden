@@ -1,5 +1,8 @@
 import { useId, useState } from 'react';
+import { useGardenTime } from '../hooks/use-garden-time';
 import type { GardenPlot, Word } from '../api';
+import { GardenGnomes } from './garden-gnomes';
+import { gardenGnomeCount } from './garden-gnome-count';
 
 const growthNames = ['Just planted', 'Sprout', 'Seedling', 'Sapling', 'Blooming', 'Fully grown'];
 const LAND =
@@ -356,8 +359,10 @@ function Patch({
   onPickWord,
   onPickPlot,
   selectedWord,
+  now,
 }: {
   plot: GardenPlot;
+  now: number;
   id: string;
   focused: boolean;
   onPickWord: (id: string) => void;
@@ -449,6 +454,7 @@ function Patch({
             )}
           </g>
         ))}
+        <GardenGnomes count={gardenGnomeCount(words, now)} plotId={plot.id} />
       </g>
     </g>
   );
@@ -510,6 +516,7 @@ export function GardenArtwork({
   bagCount = 0,
   onPickBag,
   bagOpen = false,
+  now: previewNow,
 }: {
   plots: GardenPlot[];
   focused: boolean;
@@ -520,7 +527,9 @@ export function GardenArtwork({
   bagCount?: number;
   onPickBag?: () => void;
   bagOpen?: boolean;
+  now?: number;
 }) {
+  const currentTime = useGardenTime(previewNow);
   const [hovered, setHovered] = useState<string | null>(null);
   // Edge-sharing diamonds form a single parcel; fit every topic into the world.
   const columns = Math.max(1, Math.ceil(Math.sqrt(plots.length)));
@@ -635,6 +644,7 @@ export function GardenArtwork({
           >
             <Patch
               plot={plot}
+              now={currentTime}
               id={id}
               focused={focused}
               selectedWord={selectedWord}

@@ -269,6 +269,11 @@ and publishes `dist/`. Routes use `/#/…` so direct navigation and refresh work
 GitHub Pages. No Python server is needed in production. Supabase functions and
 migrations are deployed separately with the CLI commands above.
 
+For the garden gnome update, deploy `supabase functions deploy garden` first so
+word details include the oldest overdue review timestamp, then run **Deploy GitHub
+Pages**. No database migration is needed. Gnome counts and appearances are derived
+from existing review schedules; deploying does not change learning progress.
+
 ### Cloud verification
 
 ```bash

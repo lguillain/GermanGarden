@@ -66,6 +66,7 @@ export interface Word {
   can_mark_learned?: boolean;
   track?: 'recognition' | 'production';
   review_due?: boolean;
+  overdue_since?: string | null;
   visual_stage?: 'unseen' | 'seeds' | 'planted' | 'due' | 'grown';
   status?: 'new' | 'not_now' | 'learned' | 'bag' | 'planted';
   learned?: boolean;

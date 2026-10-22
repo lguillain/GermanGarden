@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { gardenGnomeCount } from '../../frontend/src/components/garden-gnome-count.ts';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { Garden } from '../../supabase/functions/garden/domain.ts';
@@ -291,4 +292,49 @@ test('reading and chat preserve exact session targets, validate ownership, and n
     }
   }
   assert.deepEqual(g.state, before);
+});
+
+test('gnomes follow the oldest overdue track, exclude seeds and Learned words, and recede after review', () => {
+  const g = fixture();
+  for (const id of ['word-0', 'word-1', 'word-22']) {
+    g.add(id, id === 'word-22' ? 'work' : 'home');
+    g.grade(id, 3, 'bag');
+  }
+  const ago = (hours: number) => new Date(g.now - hours * 3_600_000).toISOString();
+  g.state.srs['word-0'].due_at = ago(168);
+  g.state.srs['word-1'].due_at = ago(48);
+  g.state.srs['word-22'].due_at = ago(12);
+  const count = (topic: string) => gardenGnomeCount(g.home().plots.find(p => p.id === topic)!.words, g.now);
+  assert.equal(count('home'), 6);
+  assert.equal(count('work'), 1);
+  const before = structuredClone(g.state);
+  g.practice('topic', 'home');
+  assert.deepEqual(g.state, before);
+  assert.equal(count('home'), 6);
+  g.grade('word-0', 3);
+  assert.equal(count('home'), 3);
+  g.grade('word-1', 3);
+  assert.equal(count('home'), 0);
+  g.state.srs['word-0'].due_at = ago(96);
+  g.state.srs['word-0'].production = { ...initialSrs(), due_at: ago(168) };
+  assert.equal(count('home'), 6);
+  g.grade('word-0', 2);
+  assert.equal(count('home'), 5); // Hard production leaves recognition overdue.
+  g.state.learned.push('word-0');
+  assert.equal(count('home'), 0);
+  assert.equal(g.details(g.word('word-0')).overdue_since, null);
+  g.add('word-2', 'home');
+  g.state.srs['word-2'] = { ...initialSrs(), due_at: ago(168) };
+  assert.equal(g.details(g.word('word-2')).overdue_since, null);
+});
+
+test('gnome arrival thresholds are exact and capped at six', () => {
+  const now = Date.parse('2026-10-22T12:00:00Z');
+  for (const [hours, expected] of [[0, 0], [11.999, 0], [12, 1], [23.999, 1], [24, 2], [48, 3], [72, 4], [96, 5], [120, 6], [168, 6], [1000, 6]]) {
+    const word = { ...catalog.words[0], review_due: true, overdue_since: new Date(now - hours * 3_600_000).toISOString() };
+    assert.equal(gardenGnomeCount([word], now), expected, `${hours} hours`);
+    assert.equal(gardenGnomeCount([{ ...word, learned: true }], now), 0);
+  }
+  assert.equal(gardenGnomeCount([], now), 0);
+  assert.equal(gardenGnomeCount([{ ...catalog.words[0], review_due: true, overdue_since: 'invalid' }], now), 0);
 });

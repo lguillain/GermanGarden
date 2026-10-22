@@ -47,3 +47,32 @@
 
 .dashboard-concept-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 24px; margin-top: 28px; }
 .dashboard-concept-heading > h3 { font-size: var(--type-page); font-weight: 600; letter-spacing: -.7px; margin: 0; }
+
+.gnome-concept { margin-top: 24px; }
+.gnome-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.gnome-controls button { font-size: 13px; }
+.gnome-controls button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.gnome-scene { position: relative; background: #f0f1e5; border: 1px solid var(--border); border-radius: 24px; margin: 16px 0; overflow: hidden; }
+.gnome-scene > .garden-artwork { display: block; width: 100%; height: auto; max-height: none; }
+.gnome-whisper { position: absolute; top: 12px; right: 20px; margin: 0; color: #655044; font-size: 13px; font-style: italic; }
+.gnome-caption { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.gnome-caption h3 { margin: 0 0 6px; }
+.gnome-caption p { margin: 0; color: var(--muted); }
+.gnome-caption button { flex-shrink: 0; font-size: 13px; }
+.gnome-designs { margin-top: 36px; padding-top: 28px; border-top: 1px solid var(--border); }
+.gnome-design-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 20px 0; }
+.gnome-design-card { padding: 14px; border: 1px solid var(--border); border-radius: 18px; background: var(--surface); }
+.gnome-design-card svg { display: block; width: 100%; background: #f0f1e5; border-radius: 12px; margin-bottom: 16px; }
+.gnome-design-card h3 { font-size: 16px; margin-bottom: 8px; }
+.gnome-design-quote { font-style: italic; }
+@media (max-width: 950px) { .gnome-design-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .gnome-design-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) {
+  .gnome-caption { align-items: flex-start; flex-direction: column; }
+
+  .gnome-whisper { top: 12px; right: 12px; font-size: 12px; }
+}
+
+.gnome-review-specimen { display: flex; align-items: center; flex-wrap: wrap; gap: 24px; padding: 20px 0; }
+.gnome-review-enlarged .gnome-review-icon, .gnome-review-enlarged svg { width: 144px; height: 144px; margin: 0; }
+.gnome-review-enlarged .gnome-review-icon { flex-basis: 144px; }

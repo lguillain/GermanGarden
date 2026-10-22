@@ -597,3 +597,4 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 
 .page-heading-title { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 24px; }
 .page-heading-title > h1 { margin-bottom: 0; }
+.gnome-review-icon { display: inline-flex; flex: 0 0 36px; width: 36px; height: 36px; margin: -7px 0; }

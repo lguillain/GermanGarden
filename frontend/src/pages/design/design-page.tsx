@@ -7,6 +7,8 @@ import { WordCard } from '../../components/word-card';
 import { PracticeModeCards } from '../practice/practice-mode-cards';
 import './design-page.css';
 import { DashboardConcept } from './dashboard-concept';
+import { GnomeConcept } from './gnome-concept';
+import { GnomeDesigns } from './gnome-designs';
 
 const word: Word = {
   id: 'design-demo',
@@ -22,6 +24,7 @@ const word: Word = {
 };
 const sections = [
   'Dashboard concept',
+  'Garden gnomes',
   'Foundations',
   'Actions',
   'Inputs',
@@ -106,6 +109,14 @@ export function DesignPage() {
           includes later today; the review button counts words due now.
         </p>
         <DashboardConcept />
+      </Section>
+      <Section title="Garden gnomes">
+        <p>
+          Leave a patch waiting for review and a few unwelcome guests start to appear. Evil garden
+          gnomes gather among the wilted plants, looking far too pleased with themselves.
+        </p>
+        <GnomeConcept />
+        <GnomeDesigns />
       </Section>
       <Section title="Foundations">
         <p>

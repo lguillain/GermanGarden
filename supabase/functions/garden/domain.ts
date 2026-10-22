@@ -141,6 +141,16 @@ export class Garden {
       can_mark_learned: !learned && stage === 5,
       learned,
       review_due: reviewDue,
+      overdue_since: reviewDue
+        ? [srs?.due_at, srs?.production?.due_at]
+            .filter(
+              (dueAt): dueAt is string =>
+                Boolean(dueAt) &&
+                Number.isFinite(Date.parse(dueAt!)) &&
+                Date.parse(dueAt!) <= this.now,
+            )
+            .sort((a, b) => Date.parse(a) - Date.parse(b))[0] || null
+        : null,
       status,
       interval_days: srs?.interval_days || 0,
       reps: srs?.reps || 0,

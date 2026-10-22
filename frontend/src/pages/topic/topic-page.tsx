@@ -1,4 +1,6 @@
 import { TopicScene } from './topic-scene';
+import { gardenGnomeCount } from '../../components/garden-gnome-count';
+import { useGardenTime } from '../../hooks/use-garden-time';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useLocation, useOutletContext } from 'react-router-dom';
@@ -11,6 +13,7 @@ import { TopicProgress } from '../../components/topic-progress';
 import { WordTitle } from '../../components/word-card';
 
 export function TopicPage() {
+  const now = useGardenTime();
   const user = useOutletContext<Session | undefined>()?.user;
   const topic = decodeURIComponent(useLocation().pathname.split('/').pop() || '');
   const cache = useQueryClient();
@@ -24,6 +27,7 @@ export function TopicPage() {
   const [notice, setNotice] = useState('');
   const result = useQuery({
     queryKey: ['topic', topic],
+    refetchInterval: 60_000,
     queryFn: () =>
       api<{ activity: Activity; words: Word[] }>(`/topics/${encodeURIComponent(topic)}`),
   });
@@ -131,6 +135,7 @@ export function TopicPage() {
         ]}
         actions={
           <ScopeLinks
+            gnomeCount={gardenGnomeCount(words, now)}
             scope="topic"
             topic={topic}
             disabled={
