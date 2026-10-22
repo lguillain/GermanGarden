@@ -6,20 +6,15 @@ export function PracticeActivityCard({
   action,
   footer,
   children,
-  flashcards = false,
 }: {
   title: ReactNode;
   controls?: ReactNode;
   action?: ReactNode;
   footer?: ReactNode;
   children: ReactNode;
-  flashcards?: boolean;
 }) {
   return (
-    <section
-      className={`panel practice-activity-card ${flashcards ? 'practice-flashcards' : 'round-activity'}`}
-      aria-label={flashcards ? 'Flashcard activity' : 'Practice activity'}
-    >
+    <section className="panel practice-activity-card round-activity" aria-label="Practice activity">
       <header className="practice-activity-header">
         {title}
         {controls}

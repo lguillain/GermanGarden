@@ -49,6 +49,10 @@ test('rounds retain five-word groups, resume activities and count coverage witho
   await expect(page.getByRole('heading', { name: 'Session 1 of 3' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Topic practice', exact: true })).toHaveCount(0);
   await expect(page.locator('.practice-round-words li')).toHaveCount(5);
+  await page.screenshot({ path: 'test-results/practice-session-intro-desktop.png', fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: 'test-results/practice-session-intro-mobile.png', fullPage: true });
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.getByRole('button', { name: 'Go through flashcards' }).click();
   await expect(page.locator('.word-card h2:visible')).toHaveText('Wort0');
   await page.screenshot({ path: 'test-results/practice-flashcard-activity.png', fullPage: true });

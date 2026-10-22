@@ -111,6 +111,13 @@ function ReviewSession({ storageKey }: { storageKey: string }) {
     },
   });
   const card = result.data?.card;
+  const expectedArticle = card?.article?.trim().toLowerCase();
+  const checkArticle =
+    card?.pos === 'noun' && ['der', 'die', 'das'].includes(expectedArticle || '');
+  const chooseArticle = () => {
+    if (grade.isPending || revealed) return;
+    setRevealed(true);
+  };
   return (
     <>
       <div className="practice-heading-row">
@@ -164,6 +171,27 @@ function ReviewSession({ storageKey }: { storageKey: string }) {
               word={card}
               revealed={revealed}
               onReveal={() => setRevealed(true)}
+              hintsEnabled={!checkArticle}
+              articlePrompt={checkArticle}
+              revealControls={checkArticle ? false : undefined}
+              promptControls={
+                checkArticle ? (
+                  <fieldset className="review-article-choice">
+                    <legend>Choose the correct article</legend>
+                    <div className="actions">
+                      {['der', 'die', 'das'].map((article) => (
+                        <button
+                          key={article}
+                          disabled={grade.isPending || revealed}
+                          onClick={chooseArticle}
+                        >
+                          {article}
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
+                ) : undefined
+              }
             />
             {revealed && (
               <div className="grade-actions">

@@ -141,8 +141,7 @@ export function MatcherPage() {
             <ErrorNotice error={result.error} />
           ) : card ? (
             <>
-              <div className="panel matcher-card">
-                <p className="eyebrow">{card.activity_name || 'Core vocabulary'}</p>
+              <div className="matcher-card">
                 <WordCard
                   key={card.word_id}
                   word={card}

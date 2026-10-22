@@ -6,7 +6,7 @@ import { supabase } from '../../supabase';
 import { ErrorNotice, Loading } from '../../components/feedback';
 import { WordTitle } from '../../components/word-card';
 import { PracticeModeCards } from './practice-mode-cards';
-import { FlashcardActivity } from './flashcard-activity';
+import { FlashcardActivity, FlashcardDirection } from './flashcard-activity';
 import { PracticeActivityCard } from './practice-activity-card';
 import { TargetWords } from './target-words';
 import { ConversationActivity, ReadingActivity } from './practice-activities';
@@ -192,9 +192,22 @@ function WeakPracticeRound({
             practised
           </p>
         </div>
-        <button className="practice-text-action" onClick={exitRound}>
-          Exit round
-        </button>
+        {round.step === 'flashcards' && (
+          <FlashcardDirection
+            direction={round.direction}
+            onDirection={(direction) => update({ direction, revealed: false })}
+          />
+        )}
+        <div className="practice-round-actions">
+          {round.step === 'flashcards' && (
+            <button className="practice-text-action" onClick={() => update({ step: 'choose' })}>
+              Skip to activity
+            </button>
+          )}
+          <button className="practice-text-action" onClick={exitRound}>
+            Exit round
+          </button>
+        </div>
         {storageError && (
           <p role="alert">
             This browser could not save the round. Keep this page open to retain your progress.
@@ -230,28 +243,19 @@ function WeakPracticeRound({
       ) : (
         <>
           {round.step === 'meet' && (
-            <div className="panel">
-              <h2>Your {words.length} words</h2>
-              <ul className="practice-round-words">
-                {words.map((word) => (
-                  <li key={word.id}>
-                    <div>
+            <div className="panel practice-session-intro">
+              <div>
+                <h2>Your {words.length} words</h2>
+                <ul className="practice-round-words">
+                  {words.map((word) => (
+                    <li key={word.id}>
                       <strong>
                         <WordTitle word={word} />
                       </strong>
-                      <span className="muted">{word.english}</span>
-                    </div>
-                    <span className="small muted">
-                      {word.practice_reasons
-                        .map(
-                          (reason) =>
-                            `${reason.reason} · ${reason.track === 'production' ? 'EN → DE' : 'DE → EN'}`,
-                        )
-                        .join(' / ')}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+                    </li>
+                  ))}
+                </ul>
+              </div>
               <div className="actions">
                 <button className="primary" onClick={() => update({ step: 'flashcards' })}>
                   Go through flashcards
@@ -278,11 +282,7 @@ function WeakPracticeRound({
                 )
               }
               nextLabel={round.cardIndex + 1 === words.length ? 'Continue to activity' : 'Next'}
-              action={
-                <button className="practice-text-action" onClick={() => update({ step: 'choose' })}>
-                  Skip to activity
-                </button>
-              }
+              showDirection={false}
             />
           )}
           {round.step === 'choose' && (

@@ -40,14 +40,30 @@ for (const mode of ['practice', 'recognition', 'production']) {
     await page.goto(mode === 'practice' ? '/#/practice/flashcards' : '/#/review');
     const card = page.locator('.word-card');
     await expect(card).toBeVisible();
+    await expect(card).not.toContainText('Plural:', { useInnerText: true });
+    await expect(card).not.toContainText('Der Baum ist groß.', { useInnerText: true });
+    if (mode === 'practice') {
+      await card.getByRole('button', { name: 'Hint', exact: true }).click();
+      await expect(card).toContainText('Der Baum ist groß.');
+      await expect(card).not.toContainText('Plural:', { useInnerText: true });
+      await expect(card.locator('.answer-context')).not.toBeVisible();
+    }
     expect(optionsReads).toBe(0);
     await page.screenshot({ path: `test-results/card-${mode}.png`, fullPage: true });
     if (mode === 'practice') {
+      await card.getByRole('button', { name: 'Show translation' }).click();
+      await expect(card).toContainText('Plural: Bäume');
+      await page.getByLabel('Flashcard direction').selectOption('production');
+      await expect(card).not.toContainText('Plural:', { useInnerText: true });
+      await page.getByLabel('Flashcard direction').selectOption('recognition');
+      await expect(card).not.toContainText('Der Baum ist groß.', { useInnerText: true });
       await page.getByLabel('Flashcard direction').selectOption('production');
       await card.getByRole('button', { name: 'Hint', exact: true }).click();
     } else {
+      await expect(card).not.toContainText('Plural:', { useInnerText: true });
       await expect(page.getByRole('button', { name: 'Forms', exact: true })).toHaveCount(0);
-      await card.getByRole('button', { name: mode === 'production' ? 'Show answer' : 'Show translation' }).click();
+      await page.getByRole('button', { name: 'der', exact: true }).click();
+      await expect(card).toContainText('Plural: Bäume');
     }
     if (mode === 'production') {
       await expect(card.getByRole('heading')).toHaveText('der Baum');
@@ -117,3 +133,38 @@ test('old grammar links redirect to their flashcard set and Forms handles unavai
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Show translation', exact: true })).toBeVisible();
 });
+
+for (const width of [1280, 390]) {
+  for (const mode of ['practice', 'recognition', 'production']) {
+    test(`${mode} hint and reveal keep card geometry stable at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 1000 });
+      const word = { ...words[0], pos: 'verb', article: undefined,
+        de: 'Können Sie sich bitte um unsere Pflanzen kümmern? Wir sind nächste Woche im Urlaub und kommen erst am Sonntag zurück.',
+        en: 'Could you please take care of our plants? We are on holiday next week and will not return until Sunday.',
+      };
+      await page.route('https://auth-test.supabase.co/**', async route => {
+        const path = new URL(route.request().url()).pathname;
+        if (path.endsWith('/session')) return route.fulfill({ json: { user: { name: 'Test', level: 'A2' }, ai_available: true } });
+        if (path.endsWith('/flashcards')) return route.fulfill({ json: { cards: [word] } });
+        if (path.endsWith('/review')) return route.fulfill({ json: { card: { ...word, track: mode, rating_options: [] }, remaining: 1, counts: { plants: 1, seeds: 0 } } });
+        throw new Error(`Unexpected request ${path}`);
+      });
+      await page.goto(mode === 'practice' ? '/#/practice/flashcards' : '/#/review');
+      const card = page.locator('.word-card');
+      await expect(card).toBeVisible();
+      const geometry = () => card.evaluate(el => {
+        const bounds = el.getBoundingClientRect();
+        const footer = el.querySelector('.word-card-footer')!.getBoundingClientRect();
+        return { height: bounds.height, footer: footer.top - bounds.top };
+      });
+      const before = await geometry();
+      await card.getByRole('button', { name: 'Hint', exact: true }).click();
+      expect(await geometry()).toEqual(before);
+      await expect(card.locator('.answer-context')).not.toBeVisible();
+      await card.getByRole('button', { name: mode === 'production' ? 'Show answer' : 'Show translation' }).click();
+      await expect(card.locator('.answer-context')).toBeVisible();
+      expect(await geometry()).toEqual(before);
+      await page.screenshot({ path: `test-results/stable-card-${mode}-${width}.png`, fullPage: true });
+    });
+  }
+}

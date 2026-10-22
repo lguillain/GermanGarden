@@ -59,12 +59,11 @@ test('production graduates both tracks and Learned stays fully grown, unreviewab
     await expect(card).toContainText('EN → DE');
     await expect(card.getByRole('heading')).toHaveText('tree');
     await expect(card).toContainText('The tree is tall.');
-    await expect(card).not.toContainText('Hint: B…');
-    await expect(card).not.toContainText('Der Baum ist groß.');
-    await card.getByRole('button', { name: 'Hint', exact: true }).click();
-    await expect(card).toContainText('Hint: B…');
-    await expect(card).not.toContainText('Baum');
-    await page.getByRole('button', { name: 'Show answer', exact: true }).click();
+    await expect(card).not.toContainText('B _ _ _', { useInnerText: true });
+    await expect(card).not.toContainText('Der Baum ist groß.', { useInnerText: true });
+    await expect(card.getByRole('button', { name: 'Hint', exact: true })).toHaveCount(0);
+    await expect(card).not.toContainText('Baum', { useInnerText: true });
+    await page.getByRole('button', { name: 'der', exact: true }).click();
     await expect(card.getByRole('heading')).toHaveText('der Baum');
     await expect(card.locator('.answer-context')).toContainText('tree');
     await page.getByRole('button', { name: /^Good In/ }).click();
@@ -101,17 +100,17 @@ test('production graduates both tracks and Learned stays fully grown, unreviewab
       await page.getByRole('button', { name: 'Next', exact: true }).click();
     await expect(page.locator('.word-card').getByRole('heading')).toHaveText('tree');
     await expect(page.locator('.word-card')).toContainText('The tree is tall.');
-    await expect(page.locator('.word-card')).not.toContainText('Hint: B…');
+    await expect(page.locator('.word-card')).not.toContainText('B _ _ _', { useInnerText: true });
     await page.getByRole('button', { name: 'Hint', exact: true }).click();
-    await expect(page.locator('.word-card')).toContainText('Hint: B…');
+    await expect(page.locator('.word-card')).toContainText('B _ _ _');
     await page.getByLabel('Flashcard direction').selectOption('recognition');
     await page.getByLabel('Flashcard direction').selectOption('production');
-    await expect(page.locator('.word-card')).not.toContainText('Hint: B…');
+    await expect(page.locator('.word-card')).not.toContainText('B _ _ _', { useInnerText: true });
     await page.getByRole('button', { name: 'Show answer' }).click();
     await expect(page.locator('.word-card').getByRole('heading')).toHaveText('der Baum');
-    await expect(page.getByText('The tree is tall.', { exact: true })).toHaveCount(1);
+    await expect(page.locator('.word-card p:visible').filter({ hasText: /^The tree is tall\.$/ })).toHaveCount(1);
     await page.getByLabel('Flashcard direction').selectOption('recognition');
-    await expect(page.locator('.translation')).toHaveCount(0);
+    await expect(page.locator('.translation:visible')).toHaveCount(0);
     await expect(page.locator('.word-card').getByRole('heading')).toHaveText('Baum');
     expect((await store().load()).data.reviews).toEqual([]); // History is checked directly below; snapshots omit it.
     expect(
@@ -136,7 +135,7 @@ test('failed production stays excluded across refresh, while recognition remains
     const before = (await store().load()).data.srs.tree;
     await page.goto('/#/review');
     await expect(page.locator('.word-card')).toContainText('EN → DE');
-    await page.getByRole('button', { name: 'Show answer' }).click();
+    await page.getByRole('button', { name: 'der', exact: true }).click();
     await page.getByRole('button', { name: /^Again In/ }).click();
     await expect(page.getByText('Session complete.', { exact: false })).toBeVisible();
     const after = (await store().load()).data.srs.tree;
@@ -154,7 +153,7 @@ test('failed production stays excluded across refresh, while recognition remains
     await page.screenshot({ path: 'test-results/production-bud-due.png', fullPage: true });
     await page.getByRole('link', { name: 'Review', exact: true }).first().click();
     await expect(page.locator('.word-card')).toContainText('DE → EN');
-    await expect(page.locator('.word-card').getByRole('heading')).toHaveText('Baum');
+    await expect(page.locator('.word-card').getByRole('heading')).toHaveText('___ Baum');
   } finally {
     await db.close();
   }

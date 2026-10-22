@@ -26,10 +26,10 @@ for (const failure of [false, true]) {
       throw new Error(`Unexpected request ${path}`);
     });
     await page.goto('/#/matcher');
-    await expect(page.locator('.word-card h2')).toHaveText('First');
+    await expect(page.locator('.word-card').getByRole('heading')).toHaveText('First');
     await page.getByRole('button', { name: 'Keep word', exact: true }).click();
     try {
-      await expect(page.locator('.word-card h2')).toHaveText('Next');
+      await expect(page.locator('.word-card').getByRole('heading')).toHaveText('Next');
       await expect(page.getByText('Saving your choice…')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Keep word', exact: true })).toBeDisabled();
       await expect(page.getByRole('button', { name: 'Not now', exact: true })).toBeDisabled();
@@ -38,7 +38,7 @@ for (const failure of [false, true]) {
       if (!failure) await page.screenshot({ path: 'test-results/matcher-preloaded-card.png', fullPage: true });
     } finally { release(); }
     await expect(page.getByText('Saving your choice…')).toHaveCount(0);
-    await expect(page.locator('.word-card h2')).toHaveText(failure ? 'First' : 'Next');
+    await expect(page.locator('.word-card').getByRole('heading')).toHaveText(failure ? 'First' : 'Next');
     if (failure) {
       await expect(page.getByRole('alert')).toContainText('Progress changed');
       await expect(page.getByText('Your seed bag is empty.')).toBeVisible();
