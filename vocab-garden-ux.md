@@ -171,3 +171,27 @@ Topic word lists apply the level visibility rules described below.
 - During guided flashcards, the direction selector sits in the session summary beside the session heading and word progress. Skip to activity sits alongside Exit round in that header; neither appears beside the flashcard progress bar.
 
 - The guided session heading and word progress align with the page’s left edge, like the Review heading. The session header spans the page, while the flashcard and its card progress/navigation remain centered at review width.
+
+## Design reference
+- `/design` is a public, URL-only design reference, with no app navigation link (hosted hash-router URL: `/#/design`). It renders outside the authenticated app shell, without login, session requests, or learner data.
+- It documents the current palette, typography, spacing, controls, study cards, growth/status visuals, activity patterns, feedback, responsive layouts and usage rules. Shared components render live examples where possible; all demo interactions use sample data and local state without saving learning progress or requesting AI.
+- Audit findings distinguish established choices from proposed follow-up improvements. The reference is not a separate visual theme or a change to learning rules.
+
+## Shared color and typography
+- Canvas, surfaces, navigation, body text, muted text, focus and action palettes use shared CSS tokens. Supporting copy, metadata and placeholders share one muted color. Garden actions use the same primary, secondary and hover colors as other pages.
+- Page headings use 32px (28px on phones), dialog titles 24px, section/card headings 18px, and compact panel headings 16px. Body text uses 15px; secondary answer context and feedback use 14px; supporting labels and compact controls use 13px; captions use 12px. Standard controls use 15px. Reading/conversation text retains 17px for sustained reading.
+- Study vocabulary retains its larger 38px size (30px at narrow phone widths), with example sentences at 18px (16px on narrow phones). Phone text inputs retain 16px. Numeric metrics and branding may use their own display sizes.
+- Status chips retain pale semantic fills while charts use stronger versions. These differences express purpose rather than page-specific styling.
+- The design reference inventories these shared styles and intentional variants using the same tokens and components as the app.
+
+## Page navigation placement
+- All page headings occupy the shared page container width and align to its left edge. Put narrower content wrappers below the heading, never around it; Garden dashboard cards use the full shared page width, aligned with the heading. Only the garden illustration and study cards have independent narrower widths.
+- Use the shared Heading component for page titles, optional scope/context, return navigation, and page-level actions. The title/context is left aligned; return links and actions are grouped at the right of the same heading row. On narrow screens the group wraps below the title and remains right aligned, without horizontal overflow.
+- Return links use underlined, muted 13px text with a left arrow and an explicit destination (for example, “← Practice” or “← All practice”). Do not place standalone return links above or below the page heading. Topic pages provide Garden and Explore topics destinations in this group.
+- Reading, Conversation and Flashcards return to Practice with their current topic/seed-bag query preserved. Topic and seed-bag Practice provide “← All practice” to the unfiltered overview. Use explicit router destinations rather than browser history so direct links work predictably.
+- Forward links that start a flow (such as a topic’s Practice and Review) retain button styling in the heading action group or their relevant content card. Ordinary inline links remain in context. Word-set switches are controls, not return links.
+- Within a guided round, Exit round and Change activity remain buttons in the relevant session/activity header because they change local session state. Page navigation must not implicitly discard a saved round.
+
+## Loading feedback
+- Shared loading feedback occupies a centered, padded region with a 72px-wide animated plant and visible body-sized “Loading…” underneath, giving missing panels a clear placeholder: its stem grows, leaves unfold, and a golden flower blooms before gently fading and repeating. It represents waiting, not learning progress or a growth-stage change. Keep loading scoped to the affected content.
+- The SVG is hidden from assistive technology; a single status region announces the unchanged loading label. Reserve the illustration’s space to avoid movement during the animation. The visible label cycles through one, two, and three dots in a fixed-width space; screen readers receive a single static “Loading…” label. Reduced-motion preferences show the fully grown plant and all three dots without animation.

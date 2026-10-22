@@ -16,9 +16,12 @@ export function PracticePage() {
   const result = usePracticeSummary(query);
   const overview = (
     <>
-      <div className="practice-heading-row">
-        <Heading title="Practice">{scope !== 'all' ? label : undefined}</Heading>
-      </div>
+      <Heading
+        title="Practice"
+        navigation={scope !== 'all' ? [{ to: '/practice', label: '← All practice' }] : undefined}
+      >
+        {scope !== 'all' ? label : undefined}
+      </Heading>
       {result.isPending && <Loading />}
       <ErrorNotice error={result.error} />
       {result.data?.word_count === 0 && (
@@ -36,11 +39,6 @@ export function PracticePage() {
         <WeakPractice scope={scope} topic={topic} query={query} overview={overview}>
           <TopicPracticeGarden />
         </WeakPractice>
-      )}
-      {scope === 'topic' && (
-        <Link className="back" to="/practice">
-          ← All practice
-        </Link>
       )}
       {scope !== 'all' && (
         <>

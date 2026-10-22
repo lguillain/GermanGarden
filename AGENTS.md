@@ -4,6 +4,8 @@
 
 Read `vocab-garden-ux.md` before changing behavior. Keep product decisions there.
 Use the domain terms seed bank, seed bag, garden, practice, and review consistently.
+Keep page headings at the shared page-container width; narrower content wrappers belong below them.
+Use the shared `Heading` component’s `navigation` and `actions` props for page-level links and controls. Follow the page-navigation rules in `vocab-garden-ux.md`; preserve scope in return URLs and avoid standalone back-link layouts.
 
 ## Structure
 

@@ -1,0 +1,46 @@
+.design-page { max-width: 1100px; margin: auto; }
+.design-intro { max-width: 720px; color: var(--muted); }
+.design-index { display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0 40px; }
+.design-index button { font-size: 13px; background: transparent; }
+.design-section { scroll-margin-top: 24px; padding: 28px 0; border-top: 1px solid var(--border); }
+.design-section > h2 { font-size: 24px; margin-bottom: 16px; }
+.design-section > p { max-width: 800px; }
+.design-swatches { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin: 24px 0; }
+.design-swatch { min-width: 0; }
+.design-swatch > div { height: 64px; border-radius: 14px; border: 1px solid var(--border); margin-bottom: 12px; }
+.design-swatch h3 { font-size: 14px; margin-bottom: 2px; }
+.design-swatch code { font-size: 12px; }
+.design-swatch p { margin-top: 6px; }
+.design-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin: 24px 0; }
+.design-example { min-width: 0; }
+.design-specimen { min-height: 110px; padding: 20px; border: 1px dashed var(--border); border-radius: 18px; margin-bottom: 14px; }
+.design-example > h3 { font-size: 15px; }
+.design-example > p { margin: 0; }
+.design-specimen .topic-distribution { display: block; width: 100%; max-width: none; }
+.design-specimen label:not(:first-child) { margin-top: 16px; }
+.design-type-heading { font-size: var(--type-page); font-weight: 600; letter-spacing: -.7px; margin-bottom: 12px; }
+.design-study { max-width: 690px; margin: 24px auto; }
+.design-toolbar { margin-bottom: 16px; }
+.design-toolbar label { margin: 0; }
+.design-toolbar select { width: auto; margin: 0; }
+.design-notes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.design-plants { display: flex; flex-wrap: wrap; gap: 24px; padding: 24px 0; }
+.design-plants > div { display: grid; justify-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
+.design-plants .plant-stage-icon { width: 64px; height: 72px; }
+.design-audit article { display: flex; align-items: flex-start; gap: 20px; padding: 20px 0; border-bottom: 1px solid var(--border); }
+.design-audit .badge { min-width: 74px; justify-content: center; }
+.design-audit p { margin: 0; }
+@media (max-width: 760px) {
+  .design-grid, .design-notes { grid-template-columns: minmax(0, 1fr); }
+  .design-swatches { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .design-specimen { padding: 16px; }
+  .design-audit article { flex-direction: column; gap: 10px; }
+}
+
+.design-type-dialog { font-size: var(--type-dialog); font-weight: 620; margin-bottom: 10px; }
+.design-type-caption { font-size: var(--type-caption); color: var(--muted); }
+.design-type-word { font-size: var(--type-word); font-weight: 620; }
+.design-compact-action { font-size: var(--type-small); }
+.design-type-context { font-size: var(--type-context); }
+.design-type-example { font-size: var(--type-example); }
+.design-type-reading { font-size: var(--type-reading); }

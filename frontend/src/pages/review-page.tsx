@@ -120,10 +120,12 @@ function ReviewSession({ storageKey }: { storageKey: string }) {
   };
   return (
     <>
-      <div className="practice-heading-row">
-        <Heading title="Review">{scope === 'topic' ? label : undefined}</Heading>
-        <WordSetSwitch page="/review" counts={result.data?.counts} />
-      </div>
+      <Heading
+        title="Review"
+        actions={<WordSetSwitch page="/review" counts={result.data?.counts} />}
+      >
+        {scope === 'topic' ? label : undefined}
+      </Heading>
       <div className="study">
         {result.data && (
           <div className="review-progress">

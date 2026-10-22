@@ -123,22 +123,22 @@ export function TopicPage() {
   ] as const;
   return (
     <>
-      <div className="topic-back-links">
-        <Link className="back" to="/">
-          ← Garden
-        </Link>
-        <Link className="back" to="/explore">
-          Explore topics
-        </Link>
-      </div>
-      <div className="topic-page-heading">
-        <Heading title={activity?.name ?? 'Topic'} />
-        <ScopeLinks
-          scope="topic"
-          topic={topic}
-          disabled={Boolean(result.data) && !words.some((w) => w.status === 'planted' || w.learned)}
-        />
-      </div>
+      <Heading
+        title={activity?.name ?? 'Topic'}
+        navigation={[
+          { to: '/', label: '← Garden' },
+          { to: '/explore', label: '← Explore topics' },
+        ]}
+        actions={
+          <ScopeLinks
+            scope="topic"
+            topic={topic}
+            disabled={
+              Boolean(result.data) && !words.some((w) => w.status === 'planted' || w.learned)
+            }
+          />
+        }
+      />
       {result.data && user && (
         <section className="topic-progress-summary" aria-label="Topic progress">
           <span className="level-progress-label">{user?.level} progress</span>

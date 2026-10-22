@@ -19,10 +19,9 @@ export function AiPracticeLayout({
   const aiAvailable = useOutletContext<Session | undefined>()?.ai_available;
   return (
     <>
-      <Link className="back" to={`/practice${query}`}>
-        ← Practice
-      </Link>
-      <Heading title={title}>{scope === 'all' ? undefined : label}</Heading>
+      <Heading title={title} navigation={[{ to: `/practice${query}`, label: '← Practice' }]}>
+        {scope === 'all' ? undefined : label}
+      </Heading>
       {aiAvailable === false ? (
         <Empty>AI practice is not configured yet. Ask the garden owner to enable it.</Empty>
       ) : aiAvailable === undefined || result.isPending ? (

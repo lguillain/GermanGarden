@@ -29,10 +29,7 @@ export function FlashcardsPage() {
   };
   return (
     <>
-      <Link className="back" to={`/practice${query}`}>
-        ← Practice
-      </Link>
-      <Heading title="Flashcards">
+      <Heading title="Flashcards" navigation={[{ to: `/practice${query}`, label: '← Practice' }]}>
         {label}
         {cards.length && index < cards.length ? ` · ${index + 1} / ${cards.length}` : ''}
       </Heading>

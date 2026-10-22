@@ -12,10 +12,19 @@ import { ProfilePage } from './pages/profile-page';
 import { ReviewPage } from './pages/review-page';
 import { TopicPage } from './pages/topic/topic-page';
 import { supabase } from './supabase';
+import { DesignPage } from './pages/design/design-page';
 
 export function App() {
   return (
     <Routes>
+      <Route
+        path="/design"
+        element={
+          <main className="container">
+            <DesignPage />
+          </main>
+        }
+      />
       <Route path="/profile" element={supabase ? <CloudLogin /> : <ProfilePage />} />
       <Route element={<AppShell />}>
         <Route index element={<HomePage />} />
