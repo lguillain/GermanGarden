@@ -6,6 +6,7 @@ import { TopicProgress, topicStages } from '../../components/topic-progress';
 import { WordCard } from '../../components/word-card';
 import { PracticeModeCards } from '../practice/practice-mode-cards';
 import './design-page.css';
+import { DashboardConcept } from './dashboard-concept';
 
 const word: Word = {
   id: 'design-demo',
@@ -20,6 +21,7 @@ const word: Word = {
   growth: 2,
 };
 const sections = [
+  'Dashboard concept',
   'Foundations',
   'Actions',
   'Inputs',
@@ -97,6 +99,14 @@ export function DesignPage() {
         ))}
       </div>
 
+      <Section title="Dashboard concept">
+        <p>
+          The garden dashboard uses playful titles, literal counts, and compact SVG miniature
+          scenes. These examples share the home page’s components and use sample data. “Due today”
+          includes later today; the review button counts words due now.
+        </p>
+        <DashboardConcept />
+      </Section>
       <Section title="Foundations">
         <p>
           Quiet, warm surfaces support focused study. Green connects actions to the garden; blue

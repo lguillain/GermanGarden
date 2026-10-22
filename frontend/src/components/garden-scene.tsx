@@ -9,7 +9,7 @@ export default function GardenScene({
   bagContent,
   showBag = true,
   topicHref = (topic) => `/topics/${encodeURIComponent(topic)}`,
-  instruction = 'Select a field to look closer',
+  instruction,
 }: {
   topicHref?: (topic: string) => string;
   instruction?: string;
@@ -23,7 +23,7 @@ export default function GardenScene({
   const [bagOpen, setBagOpen] = useState(false);
   return (
     <section className="garden-world" aria-label="Growing garden">
-      {!!plots.length && (
+      {!!plots.length && instruction && (
         <div className="world-bottom">
           <span>{instruction}</span>
         </div>

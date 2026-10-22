@@ -501,32 +501,8 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 .word-card .answer-context strong { font-weight: 500; }
 .word-card .answer-context p { margin-top: 6px; }
 
-/* Compact garden summary cards share one count-and-action layout. */
-.garden-dashboard { display: grid; grid-template-columns: .8fr 1.7fr 1.25fr 1.35fr; gap: 12px; margin-bottom: 24px; }
-.garden-dashboard > .panel { padding: 16px; background: var(--surface); margin: 0; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-radius: 18px; box-shadow: 0 4px 12px #29443206; }
-.garden-dashboard dl { margin: 0; }
-.garden-dashboard dt { color: var(--muted); font-size: var(--type-caption); white-space: nowrap; }
-.garden-dashboard dd { margin: 4px 0 0; font-size: 24px; font-weight: 600; line-height: 1.2; }
-.garden-dashboard > .panel > .button, .garden-review-action .button, .garden-card-action > .button, .garden-card-action > button { font-size: var(--type-small); padding: 8px 12px; white-space: nowrap; }
-.garden-review-stats { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex: 1; }
-.garden-review-action { text-align: center; }
-.garden-card-action { flex-shrink: 0; }
-.garden-dashboard > .garden-review-card, .garden-review-stats { gap: 8px; }
-.garden-card-action > .upcoming-reviews-trigger { width: 34px; height: 34px; padding: 0; border-radius: 50%; }
-.garden-dashboard .upcoming-review-counts dd { margin: 6px 0 0; }
-.garden-scene-layout { position: relative; max-width: 1120px; margin: 0 auto; }
-@media (max-width: 1450px) {
-  .garden-dashboard { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (max-width: 760px) {
-  .garden-dashboard { grid-template-columns: minmax(0, 1fr); gap: 10px; }
-  .garden-dashboard > .panel { padding: 14px; }
-}
-@media (max-width: 390px) {
-  .garden-dashboard > .garden-review-card { gap: 8px; }
-  .garden-review-stats { gap: 8px; flex-wrap: wrap; min-width: 0; }
-  .garden-review-action .button, .garden-card-action > button { padding: 8px; }
-}
+.garden-scene-layout { position: relative; width: 100%; margin: 0 auto; }
+.garden-scene-layout .garden-artwork { max-height: clamp(280px, calc(100svh - 260px), 660px); }
 
 .weak-practice { margin: 24px 0; }
 .weak-practice > .panel { margin-bottom: 20px; }
@@ -618,3 +594,6 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
   .loading-dots > span { animation: none; }
 }
+
+.page-heading-title { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 24px; }
+.page-heading-title > h1 { margin-bottom: 0; }

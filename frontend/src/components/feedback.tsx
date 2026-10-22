@@ -76,16 +76,25 @@ export function Heading({
   children,
   navigation,
   actions,
+  titleDetail,
 }: {
   title: string;
   children?: React.ReactNode;
   navigation?: { to: string; label: string }[];
   actions?: React.ReactNode;
+  titleDetail?: React.ReactNode;
 }) {
   return (
     <header className="page-heading">
       <div>
-        <h1>{title}</h1>
+        {titleDetail ? (
+          <div className="page-heading-title">
+            <h1>{title}</h1>
+            {titleDetail}
+          </div>
+        ) : (
+          <h1>{title}</h1>
+        )}
         {children && <p className="muted">{children}</p>}
       </div>
       {(navigation?.length || actions) && (

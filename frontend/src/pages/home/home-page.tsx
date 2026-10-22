@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom';
 import { gardenQuery } from '../../queries/garden-query';
 import { ErrorNotice, Heading, Loading } from '../../components/feedback';
 import GardenScene from '../../components/garden-scene';
+import { DashboardCard, PlantedCount } from './dashboard-card';
 import { UpcomingReviews } from './upcoming-reviews';
-import { SeedBag } from '../../components/seed-bag';
+import { SeedBagDialog } from './seed-bag-dialog';
 import { api } from '../../api';
 import type { PracticeWord } from '../practice/practice-round';
 
@@ -22,81 +23,60 @@ export function HomePage() {
   const highlightDiscovery = summary?.found_today === 0;
   return (
     <>
-      <Heading title="Your garden" />
+      <Heading title="Your garden" titleDetail={<PlantedCount count={summary?.planted_total} />} />
       <div className="garden-home">
         <ErrorNotice error={result.error} />
         {result.isPending && <Loading />}
         <section className="garden-dashboard" aria-label="Learning progress">
-          <div className="panel garden-total">
-            <dl>
-              <div>
-                <dt>Total words planted</dt>
-                <dd>{summary?.planted_total ?? '—'}</dd>
-              </div>
-            </dl>
-          </div>
-          <div className="panel garden-review-card">
-            <div className="garden-review-stats">
-              <dl className="garden-due-today">
-                <div>
-                  <dt>Reviews due today</dt>
-                  <dd>{summary?.due_today ?? '—'}</dd>
-                </div>
-              </dl>
-              <div className="garden-review-action">
-                {summary && summary.due_now > 0 ? (
-                  <Link className="button primary" to="/review">
-                    Review words <span className="action-count">{summary.due_now} due</span>
-                  </Link>
-                ) : (
-                  <dl>
-                    <div>
-                      <dt>Words due</dt>
-                      <dd>{summary ? 0 : '—'}</dd>
-                    </div>
-                  </dl>
-                )}
-              </div>
-            </div>
-            <div className="garden-card-action">
-              {summary && <UpcomingReviews summary={summary} />}
-            </div>
-          </div>
-          <div className="panel garden-discovery-card">
-            <dl className="garden-found-today">
-              <div>
-                <dt>Words found today</dt>
-                <dd>{summary?.found_today ?? '—'}</dd>
-              </div>
-            </dl>
-            <div className="garden-card-action">
-              <Link className={`button${highlightDiscovery ? ' primary' : ''}`} to="/matcher">
-                Find new words
+          <DashboardCard
+            title="A little tending"
+            kind="watering"
+            count={summary?.due_now}
+            detail={summary?.due_now === 1 ? 'word due now' : 'words due now'}
+            inlineDetail
+          >
+            {summary && summary.due_now > 0 && (
+              <Link className="button primary" to="/review">
+                Review {summary.due_now} {summary.due_now === 1 ? 'word' : 'words'}
               </Link>
+            )}
+            <div className="garden-dashboard-forecast">
+              {summary && <UpcomingReviews summary={summary} />}
+              <span className="garden-dashboard-note">
+                {summary?.due_today !== undefined
+                  ? `${Math.max(0, summary.due_today - summary.due_now)} more due today`
+                  : '— more due today'}
+              </span>
             </div>
-          </div>
-          <div className="panel garden-practice-card">
-            <dl>
-              <div>
-                <dt>Hard words</dt>
-                <dd>{hardWordCount ?? '—'}</dd>
-              </div>
-            </dl>
+          </DashboardCard>
+          <DashboardCard
+            title="Fresh finds"
+            kind="seeds"
+            count={summary?.found_today}
+            detail="found today"
+          >
+            <Link className={`button${highlightDiscovery ? ' primary' : ''}`} to="/matcher">
+              Find new words
+            </Link>
+            <SeedBagDialog words={garden?.bag} />
+          </DashboardCard>
+          <DashboardCard
+            title="Extra care"
+            kind="support"
+            count={hardWordCount}
+            detail="words to practise"
+          >
             {hardWordCount !== undefined && hardWordCount > 0 && (
               <Link className="button primary" to="/practice">
-                Practice hard words
+                Practise these words
               </Link>
             )}
             <ErrorNotice error={hardWords.error} />
-          </div>
+          </DashboardCard>
         </section>
         {garden && summary && (
           <div className="garden-scene-layout">
-            <GardenScene
-              plots={garden.plots}
-              bagCount={garden.bag.length}
-              bagContent={<SeedBag words={garden.bag} />}
-            />
+            <GardenScene plots={garden.plots} showBag={false} />
           </div>
         )}
       </div>

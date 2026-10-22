@@ -37,10 +37,13 @@
   .design-audit article { flex-direction: column; gap: 10px; }
 }
 
-.design-type-dialog { font-size: var(--type-dialog); font-weight: 620; margin-bottom: 10px; }
+.design-type-dialog { font-size: var(--type-dialog); font-weight: 620; margin-bottom: 6px; }
 .design-type-caption { font-size: var(--type-caption); color: var(--muted); }
 .design-type-word { font-size: var(--type-word); font-weight: 620; }
 .design-compact-action { font-size: var(--type-small); }
 .design-type-context { font-size: var(--type-context); }
 .design-type-example { font-size: var(--type-example); }
 .design-type-reading { font-size: var(--type-reading); }
+
+.dashboard-concept-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 24px; margin-top: 28px; }
+.dashboard-concept-heading > h3 { font-size: var(--type-page); font-weight: 600; letter-spacing: -.7px; margin: 0; }

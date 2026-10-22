@@ -8,27 +8,7 @@ export function UpcomingReviews({ summary }: { summary: Garden['summary'] }) {
   const maximum = Math.max(1, ...(upcoming?.map((day) => day.count) ?? []));
   return (
     <>
-      <button
-        className="button upcoming-reviews-trigger"
-        aria-label="Upcoming"
-        title="Upcoming reviews"
-        onClick={() => dialog.current?.showModal()}
-      >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.75"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <rect x="3" y="5" width="18" height="16" rx="2" />
-          <path d="M16 3v4M8 3v4M3 11h18M8 15h2M14 15h2M8 18h2" />
-        </svg>
-      </button>
+      <UpcomingReviewsButton onClick={() => dialog.current?.showModal()} />
       <dialog
         ref={dialog}
         className="upcoming-reviews"
@@ -111,5 +91,31 @@ export function UpcomingReviews({ summary }: { summary: Garden['summary'] }) {
         )}
       </dialog>
     </>
+  );
+}
+
+export function UpcomingReviewsButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      className="upcoming-reviews-trigger"
+      aria-label="Upcoming"
+      title="Upcoming reviews"
+      onClick={onClick}
+    >
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <rect x="3" y="5" width="18" height="16" rx="2" />
+        <path d="M16 3v4M8 3v4M3 11h18M8 15h2M14 15h2M8 18h2" />
+      </svg>
+    </button>
   );
 }

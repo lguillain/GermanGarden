@@ -679,116 +679,7 @@ export function GardenArtwork({
           }}
         >
           <title>Open your seed bag</title>
-          <defs>
-            <radialGradient id={`${id}-sack`} cx=".3" cy=".25" r=".8">
-              <stop stopColor="#e7c591" />
-              <stop offset=".45" stopColor="#c39b65" />
-              <stop offset=".8" stopColor="#9c7146" />
-              <stop offset="1" stopColor="#775335" />
-            </radialGradient>
-            <linearGradient id={`${id}-sack-rim`} x1="0" y1="0" x2=".3" y2="1">
-              <stop stopColor="#ecd0a1" />
-              <stop offset=".5" stopColor="#c6a071" />
-              <stop offset="1" stopColor="#92683f" />
-            </linearGradient>
-            <linearGradient id={`${id}-sack-opening`} x1="0" y1="0" x2="0" y2="1">
-              <stop stopColor="#563d2a" />
-              <stop offset="1" stopColor="#967149" />
-            </linearGradient>
-          </defs>
-          <ellipse
-            cx="7"
-            cy="20"
-            rx="40"
-            ry="12"
-            fill="#554b32"
-            opacity=".18"
-            filter={`url(#${id}-shadow)`}
-          />
-          <ellipse cx="3" cy="18" rx="27" ry="7" fill="#654e32" opacity=".22" />
-          <path
-            d="M-18 -43 Q-37 -27 -39 -4 C-43 23 -14 30 13 25 C40 22 44 7 35 -15 Q30 -32 18 -43Z"
-            fill={`url(#${id}-sack)`}
-          />
-          <path
-            d="M18 -39 Q25 -17 24 4 Q24 17 12 23 C38 19 39 8 33 -12 Q27 -31 18 -39Z"
-            fill="#795133"
-            opacity=".23"
-          />
-          <path
-            d="M-15 -35 Q-29 -21 -30 -5"
-            fill="none"
-            stroke="#f4dbad"
-            strokeWidth="5"
-            strokeLinecap="round"
-            opacity=".3"
-          />
-          <path
-            d="M-10 -40 Q-18 -26 -17 -14 M8 -39 Q14 -28 12 -22 M-30 8 Q-24 17 -12 20"
-            fill="none"
-            stroke="#936d44"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            opacity=".28"
-          />
-          <path
-            d="M-20 -42 L-26 -61 Q-5 -69 23 -60 L18 -42 Q0 -34 -20 -42Z"
-            fill={`url(#${id}-sack-rim)`}
-          />
-          <ellipse
-            cx="-1"
-            cy="-61"
-            rx="25"
-            ry="8"
-            fill={`url(#${id}-sack-opening)`}
-            stroke="#ddba85"
-            strokeWidth="3"
-          />
-          <path
-            d="M-24 -59 Q-5 -48 22 -58 L18 -47 Q-2 -39 -21 -48Z"
-            fill={`url(#${id}-sack-rim)`}
-          />
-          <path
-            d="M-20 -47 Q0 -39 19 -46"
-            fill="none"
-            stroke="#795936"
-            strokeWidth="5"
-            strokeLinecap="round"
-          />
-          <path
-            d="M-20 -49 Q0 -41 19 -48"
-            fill="none"
-            stroke="#dbc18a"
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
-          <path
-            d="M18 -46 Q35 -57 33 -44 Q31 -37 18 -46 Q19 -30 29 -25 M18 -46 Q17 -32 13 -27"
-            fill="none"
-            stroke="#80633c"
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
-          <circle cx="18" cy="-46" r="3.6" fill="#cfb17a" />
-          <g transform="translate(-4 -4) rotate(-7)">
-            <ellipse rx="15" ry="17" fill="#795636" opacity=".24" transform="translate(1 2)" />
-            <ellipse rx="15" ry="17" fill="#e5d0a1" />
-            <ellipse
-              rx="12"
-              ry="14"
-              fill="none"
-              stroke="#b59869"
-              strokeWidth=".8"
-              strokeDasharray="2 2"
-            />
-            <path
-              d="M0 9 L0 -7 M0 1 Q-12 -9 -10 -1 Q-6 5 0 1 M0 -4 Q11 -14 9 -6 Q6 0 0 -4"
-              fill="#64844b"
-              stroke="#64844b"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-            />
-          </g>
+          <SeedBagArtwork id={id} />
           <text y="43" textAnchor="middle" fill="#244f3c" fontSize="16" fontWeight="600">
             Seed bag
           </text>
@@ -797,6 +688,128 @@ export function GardenArtwork({
           </text>
         </g>
       )}
+    </svg>
+  );
+}
+
+function SeedBagArtwork({ id }: { id: string }) {
+  return (
+    <>
+      <defs>
+        <radialGradient id={`${id}-sack`} cx=".3" cy=".25" r=".8">
+          <stop stopColor="#e7c591" />
+          <stop offset=".45" stopColor="#c39b65" />
+          <stop offset=".8" stopColor="#9c7146" />
+          <stop offset="1" stopColor="#775335" />
+        </radialGradient>
+        <linearGradient id={`${id}-sack-rim`} x1="0" y1="0" x2=".3" y2="1">
+          <stop stopColor="#ecd0a1" />
+          <stop offset=".5" stopColor="#c6a071" />
+          <stop offset="1" stopColor="#92683f" />
+        </linearGradient>
+        <linearGradient id={`${id}-sack-opening`} x1="0" y1="0" x2="0" y2="1">
+          <stop stopColor="#563d2a" />
+          <stop offset="1" stopColor="#967149" />
+        </linearGradient>
+      </defs>
+      <ellipse cx="7" cy="20" rx="40" ry="12" fill="#554b32" opacity=".18" />
+      <ellipse cx="3" cy="18" rx="27" ry="7" fill="#654e32" opacity=".22" />
+      <path
+        d="M-18 -43 Q-37 -27 -39 -4 C-43 23 -14 30 13 25 C40 22 44 7 35 -15 Q30 -32 18 -43Z"
+        fill={`url(#${id}-sack)`}
+      />
+      <path
+        d="M18 -39 Q25 -17 24 4 Q24 17 12 23 C38 19 39 8 33 -12 Q27 -31 18 -39Z"
+        fill="#795133"
+        opacity=".23"
+      />
+      <path
+        d="M-15 -35 Q-29 -21 -30 -5"
+        fill="none"
+        stroke="#f4dbad"
+        strokeWidth="5"
+        strokeLinecap="round"
+        opacity=".3"
+      />
+      <path
+        d="M-10 -40 Q-18 -26 -17 -14 M8 -39 Q14 -28 12 -22 M-30 8 Q-24 17 -12 20"
+        fill="none"
+        stroke="#936d44"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        opacity=".28"
+      />
+      <path
+        d="M-20 -42 L-26 -61 Q-5 -69 23 -60 L18 -42 Q0 -34 -20 -42Z"
+        fill={`url(#${id}-sack-rim)`}
+      />
+      <ellipse
+        cx="-1"
+        cy="-61"
+        rx="25"
+        ry="8"
+        fill={`url(#${id}-sack-opening)`}
+        stroke="#ddba85"
+        strokeWidth="3"
+      />
+      <path d="M-24 -59 Q-5 -48 22 -58 L18 -47 Q-2 -39 -21 -48Z" fill={`url(#${id}-sack-rim)`} />
+      <path
+        d="M-20 -47 Q0 -39 19 -46"
+        fill="none"
+        stroke="#795936"
+        strokeWidth="5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M-20 -49 Q0 -41 19 -48"
+        fill="none"
+        stroke="#dbc18a"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+      <path
+        d="M18 -46 Q35 -57 33 -44 Q31 -37 18 -46 Q19 -30 29 -25 M18 -46 Q17 -32 13 -27"
+        fill="none"
+        stroke="#80633c"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+      <circle cx="18" cy="-46" r="3.6" fill="#cfb17a" />
+      <g transform="translate(-4 -4) rotate(-7)">
+        <ellipse rx="15" ry="17" fill="#795636" opacity=".24" transform="translate(1 2)" />
+        <ellipse rx="15" ry="17" fill="#e5d0a1" />
+        <ellipse
+          rx="12"
+          ry="14"
+          fill="none"
+          stroke="#b59869"
+          strokeWidth=".8"
+          strokeDasharray="2 2"
+        />
+        <path
+          d="M0 9 L0 -7 M0 1 Q-12 -9 -10 -1 Q-6 5 0 1 M0 -4 Q11 -14 9 -6 Q6 0 0 -4"
+          fill="#64844b"
+          stroke="#64844b"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        />
+      </g>
+    </>
+  );
+}
+
+export function SeedBagIcon() {
+  const id = `seed-bag-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
+  return (
+    <svg
+      className="seed-bag-icon"
+      viewBox="-48 -73 100 110"
+      width="28"
+      height="30"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <SeedBagArtwork id={id} />
     </svg>
   );
 }
