@@ -48,7 +48,8 @@ test('Topic navigation and filters stay usable while its words load', async ({ p
   });
   await page.goto('/#/topics/home');
   try {
-    await expect(page.getByRole('link', { name: '← Garden' })).toBeVisible();
+    await expect(page.getByRole('link', { name: '← Explore topics' })).toBeVisible();
+    await expect(page.getByRole('link', { name: '← Garden' })).toHaveCount(0);
     await page.getByRole('textbox', { name: 'Search words' }).fill('Baum');
     await page.getByRole('combobox', { name: 'Word status' }).selectOption('new');
     await page.getByRole('checkbox', { name: 'Show other levels' }).check();
