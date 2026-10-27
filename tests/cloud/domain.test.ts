@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Garden } from '../../supabase/functions/garden/domain.ts';
 import { Catalog, freshLearner } from '../../supabase/functions/garden/model.ts';
-import { growth, initialSrs, reviewOutcome } from '../../supabase/functions/garden/scheduler.ts';
+import { growth, initialSrs, reviewOutcome, scheduledOutcome } from '../../supabase/functions/garden/scheduler.ts';
 import { dispatch, Store } from '../../supabase/functions/garden/service.ts';
 import { aiPractice } from '../../supabase/functions/garden/ai.ts';
 import { createCompletion } from '../../supabase/functions/garden/anthropic.ts';
@@ -155,15 +155,83 @@ test('practice AI preserves state and rejects out-of-scope words', async () => {
 });
 
 
-test('scheduler matches the original Python implementation over every stage and rating', () => {
+test('scheduler preserves original Python behavior outside the revised Hard and established success rules', () => {
   // Captured from app.garden.review_outcome/growth_stage before retiring the Python app.
   const cases: { state: ReturnType<typeof initialSrs>; grade: number; outcome: ReturnType<typeof initialSrs>; growth: number }[] =
     JSON.parse(readFileSync('tests/fixtures/scheduler-parity.json', 'utf8'));
   for (const c of cases) {
+    if (c.grade === 2) continue; // Hard now has a fixed one-day interval; covered below.
+    if (c.grade >= 3 && ['review', 'graduated'].includes(c.state.state)) continue;
     const outcome = reviewOutcome(c.state, c.grade);
     assert.deepEqual(outcome, c.outcome);
     assert.equal(growth(outcome), c.growth);
   }
+});
+
+test('established Good and Easy increase ease before calculating intervals', () => {
+  for (const state of ['review', 'graduated'] as const) {
+    const previous = { ...initialSrs(), state, interval_days: 10, reps: 4 };
+    const good = reviewOutcome(previous, 3);
+    assert.equal(good.ease, 2.55);
+    assert.equal(good.interval_days, 25.5);
+    const easy = reviewOutcome(previous, 4);
+    assert.equal(easy.ease, 2.7);
+    assert.equal(easy.interval_days, 35.1);
+    assert.equal(good.reps, 5);
+    assert.equal(easy.reps, 5);
+  }
+});
+
+test('Hard schedules exactly one day from rating for every state and previous interval', () => {
+  const now = Date.parse('2026-10-27T12:00:00Z');
+  for (const state of ['learning', 'relearning', 'review', 'graduated'] as const) {
+    for (const interval_days of [0, 10 / 1440, 1, 4, 21, 60, 150]) {
+      const outcome = scheduledOutcome({ ...initialSrs(), state, interval_days }, 2, now);
+      assert.equal(outcome.interval_days, 1);
+      assert.equal(outcome.due_at, '2026-10-28T12:00:00.000Z');
+    }
+  }
+});
+
+test('nine all-Good reviews mature both tracks at the 55-day threshold', () => {
+  const g = fixture();
+  g.add('word-0', 'home');
+  for (let count = 1; count <= 9; count++) {
+    const srs = g.state.srs['word-0'];
+    if (srs) g.now = Math.min(...[srs, srs.production].filter(Boolean).map(track => Date.parse(track!.due_at!)));
+    const result = g.grade('word-0', 3, count === 1 ? 'bag' : 'all');
+    if (count < 9) {
+      assert.equal(result.graduated, null);
+      assert.throws(() => g.markLearned('word-0'), /55-day/);
+    } else {
+      assert.equal(result.graduated?.growth, 5);
+      assert.ok(g.state.srs['word-0'].production!.interval_days >= 55);
+      assert.ok(g.state.srs['word-0'].production!.interval_days < 60);
+      g.markLearned('word-0');
+      assert.equal(g.learned('word-0'), true);
+    }
+  }
+});
+
+test('production inherits recognition ease after the unlocking rating and then keeps its own ease', () => {
+  const g = fixture();
+  g.add('word-0', 'home');
+  g.kept('word-0')!.planted_at = g.iso();
+  g.state.srs['word-0'] = {
+    ...initialSrs(), state: 'review', ease: 3, interval_days: 4, reps: 2, due_at: g.iso(),
+  };
+  g.grade('word-0', 4);
+  const recognition = g.state.srs['word-0'];
+  assert.equal(recognition.ease, 3.2);
+  assert.deepEqual(recognition.production, {
+    ...initialSrs(), ease: 3.2, due_at: g.iso(),
+  });
+  g.grade('word-0', 1, 'all', '', 'production');
+  assert.equal(g.state.srs['word-0'].production?.ease, 3.2 - 0.2);
+  assert.equal(g.state.srs['word-0'].ease, 3.2);
+  g.state.srs['word-0'].due_at = g.iso();
+  g.grade('word-0', 4);
+  assert.equal(g.state.srs['word-0'].production?.ease, 3.2 - 0.2);
 });
 
 test('today counts each planted word once across tracks, including overdue but excluding seeds and Learned words', () => {

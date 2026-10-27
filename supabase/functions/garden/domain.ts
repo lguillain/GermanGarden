@@ -273,7 +273,7 @@ export class Garden {
       if (grade >= 3) recognition = scheduledOutcome(previous, grade, this.now);
     } else recognition = scheduledOutcome(previous, grade, this.now);
     if (!production && growth(recognition) >= 3)
-      production = { ...initialSrs(), due_at: this.iso() };
+      production = { ...initialSrs(), ease: recognition.ease, due_at: this.iso() };
     return { ...recognition, production: production || null };
   }
   grade(
@@ -310,7 +310,7 @@ export class Garden {
     if (this.learned(id)) return this.details(this.word(id));
     requireThat(
       this.kept(id)?.planted_at && plantGrowth(this.state.srs[id]) === 5,
-      'Both tracks must reach a 60-day interval first.',
+      'Both tracks must reach a 55-day interval first.',
       409,
     );
     this.state.learned.push(id);

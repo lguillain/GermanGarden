@@ -32,14 +32,14 @@ test('migration, atomic persistence, production priority, graduation and permane
     };
     const success = g.grade('tree', 3, 'all', '', 'production');
     assert.equal(success.graduated?.growth, 5);
-    assert.equal(g.state.srs.tree.interval_days, 62.5);
-    assert.equal(g.state.srs.tree.production?.interval_days, 62.5);
+    assert.ok(Math.abs(g.state.srs.tree.interval_days - 63.75) < 1e-10);
+    assert.ok(Math.abs(g.state.srs.tree.production!.interval_days - 63.75) < 1e-10);
     assert.equal(g.state.srs.tree.due_at, g.state.srs.tree.production?.due_at);
     const writer = store();
     const snapshot = await writer.load();
     assert.equal(await writer.save(snapshot.version, g.state), true);
     const roundTrip = await store().load();
-    assert.equal(roundTrip.data.srs.tree.production?.interval_days, 62.5);
+    assert.ok(Math.abs(roundTrip.data.srs.tree.production!.interval_days - 63.75) < 1e-10);
     await dispatch(
       '/review/learned',
       'POST',
@@ -77,7 +77,7 @@ test('migration, atomic persistence, production priority, graduation and permane
   }
 });
 
-test('unlock is permanent, Hard affects production only, practice is inert, maturity requires 60 days', async () => {
+test('unlock is permanent, Hard affects production only, practice is inert, maturity requires 55 days', async () => {
   const { db, catalog, store } = await tracksDatabase();
   try {
     const g = new Garden(catalog, (await store().load()).data);
@@ -96,15 +96,17 @@ test('unlock is permanent, Hard affects production only, practice is inert, matu
     g.targets('all', '');
     assert.deepEqual(g.state, before);
     g.grade('tree', 2, 'all', '', 'production');
-    assert.equal(g.state.srs.tree.interval_days, 10);
+    assert.equal(g.state.srs.tree.interval_days, 10.2);
+    assert.equal(g.state.srs.tree.production?.interval_days, 1);
+    assert.equal(g.state.srs.tree.production?.due_at, new Date(g.now + 86400000).toISOString());
     assert.equal(g.state.srs.tree.due_at, before.srs.tree.due_at);
     g.state.srs.tree.due_at = '2020-01-01';
     g.grade('tree', 1);
     assert.ok(g.state.srs.tree.production);
     assert.equal(g.details(g.word('tree')).growth, 0);
-    assert.equal(growth({ ...initialSrs(), interval_days: 59 }), 4);
-    assert.equal(growth({ ...initialSrs(), interval_days: 60 }), 5);
-    assert.throws(() => g.markLearned('tree'), /60-day/);
+    assert.equal(growth({ ...initialSrs(), interval_days: 54.999 }), 4);
+    assert.equal(growth({ ...initialSrs(), interval_days: 55 }), 5);
+    assert.throws(() => g.markLearned('tree'), /55-day/);
   } finally {
     await db.close();
   }

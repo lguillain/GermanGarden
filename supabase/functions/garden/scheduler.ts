@@ -12,7 +12,7 @@ export const initialSrs = (): Srs => ({
   state: 'learning',
 });
 export function growth(srs: Partial<Srs> = {}, learned = false) {
-  if (learned || srs.state === 'graduated' || (srs.interval_days || 0) >= 60) return 5;
+  if (learned || srs.state === 'graduated' || (srs.interval_days || 0) >= 55) return 5;
   if ((srs.interval_days || 0) >= 21) return 4;
   if ((srs.interval_days || 0) >= 7) return 3;
   if ((srs.reps || 0) >= 2) return 2;
@@ -31,7 +31,7 @@ export function reviewOutcome(previous: Srs, grade: number): Srs {
   }
   // Learning/relearning uses fixed steps before entering spaced review.
   else if (state === 'learning' || state === 'relearning') {
-    if (grade === RATING.hard) interval = 10 / 1440;
+    if (grade === RATING.hard) interval = 1;
     else {
       interval = grade === RATING.good ? 1 : 4;
       state = 'review';
@@ -41,14 +41,16 @@ export function reviewOutcome(previous: Srs, grade: number): Srs {
     reps++;
     if (grade === RATING.hard) {
       ease = Math.max(1.3, ease - 0.15);
-      interval = Math.max(1, interval * 1.2);
-    } else if (grade === RATING.good) interval = Math.max(1, interval * ease);
-    else {
-      ease += 0.15;
+      interval = 1;
+    } else if (grade === RATING.good) {
+      ease += 0.05;
+      interval = Math.max(1, interval * ease);
+    } else {
+      ease += 0.2;
       interval = Math.max(1, interval * ease * 1.3);
     }
   }
-  if (state === 'review' && interval >= 60) state = 'graduated';
+  if (state === 'review' && interval >= 55) state = 'graduated';
   return { ease, interval_days: interval, reps, lapses, state };
 }
 

@@ -410,11 +410,16 @@ supabase db push --linked
 supabase functions deploy garden
 ```
 
-Both tracks mature at a 60-day interval. Review offers **Mark as Learned** immediately
+Both tracks mature at a 55-day interval. Review offers **Mark as Learned** immediately
 after both mature; choosing it permanently ends reviews. Session exclusions survive
 refresh in the same tab and reset when leaving Review or changing the word set.
 Exports preserve existing production schedules and review direction; import into
 the upgraded schema.
+
+For the revised review scheduler (one-day Hard, increased Good/Easy ease, inherited
+production ease, and 55-day maturity), deploy `supabase functions deploy garden`,
+then run **Deploy GitHub Pages** for the updated maturity message. No database
+migration is needed; existing schedules are preserved until subsequent ratings.
 
 Run the graduation browser test with
 `npx playwright test --config playwright.cloud.config.ts tests/browser-cloud/review-tracks.spec.ts`.

@@ -130,7 +130,7 @@ function ReviewSession({ storageKey }: { storageKey: string }) {
           <div className="panel">
             <h2>Fully grown: {session.graduated.lemma}</h2>
             <p>
-              Both review tracks have reached a 60-day interval. Mark this word as Learned to stop
+              Both review tracks have reached a 55-day interval. Mark this word as Learned to stop
               reviews permanently, or keep reviewing it.
             </p>
             <div className="actions">

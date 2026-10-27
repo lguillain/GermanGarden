@@ -51,7 +51,8 @@ Topic word lists apply the level visibility rules described below.
 
 ## Growth
 - Planted words have independent recognition (DE → EN) and production (EN → DE) schedules. Recognition begins with the first review rating. Production permanently unlocks when recognition reaches sapling (a 7-day interval), and is immediately due for the next session.
-- Recognition drives early growth. Each track matures at a 60-day interval; a plant is fully grown only when both tracks are mature. Naturally mature words remain scheduled and may wilt.
+- When production unlocks, it inherits recognition's ease after the unlocking rating. Its interval and repetition count start fresh; subsequent ease changes are tracked independently.
+- Recognition drives early growth. Each track matures at a 55-day interval; a plant is fully grown only when both tracks are mature. Naturally mature words remain scheduled and may wilt.
 - Production unlocking adds a closed flower bud; production progress gradually opens it. The flower opens fully only when both tracks are mature. Lapses can close the flower again without relocking production.
 - Plants wilt when either track is due, appearing drooped and muted. Wilting itself does not change growth stages; Learned words never wilt.
 - Existing schedules become recognition schedules. Existing saplings and later stages unlock fresh production schedules; existing Learned words remain permanently complete.
@@ -114,6 +115,8 @@ Topic word lists apply the level visibility rules described below.
 - Topic practice includes its planted and Learned words, including words marked Learned directly in the matcher. Unseen and Not now words must first be added to the seed bag to practise them.
 - Practice flashcards and review cards show each word's growth with the garden’s plant icon inside the card header, without a visible growth-stage or production-progress label. The icon retains an accessible description. AI practice shows its target vocabulary.
 - Review format: flip the card, then self-grade how well you knew it. That grade updates the word's growth stage.
+- Hard always schedules the rated track exactly one day after the rating, including new, relearning, and mature tracks. Other rating effects remain unchanged.
+- On established review tracks (including mature tracks), Good increases ease by 0.05 and Easy by 0.20 before calculating the next interval. Good multiplies the previous interval by the updated ease; Easy also applies a 1.3 multiplier. New and relearning tracks keep their fixed Good (1 day) and Easy (4 days) steps without changing ease.
 - Review mixes both directions and labels every card. Each word appears at most once per session; production takes priority when both tracks are due. Good or Easy production also applies the same rating to recognition, even if recognition is not due. Hard and Again production affect production only.
 - A session covers one visit to Review for one selected word set. Refresh resumes the session; leaving Review or switching sets starts a new session. Session progress is local to the browser tab and account.
 - Review ends when no unseen-in-this-session new or currently due words remain. Future reviews are not shown early. A completed session can leave due words in the garden.
