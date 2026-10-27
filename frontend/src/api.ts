@@ -94,6 +94,11 @@ export interface GardenPlot {
   words: Word[];
 }
 export interface Garden {
+  level_up?: {
+    current_level: string;
+    next_level: string;
+    all_learned: boolean;
+  } | null;
   plots: GardenPlot[];
   topics: Topic[];
   bag: Word[];

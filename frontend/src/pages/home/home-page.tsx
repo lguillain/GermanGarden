@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api } from '../../api';
 import { Link } from 'react-router-dom';
 import { gardenQuery } from '../../queries/garden-query';
 import { ErrorNotice, Heading, Loading } from '../../components/feedback';
@@ -13,6 +14,11 @@ import { weakWordsQuery } from '../../queries/weak-words-query';
 
 export function HomePage() {
   const result = useQuery(gardenQuery());
+  const cache = useQueryClient();
+  const levelUp = useMutation({
+    mutationFn: (currentLevel: string) => api('/level-up', { current_level: currentLevel }),
+    onSuccess: () => cache.invalidateQueries(),
+  });
   const hardWords = useQuery({
     ...weakWordsQuery(),
     refetchInterval: 60_000,
@@ -26,7 +32,32 @@ export function HomePage() {
   const highlightDiscovery = summary?.found_today === 0;
   return (
     <>
-      <Heading title="Your garden" titleDetail={<PlantedCount count={summary?.planted_total} />} />
+      <Heading
+        title="Your garden"
+        titleDetail={<PlantedCount count={summary?.planted_total} />}
+        actions={
+          garden?.level_up && (
+            <section className="garden-level-up" aria-label="Level up">
+              <div>
+                <strong>Ready for {garden.level_up.next_level}?</strong>
+                <p className="muted">
+                  {garden.level_up.all_learned
+                    ? `You've learned every ${garden.level_up.current_level} word!`
+                    : `You've explored every ${garden.level_up.current_level} word in the seed bank.`}
+                </p>
+              </div>
+              <button
+                className="primary"
+                disabled={levelUp.isPending}
+                onClick={() => levelUp.mutate(garden.level_up!.current_level)}
+              >
+                {levelUp.isPending ? 'Moving up…' : `Level up to ${garden.level_up.next_level}`}
+              </button>
+              <ErrorNotice error={levelUp.error} />
+            </section>
+          )
+        }
+      />
       <div className="garden-home">
         <ErrorNotice error={result.error} />
         {result.isPending && <Loading />}

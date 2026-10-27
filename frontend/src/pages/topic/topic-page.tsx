@@ -85,10 +85,7 @@ export function TopicPage() {
     <>
       <Heading
         title={activity?.name ?? 'Topic'}
-        navigation={[
-          { to: '/', label: '← Garden' },
-          { to: '/explore', label: '← Explore topics' },
-        ]}
+        navigation={[{ to: '/explore', label: '← Explore topics' }]}
         actions={
           <ScopeLinks
             gnomeCount={gardenGnomeCount(words, now)}

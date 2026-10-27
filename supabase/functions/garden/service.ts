@@ -122,6 +122,14 @@ export async function dispatch(
     if (match) return garden.topicDetail(decodeURIComponent(match[1]));
   }
   if (method === 'POST') {
+    if (path === '/level-up')
+      return transact(
+        store,
+        catalog,
+        (currentGarden) => currentGarden.levelUp(text(body, 'current_level')),
+        snapshot,
+      );
+
     if (['/reading', '/chat', '/grammar'].includes(path)) {
       requireThat(complete, 'AI practice is not configured.', 503);
       return aiPractice(path, body, garden, complete);
@@ -144,7 +152,7 @@ export async function dispatch(
         (currentGarden) => {
           if (weights) currentGarden.state.weights = weights;
           if (path === '/onboarding') {
-            currentGarden.state.user.level = level === 'unsure' ? 'A1' : level;
+            currentGarden.setLevel(level === 'unsure' ? 'A1' : level);
             return currentGarden.state.user;
           }
           currentGarden.setTopic(

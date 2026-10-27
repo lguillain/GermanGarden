@@ -533,6 +533,35 @@ export class Garden {
       return keptAt !== undefined && keptAt <= this.now && calendar.format(keptAt) === today;
     }).length;
   }
+  levelUpSuggestion() {
+    const level = this.state.user.level;
+    if (level !== 'A1' && level !== 'A2') return null;
+    const words = this.catalog.words.filter((word) => word.level === level);
+    const seen = this.seenWordIds();
+    if (!words.length || words.some((word) => !seen.has(word.id))) return null;
+    return {
+      current_level: level,
+      next_level: level === 'A1' ? 'A2' : 'B1',
+      all_learned: words.every((word) => this.learned(word.id)),
+    };
+  }
+  setLevel(level: string) {
+    const user = this.state.user;
+    if (user.level === level) return;
+    user.level = level;
+    user.affinity_below = 1;
+    user.affinity_above = 1;
+  }
+  levelUp(expectedLevel: string) {
+    const suggestion = this.levelUpSuggestion();
+    requireThat(
+      suggestion && suggestion.current_level === expectedLevel,
+      'Your level or progress has changed. Refresh your garden to continue.',
+      409,
+    );
+    this.setLevel(suggestion.next_level);
+    return { level: suggestion.next_level };
+  }
   home(timeZone = 'UTC') {
     const plots = [],
       topics = [];
@@ -559,6 +588,7 @@ export class Garden {
       plots: plots.sort((a, b) => a.name.localeCompare(b.name)),
       topics: topics.sort((a, b) => a.name.localeCompare(b.name)),
       bag: seedBag,
+      level_up: this.levelUpSuggestion(),
       summary: {
         bag_count: seedBag.length,
         bag_cap: SEED_BAG_CAPACITY,

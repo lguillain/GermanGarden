@@ -163,3 +163,22 @@
 }
 
 .garden-seed-bag-trigger .seed-bag-icon { flex: 0 0 28px; width: 28px; height: 30px; margin: -5px 0; }
+
+.garden-level-up {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px 16px;
+  max-width: 430px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.garden-level-up p {
+  margin: 4px 0 0;
+  font-size: var(--type-small);
+}
+.garden-level-up strong { font-size: var(--type-body); }
+.garden-level-up button { font-size: var(--type-small); }
