@@ -13,7 +13,7 @@ export function CloudLogin() {
   return (
     <WelcomeLayout title="Welcome back">
       <form
-        className="panel"
+        className="panel login-form"
         onSubmit={async (event) => {
           event.preventDefault();
           // Read the actual fields: autofill may not emit React change events.
@@ -39,25 +39,29 @@ export function CloudLogin() {
           }
         }}
       >
-        <label htmlFor="username">Username</label>
-        <input
-          id="username"
-          name="username"
-          type="text"
-          autoComplete="username"
-          autoCapitalize="none"
-          spellCheck={false}
-          placeholder="e.g. leo"
-          required
-        />
-        <label htmlFor="password">Password</label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-        />
+        <div>
+          <label htmlFor="username">Username</label>
+          <input
+            id="username"
+            name="username"
+            type="text"
+            autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
+            placeholder="e.g. leo"
+            required
+          />
+        </div>
+        <div>
+          <label htmlFor="password">Password</label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+          />
+        </div>
         <ErrorNotice error={error} />
         <button className="primary" disabled={busy}>
           {busy ? 'Signing in…' : 'Sign in'}

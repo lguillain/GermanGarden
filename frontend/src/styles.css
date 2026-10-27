@@ -102,6 +102,9 @@ select { margin-top: 6px; }
 .welcome .brand { display: inline-block; margin-bottom: 40px; }
 .welcome .panel { margin-bottom: 16px; }
 .welcome .input-row input { margin-top: 0; }
+.login-form { display: grid; gap: 20px; }
+.login-form > button { justify-self: start; }
+.login-form > .error { margin: 0; }
 .profile-list { display: grid; gap: 10px; margin-bottom: 28px; }
 .profile-list button { padding: 15px; justify-content: space-between; }
 fieldset { border: 0; padding: 0; margin: 0 0 24px; }
