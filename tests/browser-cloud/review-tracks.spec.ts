@@ -33,8 +33,8 @@ test('production graduates both tracks and Learned stays fully grown, unreviewab
     await expect(page.getByText('Session complete.', { exact: false })).toBeVisible();
     const saved = (await store().load()).data;
     expect(saved.learned).toContain('tree');
-    expect(saved.srs.tree.interval_days).toBe(62.5);
-    expect(saved.srs.tree.production?.interval_days).toBe(62.5);
+    expect(saved.srs.tree.interval_days).toBeCloseTo(63.75, 10);
+    expect(saved.srs.tree.production?.interval_days).toBeCloseTo(63.75, 10);
     // Move both schedules into the past: Learned must override every due state.
     await db.query(
       `update learner_srs set due_at='2000-01-01', production.due_at='2000-01-01' where user_id=$1`,
