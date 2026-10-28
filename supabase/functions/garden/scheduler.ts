@@ -31,7 +31,7 @@ export function reviewOutcome(previous: Srs, grade: number): Srs {
   }
   // Learning/relearning uses fixed steps before entering spaced review.
   else if (state === 'learning' || state === 'relearning') {
-    if (grade === RATING.hard) interval = 1;
+    if (grade === RATING.hard) interval = 10 / 1440;
     else {
       interval = grade === RATING.good ? 1 : 4;
       state = 'review';
@@ -41,7 +41,7 @@ export function reviewOutcome(previous: Srs, grade: number): Srs {
     reps++;
     if (grade === RATING.hard) {
       ease = Math.max(1.3, ease - 0.15);
-      interval = 1;
+      interval = Math.min(interval * 1.2, 1);
     } else if (grade === RATING.good) {
       ease += 0.05;
       interval = Math.max(1, interval * ease);

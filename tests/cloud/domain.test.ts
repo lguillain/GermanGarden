@@ -160,7 +160,7 @@ test('scheduler preserves original Python behavior outside the revised Hard and 
   const cases: { state: ReturnType<typeof initialSrs>; grade: number; outcome: ReturnType<typeof initialSrs>; growth: number }[] =
     JSON.parse(readFileSync('tests/fixtures/scheduler-parity.json', 'utf8'));
   for (const c of cases) {
-    if (c.grade === 2) continue; // Hard now has a fixed one-day interval; covered below.
+    if (c.grade === 2 && ['review', 'graduated'].includes(c.state.state)) continue;
     if (c.grade >= 3 && ['review', 'graduated'].includes(c.state.state)) continue;
     const outcome = reviewOutcome(c.state, c.grade);
     assert.deepEqual(outcome, c.outcome);
@@ -182,13 +182,14 @@ test('established Good and Easy increase ease before calculating intervals', () 
   }
 });
 
-test('Hard schedules exactly one day from rating for every state and previous interval', () => {
+test('Hard preserves short learning steps and caps established intervals at one day', () => {
   const now = Date.parse('2026-10-27T12:00:00Z');
   for (const state of ['learning', 'relearning', 'review', 'graduated'] as const) {
-    for (const interval_days of [0, 10 / 1440, 1, 4, 21, 60, 150]) {
+    for (const [interval_days, establishedInterval] of [[10 / 1440, 1 / 120], [0.5, 0.6], [1, 1], [4, 1], [21, 1], [60, 1], [150, 1]]) {
       const outcome = scheduledOutcome({ ...initialSrs(), state, interval_days }, 2, now);
-      assert.equal(outcome.interval_days, 1);
-      assert.equal(outcome.due_at, '2026-10-28T12:00:00.000Z');
+      const expected = state === 'learning' || state === 'relearning' ? 10 / 1440 : establishedInterval;
+      assert.equal(outcome.interval_days, expected);
+      assert.equal(outcome.due_at, new Date(now + Math.trunc(expected * 86400) * 1000).toISOString());
     }
   }
 });

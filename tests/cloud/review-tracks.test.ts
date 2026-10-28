@@ -97,8 +97,8 @@ test('unlock is permanent, Hard affects production only, practice is inert, matu
     assert.deepEqual(g.state, before);
     g.grade('tree', 2, 'all', '', 'production');
     assert.equal(g.state.srs.tree.interval_days, 10.2);
-    assert.equal(g.state.srs.tree.production?.interval_days, 1);
-    assert.equal(g.state.srs.tree.production?.due_at, new Date(g.now + 86400000).toISOString());
+    assert.equal(g.state.srs.tree.production?.interval_days, 10 / 1440);
+    assert.equal(g.state.srs.tree.production?.due_at, new Date(g.now + 600000).toISOString());
     assert.equal(g.state.srs.tree.due_at, before.srs.tree.due_at);
     g.state.srs.tree.due_at = '2020-01-01';
     g.grade('tree', 1);

@@ -416,7 +416,7 @@ refresh in the same tab and reset when leaving Review or changing the word set.
 Exports preserve existing production schedules and review direction; import into
 the upgraded schema.
 
-For the revised review scheduler (one-day Hard, increased Good/Easy ease, inherited
+For the revised review scheduler (Hard capped at one day, increased Good/Easy ease, inherited
 production ease, and 55-day maturity), deploy `supabase functions deploy garden`,
 then run **Deploy GitHub Pages** for the updated maturity message. No database
 migration is needed; existing schedules are preserved until subsequent ratings.
