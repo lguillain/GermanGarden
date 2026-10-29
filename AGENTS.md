@@ -21,12 +21,15 @@ Use the shared `Heading` component’s `navigation` and `actions` props for page
 - `supabase/functions/garden/`: TypeScript Edge Function, domain rules and AI prompts.
 - `pipeline/`, `schema.sql`: offline SQLite vocabulary pipeline.
 - `scripts/export-supabase.py`: read-only SQLite-to-PostgreSQL export.
+- `scripts/associations-migration.py`: writes word associations as a data migration.
 - `scripts/import-local.ts`: bulk local import, including automatic login accounts.
 - `tests/cloud/`: TypeScript domain, PostgreSQL and local Supabase integration tests.
 - `tests/test_*.py`: dataset tests; `tests/browser-cloud/`: Playwright.
 - `tests/fixtures/scheduler-parity.json`: captured original scheduler results.
 - `.github/workflows/pages.yml`: manually triggered GitHub Pages deployment.
 - `data/`: ignored private SQLite databases and generated exports; never publish.
+  Vocabulary-derived data (such as word associations) may be committed as data
+  migrations; learner progress, accounts and backups never leave `data/`.
 
 ## Commands (repository root)
 
@@ -68,5 +71,5 @@ Verify meaningful behavior changes, especially:
 
 Use concise imperative commit subjects. PRs describe affected flows and validation;
 include screenshots for visual changes. Keep `.env`, server keys, database copies,
-and SQL exports out of commits. Public browser configuration is limited to the
+and SQL exports with learner data out of commits. Public browser configuration is limited to the
 Supabase URL and publishable key. Document deployment steps in README.

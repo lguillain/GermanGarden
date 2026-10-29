@@ -475,17 +475,18 @@ the current exporter before importing. No frontend deployment is required.
 
 `202610290001_word_associations.sql` adds the read-only `word_associations` table.
 Its rows are built offline by `python -m pipeline.associations` (part of
-`pipeline.build`) and saved in `data/derived/word_associations.json`. Apply the
-migration, load the vocabulary export (which now includes associations), then
-deploy the function and publish the frontend:
+`pipeline.build`), saved in `data/derived/word_associations.json`, and committed as
+a data migration. After the associations change, write a new data migration and
+deploy it:
 
 ```bash
+.venv/bin/python scripts/associations-migration.py
 supabase db push --linked
-python3 scripts/export-supabase.py --output data/vocabulary.sql
-psql "SESSION_POOLER_CONNECTION_STRING" -W -v ON_ERROR_STOP=1 -f data/vocabulary.sql
 supabase functions deploy garden
 ```
 
-The export only inserts missing rows and never touches learner progress. Without
-associations, the popup still shows Same family words. Publish the frontend through
-the GitHub Pages workflow to add the Related words buttons.
+The data migration only inserts missing rows whose words already exist, so it is
+safe to apply anywhere and never touches learner progress. On a fresh database
+the vocabulary import (`scripts/export-supabase.py`) also includes associations.
+Without associations, the popup still shows Same family words. Publish the frontend
+through the GitHub Pages workflow to add the Related words buttons.
