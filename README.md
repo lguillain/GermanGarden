@@ -470,3 +470,22 @@ This removes the unused `level_bias` profile column and its write handling.
 Discovery still adapts through `affinity_below` and `affinity_above`; learning
 progress and declared levels are unchanged. Regenerate older import SQL with
 the current exporter before importing. No frontend deployment is required.
+
+### Related words (experimental)
+
+`202610290001_word_associations.sql` adds the read-only `word_associations` table.
+Its rows are built offline by `python -m pipeline.associations` (part of
+`pipeline.build`) and saved in `data/derived/word_associations.json`. Apply the
+migration, load the vocabulary export (which now includes associations), then
+deploy the function and publish the frontend:
+
+```bash
+supabase db push --linked
+python3 scripts/export-supabase.py --output data/vocabulary.sql
+psql "SESSION_POOLER_CONNECTION_STRING" -W -v ON_ERROR_STOP=1 -f data/vocabulary.sql
+supabase functions deploy garden
+```
+
+The export only inserts missing rows and never touches learner progress. Without
+associations, the popup still shows Same family words. Publish the frontend through
+the GitHub Pages workflow to add the Related words buttons.

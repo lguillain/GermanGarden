@@ -92,6 +92,7 @@ Topic word lists apply the level visibility rules described below.
 - By default, the list shows all statuses at the learner's level, plus seed-bag, planted, and learned words from other levels. **Show other levels** includes unseen and Not now words from other levels too.
 - Words outside the seed bag and planted set have an **Add to bag** action, subject to the 20-word limit. This allows revisiting Not now words. Learned words are permanently complete and cannot return to the seed bag.
 - Due words have a **Review** link that opens the topic's review set.
+- Experimental: each word row has a **Related words** button that opens a popup with up to six words from the **Same family** (shared stems and compounds, such as *fahren* → *Abfahrt*, *Fahrkarte*, or *atmen* → *Atem*) and up to six **Used together** (words a learner would clearly associate with it, such as *Zug* → *Bahnhof*, *Gleis*; chosen offline by Claude from the vocabulary and stored with it, never generated while browsing). Many words have no related words; the popup then says so. Each related word shows its meaning and status. Selecting one shows its related words, with a return link to the previous word. The popup is read-only and never changes the seed bag or growth.
 
 ## Empty garden (new users)
 - Accounts without a level first choose A1, A2, B1, or Not sure (starts with A1). They can optionally describe learning goals when AI is available.
@@ -107,6 +108,7 @@ Topic word lists apply the level visibility rules described below.
 - Returning to Find words keeps the current card when its cached state is still valid. Reconnecting must not replace it. If progress changed elsewhere in the app and the selection needs refreshing, show a loading state until the fresh card is ready rather than flashing an outdated card first.
 - The next card is preloaded for each possible choice and shown while that choice saves. A saving indicator remains visible and further choices stay disabled until confirmation. Failed saves restore the previous card; concurrent changes use the server’s fresh selection. The seed bag shows confirmed progress only.
 - **Actions per card:** Not now, Learned, Keep.
+- Experimental: after the translation is shown, the card footer offers **Related words**, opening the same read-only popup as topic pages. It appears only after reveal because the popup shows meanings. Opening it never records a card decision.
 - **Side panel:** the seed bag as a list of kept words, with actions to practise or review seeds.
 
 ## Practice and review

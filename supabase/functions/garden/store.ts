@@ -52,6 +52,13 @@ export function createStore(admin: SupabaseClient, options: StoreOptions): Store
       if (error) throw error;
       return data;
     },
+    async associations(wordId) {
+      const { data, error } = await measure('associations', () =>
+        admin.from('word_associations').select('related_id').eq('word_id', wordId).order('rank'),
+      );
+      if (error) throw error;
+      return data.map((row) => row.related_id as string);
+    },
     async profile() {
       const { data, error } = await measure('profile', () =>
         admin.from('learner_profiles').select('name, level').eq('user_id', userId).maybeSingle(),

@@ -38,6 +38,7 @@ interface WordCardProps {
   articlePrompt?: boolean;
   promptControls?: ReactNode;
   hintsEnabled?: boolean;
+  footerControls?: ReactNode;
 }
 
 export function WordCard(props: WordCardProps) {
@@ -60,6 +61,7 @@ function WordCardContent({
   articlePrompt = false,
   promptControls,
   hintsEnabled = true,
+  footerControls,
 }: WordCardProps) {
   const [sentenceHint, setSentenceHint] = useState(false);
   const production = (direction || word.track) === 'production';
@@ -164,6 +166,7 @@ function WordCardContent({
         {(forms === 'practice' || (forms === 'review' && revealed)) && (
           <FormsButton key={word.id} word={word} />
         )}
+        {footerControls}
       </div>
     </article>
   );

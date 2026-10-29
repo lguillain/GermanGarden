@@ -1,4 +1,5 @@
-import { topicWordList, statuses, statusLabel, type TopicWordSort } from './topic-word-list';
+import { topicWordList, type TopicWordSort } from './topic-word-list';
+import { statuses, statusLabel } from '../../components/word-status';
 import { invalidateProgress } from '../../queries/invalidate-progress';
 import { TopicScene } from './topic-scene';
 import { gardenGnomeCount } from '../../components/garden-gnome-count';
@@ -13,6 +14,7 @@ import { PlantIcon, SeedIcon } from '../../components/garden-artwork';
 import { ScopeLinks } from './scope-links';
 import { TopicProgress } from '../../components/topic-progress';
 import { WordTitle } from '../../components/word-card';
+import { RelatedWordsDialog } from '../../components/related-words-dialog';
 
 export function TopicPage() {
   const now = useGardenTime();
@@ -24,6 +26,7 @@ export function TopicPage() {
   const [showOtherLevels, setShowOtherLevels] = useState(false);
   const [sort, setSort] = useState<TopicWordSort | null>(null);
   const [notice, setNotice] = useState('');
+  const [relatedTo, setRelatedTo] = useState<Word | null>(null);
   const result = useQuery({
     queryKey: ['topic', topic],
     refetchInterval: 60_000,
@@ -214,6 +217,14 @@ export function TopicPage() {
                     </span>
                   </td>
                   <td>
+                    <button
+                      className="related-words-trigger"
+                      aria-haspopup="dialog"
+                      aria-label={`Related words for ${w.lemma}`}
+                      onClick={() => setRelatedTo(w)}
+                    >
+                      Related words
+                    </button>
                     {w.review_due && (
                       <Link
                         className="button review-word-link"
@@ -243,6 +254,7 @@ export function TopicPage() {
       ) : (
         <Empty>No words match this view.</Empty>
       )}
+      <RelatedWordsDialog word={relatedTo} onClose={() => setRelatedTo(null)} />
     </>
   );
 }

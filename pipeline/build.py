@@ -17,7 +17,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from . import (activities, enrich_sentences, goethe_json, seed, sentences,
+from . import (activities, associations, enrich_sentences, goethe_json, seed, sentences,
                steps, tatoeba, translate, verify)
 from .db import session
 from .llm import available as llm_available
@@ -54,7 +54,8 @@ def main() -> None:
         todo = []
         if not skip_llm:
             todo += [("English glosses", translate.run),
-                     ("Word → activity tags", activities.run)]
+                     ("Word → activity tags", activities.run),
+                     ("Associated words", associations.run)]
         if not args.skip_tatoeba:
             todo += [("Tatoeba sentences", lambda conn, limit: tatoeba.match(conn))]
         if not skip_llm:

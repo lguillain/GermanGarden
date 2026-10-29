@@ -76,6 +76,17 @@ def save_word_activities(data: dict[str, dict[str, int]]) -> None:
     _atomic_write_json(WORD_ACTIVITIES, data)
 
 
+# ---------------------------- word → associated words ----------------------------
+# Shape: { "<word_id>": [ "<related word_id>", ... ] }   ([] = decided: none)
+WORD_ASSOCIATIONS = DERIVED / "word_associations.json"
+
+def load_word_associations() -> dict[str, list[str]]:
+    return _load(WORD_ASSOCIATIONS, {})
+
+def save_word_associations(data: dict[str, list[str]]) -> None:
+    _atomic_write_json(WORD_ASSOCIATIONS, data)
+
+
 # ---------------------------- Goethe sentence → activity ----------------------------
 # Shape: [ [word_id, text, activity_id_or_null], ... ]
 # We key by (word_id, text) because sentence.id is a build-time autoincrement.

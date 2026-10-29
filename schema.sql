@@ -34,6 +34,16 @@ CREATE TABLE IF NOT EXISTS sentences (
   tatoeba_id  INTEGER                              -- source='tatoeba' only
 );
 
+-- Words a learner would naturally associate with a word (same situation or a
+-- typical pairing), chosen by an LLM from this vocabulary. Rank 1 is strongest.
+CREATE TABLE IF NOT EXISTS word_associations (
+  word_id    TEXT NOT NULL REFERENCES words(id) ON DELETE CASCADE,
+  related_id TEXT NOT NULL REFERENCES words(id) ON DELETE CASCADE,
+  rank       INTEGER NOT NULL CHECK (rank BETWEEN 1 AND 6),
+  PRIMARY KEY (word_id, related_id),
+  CHECK (word_id <> related_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_sentences_word_activity
   ON sentences(word_id, activity_id);
 CREATE INDEX IF NOT EXISTS idx_word_activities_activity

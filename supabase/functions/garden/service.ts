@@ -1,10 +1,12 @@
 import { topicKeepRequest, topicKeepResponse, type TopicKeepResult } from './topic-keep.ts';
 import { matcherPreview } from './matcher-preview.ts';
+import { relatedWordIds } from './related-words.ts';
 import { Garden, grammarOptions, reviewSelectionResponse } from './domain.ts';
 import { Body, Complete, text, aiPractice, guidance } from './ai.ts';
 import { Catalog, Learner, ReviewSelection, HttpError, requireThat, shuffle } from './model.ts';
 export interface Store {
   keepTopicWord?(wordId: string, topic: string): Promise<TopicKeepResult>;
+  associations?(wordId: string): Promise<string[]>;
   load(): Promise<{ version: number; data: Learner }>;
   save(version: number, data: Learner): Promise<boolean>;
   profile?(): Promise<{ name: string; level: string | null }>;
@@ -120,6 +122,17 @@ export async function dispatch(
     }
     const match = path.match(/^\/topics\/([^/]+)$/);
     if (match) return garden.topicDetail(decodeURIComponent(match[1]));
+    const related = path.match(/^\/words\/([^/]+)\/related$/);
+    if (related) {
+      const word = garden.word(decodeURIComponent(related[1]));
+      const ids = relatedWordIds(catalog, word.id, (await store.associations?.(word.id)) ?? []);
+      const details = (id: string) => garden.details(garden.word(id));
+      return {
+        word: garden.details(word),
+        family: ids.family.map(details),
+        together: ids.together.map(details),
+      };
+    }
   }
   if (method === 'POST') {
     if (path === '/level-up')

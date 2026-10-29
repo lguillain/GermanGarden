@@ -13,7 +13,10 @@ export function catalogRequest(path: string, method: string): CatalogRequest {
   const topic = method === 'GET' ? path.match(/^\/topics\/([^/]+)$/) : null;
   return {
     p_topic: topic ? decodeURIComponent(topic[1]) : null,
-    p_include_sentences: !topic && !['/garden', '/onboarding'].includes(path),
+    p_include_sentences:
+      !topic &&
+      !['/garden', '/onboarding'].includes(path) &&
+      !/^\/words\/[^/]+\/related$/.test(path),
     p_activities_only: path === '/onboarding',
   };
 }

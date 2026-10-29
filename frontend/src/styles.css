@@ -601,3 +601,22 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 .page-heading-title { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 24px; }
 .page-heading-title > h1 { margin-bottom: 0; }
 .gnome-review-icon { display: inline-flex; flex: 0 0 36px; width: 36px; height: 36px; margin: -7px 0; }
+
+/* Experimental related-words popup on topic pages. */
+.topic-words .related-words-trigger { margin-right: 8px; background: transparent; }
+.related-words-experimental { margin-left: 8px; vertical-align: middle; background: #eee9d9; border: 0; font-weight: 500; }
+.related-words-current { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 20px 0 8px; }
+.related-words-current strong { font-size: var(--type-compact-heading); }
+.related-words-current > span { color: var(--muted); }
+.related-words-back { margin-left: auto; padding: 4px 0; border: 0; background: transparent; color: var(--muted); font-size: 13px; font-weight: 400; text-decoration: underline; }
+.related-words-back:hover { background: transparent; color: var(--text); }
+.related-words-group h3 { margin: 24px 0 10px; font-size: var(--type-small); color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.related-words-group ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.related-word { width: 100%; display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto; justify-content: stretch; text-align: left; gap: 12px; border-radius: 14px; padding: 10px 14px; background: #f6f7f1; border-color: transparent; }
+.related-word:hover { background: #edf1e4; border-color: #d9dfcc; }
+.related-word-lemma { font-weight: 600; }
+.related-word-meaning { color: var(--muted); font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 760px) {
+  .related-word { grid-template-columns: minmax(0, 1fr) auto; }
+  .related-word-meaning { grid-column: 1 / -1; grid-row: 2; white-space: normal; }
+}

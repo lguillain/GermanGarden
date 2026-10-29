@@ -57,8 +57,10 @@ def literal(value):
 
 def content_statements(conn):
     statements = []
-    for table in ('words', 'activities', 'word_activities', 'sentences'):
-        data = rows(conn, table)
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    for table in ('words', 'activities', 'word_activities', 'word_associations', 'sentences'):
+        # Older profile databases predate word_associations.
+        data = rows(conn, table) if table in tables else []
         for start in range(0, len(data), 500):
             statements.append(f'INSERT INTO public.{table} SELECT * FROM jsonb_populate_recordset(NULL::public.{table}, {literal(data[start:start+500])}) ON CONFLICT DO NOTHING;')
     return statements
