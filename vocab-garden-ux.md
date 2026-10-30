@@ -109,6 +109,7 @@ Topic word lists apply the level visibility rules described below.
 - The next card is preloaded for each possible choice and shown while that choice saves. A saving indicator remains visible and further choices stay disabled until confirmation. Failed saves restore the previous card; concurrent changes use the server’s fresh selection. The seed bag shows confirmed progress only.
 - **Actions per card:** Not now, Learned, Keep.
 - Experimental: after the translation is shown, the card footer offers **Related words**, opening the same read-only popup as topic pages. It appears only after reveal because the popup shows meanings. Opening it never records a card decision.
+- Experimental: after a **Keep** or **Learned** decision, the next card is a related word (Same family or Used together) 70% of the time, when one is available. It must still meet every normal rule: unseen, in the current topic with a sentence there, and at the sampled level (or the learner’s level as fallback). Otherwise, and after **Not now**, the next card is chosen as usual. This does not change topic rotation or level affinities.
 - **Side panel:** the seed bag as a list of kept words, with actions to practise or review seeds.
 
 ## Practice and review

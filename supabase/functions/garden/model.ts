@@ -24,6 +24,8 @@ export interface Catalog {
   activities: Activity[];
   word_activities: { word_id: string; activity_id: string; relevance: number }[];
   sentences: Sentence[];
+  // Ranked associated word IDs; loaded only for Find words.
+  associations?: Record<string, string[]>;
 }
 export type ReviewTrack = 'recognition' | 'production';
 export interface Srs {

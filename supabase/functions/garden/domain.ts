@@ -11,6 +11,7 @@ import {
   shuffle,
 } from './model.ts';
 import { initialSrs, growth, plantGrowth, scheduledOutcome, REVIEW_GRADES } from './scheduler.ts';
+import { relatedWordIds } from './related-words.ts';
 
 // Stable per decision so a preview and its later confirmed response select the
 // same card. Concurrent progress changes still cause selection to be recomputed.
@@ -71,6 +72,8 @@ const SEED_BAG_CAPACITY = 20;
 const LEVELS = ['A1', 'A2', 'B1'];
 const SECONDS_PER_DAY = 86_400;
 const PRACTICE_TARGET_COUNT = 5;
+// Experimental: chance that Find words follows a kept or Learned word with a related word.
+const RELATED_FOLLOW_UP_CHANCE = 0.7;
 
 function localCalendar(timeZone: string): Intl.DateTimeFormat {
   try {
@@ -398,16 +401,29 @@ export class Garden {
         ?.some((sentence) => sentence.activity_id === user.current_topic);
     });
     // Try the sampled level first; fall back to the learner's declared level.
-    return (
-      shuffle(
-        pool.filter((word) => word.level === chosenLevel),
-        this.random,
-      )[0] ||
-      shuffle(
-        pool.filter((word) => word.level === level),
-        this.random,
-      )[0]
+    const levelPool =
+      [chosenLevel, level]
+        .map((l) => pool.filter((word) => word.level === l))
+        .find((p) => p.length) || [];
+    return this.relatedFollowUp(levelPool) || shuffle(levelPool, this.random)[0];
+  }
+
+  // After a Keep or Learned decision, a related word from the same topic and
+  // level often comes next. Not now and empty matches use the normal choice.
+  private relatedFollowUp(pool: Word[]) {
+    const last = this.state.swipes.at(-1);
+    if (!last || (last.action !== 'keep' && last.drop_reason !== 'known')) return undefined;
+    if (this.random() >= RELATED_FOLLOW_UP_CHANCE) return undefined;
+    const { family, together } = relatedWordIds(
+      this.catalog,
+      last.word_id,
+      this.catalog.associations?.[last.word_id] ?? [],
     );
+    const related = new Set([...family, ...together]);
+    return shuffle(
+      pool.filter((word) => related.has(word.id)),
+      this.random,
+    )[0];
   }
 
   matcher() {

@@ -490,3 +490,9 @@ safe to apply anywhere and never touches learner progress. On a fresh database
 the vocabulary import (`scripts/export-supabase.py`) also includes associations.
 Without associations, the popup still shows Same family words. Publish the frontend
 through the GitHub Pages workflow to add the Related words buttons.
+
+Find words also uses these relations: after Keep or Learned, a related word from
+the same topic and level often comes next. The full catalogue loads associations
+through `load_garden_catalog(p_include_associations)`
+(`202610300001_discovery_associations.sql`), so push migrations before deploying
+the `garden` function.

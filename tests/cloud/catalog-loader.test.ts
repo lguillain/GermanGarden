@@ -9,14 +9,14 @@ import { loadPracticeData, practiceWordIds } from '../../supabase/functions/gard
 
 test('list screens request only needed vocabulary; mutations retain the full seed bag', () => {
   assert.deepEqual(catalogRequest('/topics/at%20home', 'GET'), {
-    p_topic: 'at home', p_include_sentences: false, p_activities_only: false,
+    p_topic: 'at home', p_include_sentences: false, p_activities_only: false, p_include_associations: false,
   });
   for (const path of ['/onboarding']) assert.equal(catalogRequest(path, 'GET').p_activities_only, true);
   assert.equal(catalogRequest('/garden', 'GET').p_include_sentences, false);
   assert.equal(catalogRequest('/words/noun_zug/related', 'GET').p_include_sentences, false);
   for (const path of ['/matcher', '/guide', '/review', '/practice', '/topics/home/words/word/keep']) {
     assert.deepEqual(catalogRequest(path, 'POST'), {
-      p_topic: null, p_include_sentences: true, p_activities_only: false,
+      p_topic: null, p_include_sentences: true, p_activities_only: false, p_include_associations: true,
     });
   }
 });

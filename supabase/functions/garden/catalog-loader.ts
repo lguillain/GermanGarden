@@ -5,19 +5,22 @@ export interface CatalogRequest {
   p_topic: string | null;
   p_include_sentences: boolean;
   p_activities_only: boolean;
+  p_include_associations: boolean;
 }
 export function catalogRequest(path: string, method: string): CatalogRequest {
   // This shared loader scopes only read-only topic lists; practice has its own
   // snapshot-based loader and atomic topic additions bypass it entirely.
   // Remaining mutations and discovery need the full catalogue.
   const topic = method === 'GET' ? path.match(/^\/topics\/([^/]+)$/) : null;
+  const full =
+    !topic && !['/garden', '/onboarding'].includes(path) && !/^\/words\/[^/]+\/related$/.test(path);
   return {
     p_topic: topic ? decodeURIComponent(topic[1]) : null,
-    p_include_sentences:
-      !topic &&
-      !['/garden', '/onboarding'].includes(path) &&
-      !/^\/words\/[^/]+\/related$/.test(path),
+    p_include_sentences: full,
     p_activities_only: path === '/onboarding',
+    // Find words lets related words follow a kept word. The full catalogue
+    // includes them so all its requests share one cached copy.
+    p_include_associations: full,
   };
 }
 export function createCatalogLoader(fetchCatalog: (request: CatalogRequest) => Promise<Catalog>) {
