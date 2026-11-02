@@ -11,6 +11,7 @@ interface RelatedWords {
   word: Word;
   family: Word[];
   together: Word[];
+  objects?: (Word & { object_phrase: string })[];
 }
 
 // Experimental: browse connected words one word at a time, without changing progress.
@@ -30,13 +31,11 @@ export function RelatedWordsDialog({ word, onClose }: { word: Word | null; onClo
     if (!dialog.current?.open) dialog.current?.showModal();
   }, [word]);
   const pos = result.data?.word.pos;
-  const oppositePos = pos === 'noun' ? 'verb' : pos === 'verb' ? 'noun' : null;
-  const pairings = result.data?.together.filter((related) => related.pos === oppositePos);
-  const groups = [
-    [pos === 'noun' ? 'Verbs used with this noun' : 'Nouns used with this verb', pairings],
-    ['Used together', result.data?.together.filter((related) => related.pos !== oppositePos)],
+  const groups: [string, (Word & { object_phrase?: string })[] | undefined][] = [
+    [pos === 'noun' ? 'Verbs taking this object' : 'Typical objects', result.data?.objects],
+    ['Related by topic', result.data?.together],
     ['Same family', result.data?.family],
-  ] as const;
+  ];
   return (
     <dialog
       ref={dialog}
@@ -69,7 +68,10 @@ export function RelatedWordsDialog({ word, onClose }: { word: Word | null; onClo
       <ErrorNotice error={result.error} />
       {result.isPending && current ? (
         <Loading />
-      ) : result.data && !result.data.family.length && !result.data.together.length ? (
+      ) : result.data &&
+        !result.data.family.length &&
+        !result.data.together.length &&
+        !result.data.objects?.length ? (
         <p>No related words found yet.</p>
       ) : (
         groups.map(
@@ -85,7 +87,11 @@ export function RelatedWordsDialog({ word, onClose }: { word: Word | null; onClo
                         onClick={() => setTrail([...trail, related])}
                       >
                         <span className="related-word-lemma">
-                          <WordTitle word={related} />
+                          {related.object_phrase ? (
+                            <span lang="de">{related.object_phrase}</span>
+                          ) : (
+                            <WordTitle word={related} />
+                          )}
                         </span>
                         <span className="related-word-meaning">{related.english}</span>
                         <span

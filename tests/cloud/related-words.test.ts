@@ -68,22 +68,20 @@ test('related words route returns the learner’s own word states and never writ
   await assert.rejects(dispatch('/words/missing/related', 'GET', new URLSearchParams(), {}, store, catalog), /Unknown word/);
 });
 
-test('noun–verb pairings take priority before the six-word limit', () => {
-  const words = [word('geld', 'Geld'), word('sparen', 'sparen', 'verb'), ...['Bank', 'Kasse', 'Zahlung', 'Konto', 'Preis', 'Münze'].map((lemma, i) => word(`other${i}`, lemma))];
-  const data = { ...catalog, words };
-  const ids = relatedWordIds(data, 'geld', [...words.slice(2).map(w => w.id), 'sparen']).together;
-  assert.equal(ids[0], 'sparen');
-  assert.equal(ids.length, 6);
-});
-
-test('related words includes reverse noun–verb links without reversing thematic links', async () => {
-  const words = [word('geld', 'Geld'), word('sparen', 'sparen', 'verb'), word('ausgeben', 'ausgeben', 'verb'), word('bank', 'Bank')];
+test('only explicit object phrases enter the object section, in either direction', async () => {
+  const words = [word('vertrag', 'Vertrag'), word('wohnung', 'Wohnung'), word('vermieten', 'vermieten', 'verb'), word('unterschreiben', 'unterschreiben', 'verb')];
   const store = {
     async load() { return { version: 1, data: freshLearner('Test') }; },
     async save(): Promise<boolean> { throw new Error('Must not save'); },
-    async associations() { return ['bank']; },
-    async reverseAssociations(id: string) { assert.equal(id, 'geld'); return ['sparen', 'ausgeben', 'bank']; },
+    async associations() { return ['vermieten', 'unterschreiben']; },
+    async verbObjects(id: string) {
+      return id === 'vertrag' ? [{ related_id: 'unterschreiben', phrase: 'einen Vertrag unterschreiben' }]
+        : [{ related_id: 'wohnung', phrase: 'eine Wohnung vermieten' }];
+    },
   };
-  const response = await dispatch('/words/geld/related', 'GET', new URLSearchParams(), {}, store, { ...catalog, words }) as { together: Word[] };
-  assert.deepEqual(response.together.map(w => w.id), ['sparen', 'ausgeben', 'bank']);
+  const call = async (id: string) => await dispatch(`/words/${id}/related`, 'GET', new URLSearchParams(), {}, store, { ...catalog, words }) as { objects: (Word & { object_phrase: string })[]; together: Word[] };
+  const contract = await call('vertrag');
+  assert.deepEqual(contract.objects.map(w => [w.id, w.object_phrase]), [['unterschreiben', 'einen Vertrag unterschreiben']]);
+  assert.deepEqual(contract.together.map(w => w.id), ['vermieten']);
+  assert.deepEqual((await call('vermieten')).objects.map(w => [w.id, w.object_phrase]), [['wohnung', 'eine Wohnung vermieten']]);
 });

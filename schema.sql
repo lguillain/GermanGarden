@@ -124,3 +124,11 @@ CREATE TABLE IF NOT EXISTS reviews (
   reviewed_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_reviews_word ON reviews(word_id);
+
+-- Accepted direct-object collocations, separate from topical associations.
+CREATE TABLE IF NOT EXISTS verb_objects (
+  verb_id TEXT NOT NULL REFERENCES words(id) ON DELETE CASCADE,
+  noun_id TEXT NOT NULL REFERENCES words(id) ON DELETE CASCADE,
+  phrase TEXT NOT NULL,
+  PRIMARY KEY (verb_id, noun_id)
+);

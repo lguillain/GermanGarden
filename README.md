@@ -496,3 +496,17 @@ the same topic and level often comes next. The full catalogue loads associations
 through `load_garden_catalog(p_include_associations)`
 (`202610300001_discovery_associations.sql`), so push migrations before deploying
 the `garden` function.
+
+### Typical verb objects
+
+Object phrases are separate from general word associations. `python -m
+pipeline.verb_objects` checks noun–verb candidates offline and saves explicit
+acceptances and rejections in `data/derived/verb_objects.json`. Only common
+accusative/dative object phrases qualify; topical links and prepositional phrases
+do not. No AI runs when the popup opens.
+
+Run `python3 scripts/verb-objects-migration.py` to export vocabulary-only phrases.
+Apply `202611020001_verb_objects.sql` and the generated data migration with
+`supabase db push --linked`, deploy `garden`, then publish the frontend through
+GitHub Pages. The popup reads the same pair in both directions and displays the
+complete phrase. Learner progress is unaffected.

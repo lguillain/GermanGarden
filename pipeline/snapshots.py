@@ -136,3 +136,12 @@ def save_generated_sentences(data: dict[tuple[str, str | None], dict]) -> None:
         key=lambda r: (r["word_id"], r.get("activity_id") or ""),
     )
     _atomic_write_json(GENERATED_SENTENCES, serializable)
+
+# Explicit verb/object phrases; null means the proposed pair was rejected.
+VERB_OBJECTS = DERIVED / 'verb_objects.json'
+
+def load_verb_objects() -> dict[str, str | None]:
+    return _load(VERB_OBJECTS, {})
+
+def save_verb_objects(data: dict[str, str | None]) -> None:
+    _atomic_write_json(VERB_OBJECTS, data)

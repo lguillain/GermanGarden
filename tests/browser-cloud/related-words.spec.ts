@@ -3,8 +3,8 @@ import { test, expect } from '@playwright/test';
 const word = (id: string, lemma: string, english: string, status = 'new', visual_stage = 'unseen') =>
   ({ id, lemma, english, pos: 'noun', level: 'A2', status, visual_stage, growth: 0 });
 const related: Record<string, unknown> = {
-  fahrt: { word: word('fahrt', 'Fahrt', 'journey'), family: [word('fahrkarte', 'Fahrkarte', 'ticket', 'bag', 'seeds')], together: [word('zug', 'Zug', 'train'), { ...word('buchen', 'buchen', 'book'), pos: 'verb' }] },
-  buchen: { word: { ...word('buchen', 'buchen', 'book'), pos: 'verb' }, family: [], together: [word('fahrt', 'Fahrt', 'journey')] },
+  fahrt: { word: word('fahrt', 'Fahrt', 'journey'), family: [word('fahrkarte', 'Fahrkarte', 'ticket', 'bag', 'seeds')], together: [word('zug', 'Zug', 'train')], objects: [{ ...word('buchen', 'buchen', 'book'), pos: 'verb', object_phrase: 'eine Fahrt buchen' }] },
+  buchen: { word: { ...word('buchen', 'buchen', 'book'), pos: 'verb' }, family: [], together: [], objects: [{ ...word('fahrt', 'Fahrt', 'journey'), object_phrase: 'eine Fahrt buchen' }] },
   fahrkarte: { word: word('fahrkarte', 'Fahrkarte', 'ticket', 'bag', 'seeds'), family: [word('fahrt', 'Fahrt', 'journey')], together: [] },
 };
 
@@ -24,16 +24,17 @@ test('related words popup opens from the topic list and follows connected words'
   await page.goto('/#/topics/travel');
   await page.getByRole('button', { name: 'Related words for Fahrt' }).click();
   const dialog = page.getByRole('dialog', { name: /Related words/ });
-  await expect(dialog.getByRole('heading').nth(1)).toHaveText('Verbs used with this noun');
+  await expect(dialog.getByRole('heading').nth(1)).toHaveText('Verbs taking this object');
+  await expect(dialog.getByRole('button', { name: /buchen/ })).toContainText('eine Fahrt buchen');
   await dialog.getByRole('button', { name: /buchen/ }).click();
-  await expect(dialog.getByRole('heading', { name: 'Nouns used with this verb' })).toBeVisible();
+  await expect(dialog.getByRole('heading', { name: 'Typical objects' })).toBeVisible();
   await dialog.getByRole('button', { name: '← Fahrt' }).click();
   await expect(dialog.getByRole('heading', { name: 'Same family' })).toBeVisible();
   await expect(dialog.getByRole('button', { name: /Fahrkarte/ })).toContainText('In seed bag');
   await expect(dialog.getByRole('button', { name: /Zug/ })).toBeVisible();
   await dialog.getByRole('button', { name: /Fahrkarte/ }).click();
   await expect(dialog.locator('.related-words-current')).toContainText('Fahrkarte');
-  await expect(dialog.getByRole('heading', { name: 'Used together' })).toHaveCount(0);
+  await expect(dialog.getByRole('heading', { name: 'Related by topic' })).toHaveCount(0);
   await dialog.getByRole('button', { name: '← Fahrt' }).click();
   await expect(dialog.locator('.related-words-current')).toContainText('Fahrt');
   await dialog.getByRole('button', { name: 'Close' }).click();

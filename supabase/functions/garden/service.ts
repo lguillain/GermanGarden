@@ -7,7 +7,7 @@ import { Catalog, Learner, ReviewSelection, HttpError, requireThat, shuffle } fr
 export interface Store {
   keepTopicWord?(wordId: string, topic: string): Promise<TopicKeepResult>;
   associations?(wordId: string): Promise<string[]>;
-  reverseAssociations?(wordId: string): Promise<string[]>;
+  verbObjects?(wordId: string, pos: string): Promise<{ related_id: string; phrase: string }[]>;
   load(): Promise<{ version: number; data: Learner }>;
   save(version: number, data: Learner): Promise<boolean>;
   profile?(): Promise<{ name: string; level: string | null }>;
@@ -126,19 +126,32 @@ export async function dispatch(
     const related = path.match(/^\/words\/([^/]+)\/related$/);
     if (related) {
       const word = garden.word(decodeURIComponent(related[1]));
-      const oppositePos = word.pos === 'noun' ? 'verb' : word.pos === 'verb' ? 'noun' : null;
-      const [associated, reverse] = await Promise.all([
+      const [associated, objects] = await Promise.all([
         store.associations?.(word.id) ?? [],
-        oppositePos ? (store.reverseAssociations?.(word.id) ?? []) : [],
+        store.verbObjects?.(word.id, word.pos) ?? [],
       ]);
-      const pairs = reverse.filter((id) =>
-        catalog.words.some((other) => other.id === id && other.pos === oppositePos),
+      const pairings = objects
+        .filter((pair) =>
+          catalog.words.some(
+            (other) =>
+              other.id === pair.related_id &&
+              other.pos === (word.pos === 'verb' ? 'noun' : word.pos === 'noun' ? 'verb' : null),
+          ),
+        )
+        .slice(0, 6);
+      const ids = relatedWordIds(
+        catalog,
+        word.id,
+        associated.filter((id) => !pairings.some((pair) => pair.related_id === id)),
       );
-      const ids = relatedWordIds(catalog, word.id, [...associated, ...pairs]);
       const details = (id: string) => garden.details(garden.word(id));
       return {
         word: garden.details(word),
         family: ids.family.map(details),
+        objects: pairings.map((pair) => ({
+          ...details(pair.related_id),
+          object_phrase: pair.phrase,
+        })),
         together: ids.together.map(details),
       };
     }

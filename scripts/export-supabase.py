@@ -58,7 +58,7 @@ def literal(value):
 def content_statements(conn):
     statements = []
     tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
-    for table in ('words', 'activities', 'word_activities', 'word_associations', 'sentences'):
+    for table in ('words', 'activities', 'word_activities', 'word_associations', 'verb_objects', 'sentences'):
         # Older profile databases predate word_associations.
         data = rows(conn, table) if table in tables else []
         for start in range(0, len(data), 500):
