@@ -84,8 +84,13 @@ Topic word lists apply the level visibility rules described below.
 - The app does not track time spent learning or store activity-timer sessions.
 
 ## Explore topics and topic pages
+- Explore topics shows overall progress for the learner’s current level below the page heading and above the search: grown/learned words out of all words at that level, plus the shared Unseen, Skipped / Not now, Seeds, Planted, Review due, and Grown / Learned breakdown. Count each vocabulary word once, including words without a topic; topic search does not change these totals. With no level selected, include all levels.
+- Related words prioritizes noun–verb pairings within Used together. These appear first under **Verbs used with this noun** or **Nouns used with this verb**, before other associations and Same family. Existing noun–verb associations are available in both directions (for example, ausgeben → Geld also appears from Geld). The six-word Used together limit remains; offline selection favors common verb–noun combinations over broad thematic links.
+- Explore topics places search and its right-aligned color legend on the same row, wrapping on smaller screens.
+- Overall level progress sits in a full-width compact white card below the title, with a compact desktop layout: level heading, grown/learned total, and progress bar without a numeric legend. Segment counts remain available in tooltips and the accessible bar description. It wraps on narrower screens.
+- Unseen words use gray; skipped (**Not now**) words use purple in progress bars, legends, and status chips. They have separate counts in overall level and topic progress. Adding a skipped word to the seed bag moves it into Seeds.
 - Explore topics lists all topics, including empty ones, and supports searching by topic name. Selecting a topic opens its topic page.
-- Topic progress is shown for the learner's CEFR level, split into Unseen / Not now, Seeds, Planted, Review due, and Grown / Learned.
+- Topic progress is shown for the learner's CEFR level, split into Unseen, Skipped / Not now, Seeds, Planted, Review due, and Grown / Learned.
 - Each topic page has a garden scene containing its planted and learned words, a progress summary, and a word list.
 - Topic practice and review actions become available when the topic has planted words.
 - The word list supports German/English search, status filters, and sorting by word, meaning, level, or status.
@@ -113,6 +118,7 @@ Topic word lists apply the level visibility rules described below.
 - **Side panel:** the seed bag as a list of kept words, with actions to practise or review seeds.
 
 ## Practice and review
+- After reveal in either review direction, the card footer offers **Related words**, opening the same read-only popup as topic pages. Closing it preserves the revealed card and review progress; opening it never records a rating.
 - The practice menu, Reading, and Conversation load only word counts before starting. Forms loads its code and form options only when opened from a card; exercises use only that card’s word.
 - Both support planted words across the whole garden, planted words in one topic, or the seed bag. The **Plants / Seeds** switch keeps seeds separate from planted words and preserves the selected topic when switching back to plants.
 - Topic practice includes its planted and Learned words, including words marked Learned directly in the matcher. Unseen and Not now words must first be added to the seed bag to practise them.

@@ -1,7 +1,8 @@
 import type { Topic } from '../api';
 
 export const topicStages = [
-  ['unseen', 'Unseen / Not now'],
+  ['unseen', 'Unseen'],
+  ['skipped', 'Skipped / Not now'],
   ['seeds', 'Seeds'],
   ['planted', 'Planted'],
   ['due', 'Review due'],

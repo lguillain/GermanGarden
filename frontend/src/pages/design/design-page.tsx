@@ -366,9 +366,11 @@ export function DesignPage() {
           </Example>
           <Example
             title="Topic distribution"
-            usage="Explore topics and topic summaries show the five categories together. Stronger fills distinguish segments at small sizes."
+            usage="Explore topics and topic summaries show the six categories together. Stronger fills distinguish segments at small sizes."
           >
-            <TopicProgress counts={{ unseen: 12, seeds: 3, planted: 8, due: 4, grown: 6 }} />
+            <TopicProgress
+              counts={{ unseen: 12, skipped: 0, seeds: 3, planted: 8, due: 4, grown: 6 }}
+            />
           </Example>
         </div>
       </Section>

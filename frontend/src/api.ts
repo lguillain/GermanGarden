@@ -61,7 +61,7 @@ export interface Word {
   track?: 'recognition' | 'production';
   review_due?: boolean;
   overdue_since?: string | null;
-  visual_stage?: 'unseen' | 'seeds' | 'planted' | 'due' | 'grown';
+  visual_stage?: 'unseen' | 'skipped' | 'seeds' | 'planted' | 'due' | 'grown';
   status?: 'new' | 'not_now' | 'learned' | 'bag' | 'planted';
   learned?: boolean;
   interval_days?: number;
@@ -84,7 +84,7 @@ export interface Session {
   ai_available: boolean;
 }
 export interface Topic extends Activity {
-  overview: Record<'unseen' | 'seeds' | 'planted' | 'due' | 'grown', number>;
+  overview: Record<'unseen' | 'skipped' | 'seeds' | 'planted' | 'due' | 'grown', number>;
   total: number;
   planted: number;
 }
@@ -94,6 +94,7 @@ export interface GardenPlot {
   words: Word[];
 }
 export interface Garden {
+  level_progress?: { level: string | null; overview: Topic['overview'] };
   level_up?: {
     current_level: string;
     next_level: string;

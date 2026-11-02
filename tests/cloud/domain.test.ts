@@ -411,3 +411,16 @@ test('gnome arrival thresholds are exact and capped at six', () => {
   assert.equal(gardenGnomeCount([], now), 0);
   assert.equal(gardenGnomeCount([{ ...catalog.words[0], review_due: true, overdue_since: 'invalid' }], now), 0);
 });
+
+test('skipped words have their own progress stage and move to seeds when kept', () => {
+  const g = fixture();
+  g.swipe('word-0', 'not_now', 'home', 1);
+  assert.equal(g.details(g.word('word-0')).visual_stage, 'skipped');
+  assert.equal(g.details(g.word('word-1')).visual_stage, 'unseen');
+  assert.deepEqual(g.home().level_progress.overview, { unseen: 23, skipped: 1, seeds: 0, planted: 0, due: 0, grown: 0 });
+  assert.deepEqual(g.home().topics.find(t => t.id === 'home')?.overview, { unseen: 21, skipped: 1, seeds: 0, planted: 0, due: 0, grown: 0 });
+  g.add('word-0', 'home');
+  assert.equal(g.details(g.word('word-0')).visual_stage, 'seeds');
+  assert.equal(g.home().level_progress.overview.skipped, 0);
+  assert.equal(g.home().level_progress.overview.seeds, 1);
+});

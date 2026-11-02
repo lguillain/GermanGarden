@@ -6,6 +6,7 @@ import type { Card, Word } from '../api';
 import { api } from '../api';
 import { Empty, ErrorNotice, Heading, Loading } from '../components/feedback';
 import { WordCard } from '../components/word-card';
+import { RelatedWordsDialog } from '../components/related-words-dialog';
 import { WordSetSwitch } from '../components/word-set-switch';
 import { useScope } from '../hooks/use-scope';
 
@@ -32,6 +33,7 @@ function ReviewSession({ storageKey }: { storageKey: string }) {
   const { scope, topic, query, label } = useScope();
   const cache = useQueryClient();
   const [revealed, setRevealed] = useState(false);
+  const [relatedTo, setRelatedTo] = useState<Word | null>(null);
   const [session, saveSession] = useState<{ reviewed: string[]; graduated: Word | null }>(() => {
     try {
       const saved = JSON.parse(sessionStorage.getItem(storageKey) || 'null');
@@ -158,6 +160,18 @@ function ReviewSession({ storageKey }: { storageKey: string }) {
               word={card}
               revealed={revealed}
               onReveal={() => setRevealed(true)}
+              footerControls={
+                revealed && (
+                  <button
+                    className="button"
+                    aria-haspopup="dialog"
+                    disabled={grade.isPending}
+                    onClick={() => setRelatedTo({ ...card, id: card.word_id })}
+                  >
+                    Related words
+                  </button>
+                )
+              }
               hintsEnabled={!checkArticle}
               articlePrompt={checkArticle}
               revealControls={checkArticle ? false : undefined}
@@ -232,6 +246,7 @@ function ReviewSession({ storageKey }: { storageKey: string }) {
           </button>
         )}
       </div>
+      <RelatedWordsDialog word={relatedTo} onClose={() => setRelatedTo(null)} />
     </>
   );
 }

@@ -69,7 +69,7 @@ export function TopicPage() {
         counts[word.visual_stage || 'unseen']++;
         return counts;
       },
-      { unseen: 0, seeds: 0, planted: 0, due: 0, grown: 0 },
+      { unseen: 0, skipped: 0, seeds: 0, planted: 0, due: 0, grown: 0 },
     );
   const { visibleWords, matching } = topicWordList(words, {
     level: user?.level,

@@ -142,11 +142,12 @@ export class Garden {
     else if (this.state.swipes.some((swipe) => swipe.word_id === word.id)) status = 'not_now';
     else status = 'new';
 
-    let visualStage: 'unseen' | 'seeds' | 'planted' | 'due' | 'grown';
+    let visualStage: 'unseen' | 'skipped' | 'seeds' | 'planted' | 'due' | 'grown';
     if (reviewDue) visualStage = 'due';
     else if (learned || stage === 5) visualStage = 'grown';
     else if (status === 'planted') visualStage = 'planted';
     else if (status === 'bag') visualStage = 'seeds';
+    else if (status === 'not_now') visualStage = 'skipped';
     else visualStage = 'unseen';
 
     return {
@@ -590,7 +591,7 @@ export class Garden {
       const levelWords = all.filter(
         (word) => !this.state.user.level || word.level === this.state.user.level,
       );
-      const overview = { unseen: 0, seeds: 0, planted: 0, due: 0, grown: 0 };
+      const overview = { unseen: 0, skipped: 0, seeds: 0, planted: 0, due: 0, grown: 0 };
       for (const word of levelWords) overview[word.visual_stage]++;
       topics.push({
         ...activity,
@@ -599,8 +600,15 @@ export class Garden {
         planted: plants.length,
       });
     }
+    const levelOverview = { unseen: 0, skipped: 0, seeds: 0, planted: 0, due: 0, grown: 0 };
+    for (const word of this.catalog.words) {
+      if (!this.state.user.level || word.level === this.state.user.level) {
+        levelOverview[this.details(word).visual_stage]++;
+      }
+    }
     const seedBag = this.bag();
     return {
+      level_progress: { level: this.state.user.level, overview: levelOverview },
       plots: plots.sort((a, b) => a.name.localeCompare(b.name)),
       topics: topics.sort((a, b) => a.name.localeCompare(b.name)),
       bag: seedBag,

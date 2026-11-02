@@ -162,11 +162,11 @@ function WordCardContent({
             )}
             {hintsEnabled && production && <ProductionHint key={word.id} lemma={word.lemma} />}
           </div>
+          {footerControls && <div className="actions">{footerControls}</div>}
         </div>
         {(forms === 'practice' || (forms === 'review' && revealed)) && (
           <FormsButton key={word.id} word={word} />
         )}
-        {footerControls}
       </div>
     </article>
   );

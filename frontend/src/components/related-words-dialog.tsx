@@ -29,9 +29,13 @@ export function RelatedWordsDialog({ word, onClose }: { word: Word | null; onClo
     setTrail([word]);
     if (!dialog.current?.open) dialog.current?.showModal();
   }, [word]);
+  const pos = result.data?.word.pos;
+  const oppositePos = pos === 'noun' ? 'verb' : pos === 'verb' ? 'noun' : null;
+  const pairings = result.data?.together.filter((related) => related.pos === oppositePos);
   const groups = [
+    [pos === 'noun' ? 'Verbs used with this noun' : 'Nouns used with this verb', pairings],
+    ['Used together', result.data?.together.filter((related) => related.pos !== oppositePos)],
     ['Same family', result.data?.family],
-    ['Used together', result.data?.together],
   ] as const;
   return (
     <dialog

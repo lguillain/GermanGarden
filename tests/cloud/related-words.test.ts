@@ -67,3 +67,23 @@ test('related words route returns the learner’s own word states and never writ
   assert.deepEqual(response.together.map((w) => w.id), ['zug', 'see']);
   await assert.rejects(dispatch('/words/missing/related', 'GET', new URLSearchParams(), {}, store, catalog), /Unknown word/);
 });
+
+test('noun–verb pairings take priority before the six-word limit', () => {
+  const words = [word('geld', 'Geld'), word('sparen', 'sparen', 'verb'), ...['Bank', 'Kasse', 'Zahlung', 'Konto', 'Preis', 'Münze'].map((lemma, i) => word(`other${i}`, lemma))];
+  const data = { ...catalog, words };
+  const ids = relatedWordIds(data, 'geld', [...words.slice(2).map(w => w.id), 'sparen']).together;
+  assert.equal(ids[0], 'sparen');
+  assert.equal(ids.length, 6);
+});
+
+test('related words includes reverse noun–verb links without reversing thematic links', async () => {
+  const words = [word('geld', 'Geld'), word('sparen', 'sparen', 'verb'), word('ausgeben', 'ausgeben', 'verb'), word('bank', 'Bank')];
+  const store = {
+    async load() { return { version: 1, data: freshLearner('Test') }; },
+    async save(): Promise<boolean> { throw new Error('Must not save'); },
+    async associations() { return ['bank']; },
+    async reverseAssociations(id: string) { assert.equal(id, 'geld'); return ['sparen', 'ausgeben', 'bank']; },
+  };
+  const response = await dispatch('/words/geld/related', 'GET', new URLSearchParams(), {}, store, { ...catalog, words }) as { together: Word[] };
+  assert.deepEqual(response.together.map(w => w.id), ['sparen', 'ausgeben', 'bank']);
+});

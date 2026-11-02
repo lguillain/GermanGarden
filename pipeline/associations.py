@@ -22,8 +22,8 @@ LIMIT = 6
 
 def _system(conn: sqlite3.Connection) -> str:
     vocabulary = "\n".join(
-        f"{w['id']}: {w['lemma']} ({w['english']})"
-        for w in conn.execute("SELECT id, lemma, english FROM words ORDER BY id")
+        f"{w['id']}: {w['lemma']} ({w['pos']}, {w['english']})"
+        for w in conn.execute("SELECT id, lemma, pos, english FROM words ORDER BY id")
     )
     return (
         "You help German learners see which words belong together. For each word "
@@ -34,6 +34,11 @@ def _system(conn: sqlite3.Connection) -> str:
         "Verspätung. kalt → warm, Winter, frieren.\n"
         "Bad: Großmutter → krank (possible, but not a clear connection).\n\n"
         "Rules:\n"
+        "- Prioritize common verb-noun combinations over broad thematic links. For verbs, "
+        "choose nouns naturally used with that verb; for nouns, choose verbs naturally "
+        "used with that noun. For example: ausgeben → Geld; sparen → Geld, Zeit; "
+        "Geld → ausgeben, sparen, verdienen. Apply this in both directions whenever "
+        "the words exist in the vocabulary. Avoid merely plausible combinations.\n"
         "- Only use ids from the vocabulary. Order from strongest to weakest.\n"
         "- Leave out words of the same family (shared stem or compound, e.g. fahren → "
         "Fahrer, Abfahrt); they are shown elsewhere.\n"

@@ -59,6 +59,18 @@ export function createStore(admin: SupabaseClient, options: StoreOptions): Store
       if (error) throw error;
       return data.map((row) => row.related_id as string);
     },
+    async reverseAssociations(wordId) {
+      const { data, error } = await measure('reverse_associations', () =>
+        admin
+          .from('word_associations')
+          .select('word_id')
+          .eq('related_id', wordId)
+          .order('rank')
+          .order('word_id'),
+      );
+      if (error) throw error;
+      return data.map((row) => row.word_id as string);
+    },
     async profile() {
       const { data, error } = await measure('profile', () =>
         admin.from('learner_profiles').select('name, level').eq('user_id', userId).maybeSingle(),

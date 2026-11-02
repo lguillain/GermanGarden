@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const counts = { unseen: 1, seeds: 0, planted: 0, due: 0, grown: 0 };
+const counts = { unseen: 1, skipped: 0, seeds: 0, planted: 0, due: 0, grown: 0 };
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('sb-auth-test-auth-token', JSON.stringify({
@@ -96,4 +96,23 @@ test('Matcher guidance drafts and seed bag navigation remain usable while a card
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/functions/v1/garden/practice/weak?*', route => route.fulfill({ json: { words: [] } }));
+});
+
+test('Explore shows overall level progress independently of topic search', async ({ page }) => {
+  await page.route('**/functions/v1/garden/garden*', route => route.fulfill({ json: {
+    level_progress: { level: 'A2', overview: { unseen: 50, skipped: 10, seeds: 5, planted: 10, due: 5, grown: 20 } },
+    topics: [{ id: 'home', name: 'Home', overview: counts }, { id: 'work', name: 'Work', overview: counts }],
+  } }));
+  await page.goto('/#/explore');
+  const progress = page.getByRole('region', { name: 'Overall level progress' });
+  await expect(progress.getByRole('heading', { name: 'A2 progress' })).toBeVisible();
+  await expect(progress).toContainText('20 of 100 words grown or learned');
+  await expect(progress.getByRole('img')).toHaveAttribute('aria-label', 'Unseen: 50 words, Skipped / Not now: 10 words, Seeds: 5 words, Planted: 10 words, Review due: 5 words, Grown / Learned: 20 words');
+  await page.screenshot({ path: 'test-results/explore-level-progress.png', fullPage: true });
+  await page.getByRole('textbox', { name: 'Find a topic to explore' }).fill('missing');
+  await expect(page.getByText('No topics match your search.')).toBeVisible();
+  await expect(progress).toContainText('20 of 100 words grown or learned');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(progress).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

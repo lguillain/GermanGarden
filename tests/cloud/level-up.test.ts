@@ -60,3 +60,22 @@ for (const [from, to] of [['A1', 'A2'], ['A2', 'B1'], ['B1', 'A1'], ['A2', 'A2']
       affinity_below: from === to ? 0.4 : 1, affinity_above: from === to ? 1.5 : 1 } });
   });
 }
+
+test('overall level progress counts each word once across topics and includes unassigned words', () => {
+  const state = freshLearner('Test');
+  state.user.level = 'A1';
+  state.learned = ['A1-0', 'A2-0'];
+  const data: Catalog = {
+    ...catalog,
+    activities: [{ id: 'one', name: 'One' }, { id: 'two', name: 'Two' }],
+    word_activities: ['one', 'two'].map(activity_id => ({ word_id: 'A1-0', activity_id, relevance: 3 })),
+  };
+  const garden = new Garden(data, state);
+  assert.deepEqual(garden.home().level_progress, {
+    level: 'A1', overview: { unseen: 1, skipped: 0, seeds: 0, planted: 0, due: 0, grown: 1 },
+  });
+  state.user.level = null;
+  assert.deepEqual(garden.home().level_progress.overview, { unseen: 4, skipped: 0, seeds: 0, planted: 0, due: 0, grown: 2 });
+  assert.deepEqual(new Garden({ ...data, words: [] }, state).home().level_progress.overview,
+    { unseen: 0, skipped: 0, seeds: 0, planted: 0, due: 0, grown: 0 });
+});

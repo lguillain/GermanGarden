@@ -207,7 +207,11 @@ export function relatedWordIds(
   // Associations come from the offline vocabulary pipeline; only keep known,
   // distinct words that are not already listed as family.
   const together: string[] = [];
-  for (const id of associated)
+  const pos = data.words.get(wordId)!.pos;
+  const oppositePos = pos === 'noun' ? 'verb' : pos === 'verb' ? 'noun' : null;
+  const pairing = (id: string) => oppositePos !== null && data.words.get(id)?.pos === oppositePos;
+  const ordered = [...associated].sort((a, b) => Number(pairing(b)) - Number(pairing(a)));
+  for (const id of ordered)
     if (
       together.length < LIMIT &&
       data.words.has(id) &&
