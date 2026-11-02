@@ -61,3 +61,45 @@ test('farmer signs out only this session and allows signing back in or switching
   }
   expect(logoutScopes).toEqual(['local', 'local', 'local']);
 });
+
+for (const expired of [false, true]) {
+  test(`reopening the saved sign-in URL restores a ${expired ? 'refreshed' : 'valid'} session`, async ({ page }) => {
+    await page.addInitScript((expired) => localStorage.setItem('sb-auth-test-auth-token', JSON.stringify({
+      access_token: 'saved-token', refresh_token: 'saved-refresh', token_type: 'bearer',
+      expires_at: Math.floor(Date.now() / 1000) + (expired ? -60 : 3600),
+      user: { id: 'test', email: 'test@vocab-garden.test', user_metadata: {} },
+    })), expired);
+    let refreshes = 0;
+    await page.route('https://auth-test.supabase.co/**', async route => {
+      const url = new URL(route.request().url());
+      if (url.pathname === '/auth/v1/token') {
+        expect(url.searchParams.get('grant_type')).toBe('refresh_token');
+        refreshes++;
+        return route.fulfill({ json: {
+          access_token: 'refreshed-token', refresh_token: 'new-refresh', token_type: 'bearer', expires_in: 3600,
+          user: { id: 'test', email: 'test@vocab-garden.test', user_metadata: {} },
+        } });
+      }
+      if (url.pathname.endsWith('/session')) return route.fulfill({ json: { user: { name: 'Test', level: 'A2' }, ai_available: false } });
+      if (url.pathname.endsWith('/practice/weak')) return route.fulfill({ json: { words: [] } });
+      if (url.pathname.endsWith('/garden')) return route.fulfill({ json: { plots: [], topics: [], bag: [], summary: { bag_count: 0, bag_cap: 20, due_now: 0, planted_total: 0 } } });
+      throw new Error(`Unexpected request ${url.pathname}`);
+    });
+    await page.goto('/#/profile');
+    await expect(page.getByRole('heading', { name: 'Your garden', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toHaveCount(0);
+    expect(refreshes).toBe(expired ? 1 : 0);
+  });
+}
+
+test('a rejected saved session shows sign-in without redirecting in a loop', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('sb-auth-test-auth-token', JSON.stringify({
+    access_token: 'saved-token', refresh_token: 'saved-refresh', token_type: 'bearer',
+    expires_at: Math.floor(Date.now() / 1000) + 3600,
+    user: { id: 'test', email: 'test@vocab-garden.test', user_metadata: {} },
+  })));
+  await page.route('**/functions/v1/garden/session', route => route.fulfill({ status: 401, json: { detail: 'Please sign in.' } }));
+  await page.goto('/#/profile');
+  await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/#\/profile$/);
+});

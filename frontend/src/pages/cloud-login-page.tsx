@@ -1,15 +1,35 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
-import { ErrorNotice } from '../components/feedback';
+import { ErrorNotice, Loading } from '../components/feedback';
 import { WelcomeLayout } from '../components/welcome-layout';
+import { api } from '../api';
 
 export function CloudLogin() {
   const navigate = useNavigate(),
     cache = useQueryClient();
   const [error, setError] = useState<Error | null>(null),
     [busy, setBusy] = useState(false);
+  const savedSession = useQuery({
+    queryKey: ['login-session'],
+    retry: false,
+    queryFn: async () => {
+      const { data, error } = await supabase!.auth.getSession();
+      if (error) throw error;
+      if (!data.session) return false;
+      // Confirm the saved session before redirecting, avoiding a loop on API 401s.
+      await api('/session');
+      return true;
+    },
+  });
+  if (savedSession.isPending)
+    return (
+      <WelcomeLayout title="Welcome back">
+        <Loading />
+      </WelcomeLayout>
+    );
+  if (savedSession.data) return <Navigate to="/" replace />;
   return (
     <WelcomeLayout title="Welcome back">
       <form
