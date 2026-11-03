@@ -510,3 +510,25 @@ Apply `202611020001_verb_objects.sql` and the generated data migration with
 `supabase db push --linked`, deploy `garden`, then publish the frontend through
 GitHub Pages. The popup reads the same pair in both directions and displays the
 complete phrase. Learner progress is unaffected.
+
+### Noun articles and plurals
+
+`python -m pipeline.noun_forms` checks noun forms offline and caches them in
+`data/derived/noun_forms.json`. Explicit corrections in
+`pipeline/noun-form-overrides.json` take priority, including malformed legacy
+headwords. Existing articles are retained unless explicitly overridden; a model
+null does not erase an existing plural. Review snapshot changes before exporting.
+`python3 scripts/noun-forms-migration.py` exports only dictionary fields as an
+idempotent update by existing word ID. It never exports or replaces learner data.
+Apply `202611030001_noun_forms_data.sql` using `supabase migration up --local`
+for development, and `supabase db push --linked` when deploying.
+
+The startup optimization also requires `supabase functions deploy garden` before
+the frontend deployment so the garden response includes `hard_word_count`.
+
+`202611030002_merge_geburtsjahr.sql` then merges the malformed duplicate into
+`noun_geburtsjahr`, transferring vocabulary references and learner history. It
+retains the latest schedule independently for each review track, preserves Learned
+and planted state, and increments affected learner versions to reject stale writes.
+The offline build runs `pipeline.merge_geburtsjahr` after enrichment; this step
+refuses to delete a duplicate with legacy SQLite learner progress.

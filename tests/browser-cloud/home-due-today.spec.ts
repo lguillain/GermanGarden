@@ -17,12 +17,12 @@ test('garden distinguishes reviews due now from today and refreshes the counts',
     if (url.pathname.endsWith('/session')) return route.fulfill({ json: {
       user: { name: 'Test', level: 'A2' }, ai_available: false,
     } });
-    if (url.pathname.endsWith('/practice/weak')) return route.fulfill({ json: { words: Array.from({ length: hardWordCount }, (_, i) => ({ id: `word-${i}` })) } });
+    if (url.pathname.endsWith('/practice/weak')) throw new Error('Home should not load the practice deck');
     if (url.pathname.endsWith('/garden')) {
       timeZones.push(url.searchParams.get('time_zone'));
       return route.fulfill({ json: {
         plots: [], topics: [], bag: [],
-        summary: { bag_count: 0, bag_cap: 20, planted_total: 12, due_now: dueNow, due_today: 5, found_today: 4, upcoming_reviews: [{ date: "2026-10-22", count: 7 }, { date: "2026-10-23", count: 3 }] },
+        summary: { hard_word_count: hardWordCount, bag_count: 0, bag_cap: 20, planted_total: 12, due_now: dueNow, due_today: 5, found_today: 4, upcoming_reviews: [{ date: "2026-10-22", count: 7 }, { date: "2026-10-23", count: 3 }] },
       } });
     }
     throw new Error(`Unexpected request: ${url.pathname}`);

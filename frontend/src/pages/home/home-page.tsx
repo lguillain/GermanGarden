@@ -10,7 +10,6 @@ import { useGardenTime } from '../../hooks/use-garden-time';
 import { DashboardCard, PlantedCount } from './dashboard-card';
 import { UpcomingReviews } from './upcoming-reviews';
 import { SeedBagDialog } from './seed-bag-dialog';
-import { weakWordsQuery } from '../../queries/weak-words-query';
 
 export function HomePage() {
   const result = useQuery(gardenQuery());
@@ -19,16 +18,12 @@ export function HomePage() {
     mutationFn: (currentLevel: string) => api('/level-up', { current_level: currentLevel }),
     onSuccess: () => cache.invalidateQueries(),
   });
-  const hardWords = useQuery({
-    ...weakWordsQuery(),
-    refetchInterval: 60_000,
-  });
-  const hardWordCount = hardWords.data?.words.length;
   const garden = result.data;
   const now = useGardenTime();
   const gnomeCount =
     garden?.plots.reduce((total, plot) => total + gardenGnomeCount(plot.words, now), 0) ?? 0;
   const summary = garden?.summary;
+  const hardWordCount = summary?.hard_word_count;
   const highlightDiscovery = summary?.found_today === 0;
   return (
     <>
@@ -106,7 +101,6 @@ export function HomePage() {
                 Practice hard words
               </Link>
             )}
-            <ErrorNotice error={hardWords.error} />
           </DashboardCard>
         </section>
         {garden && summary && (

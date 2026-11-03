@@ -111,6 +111,7 @@ export interface Garden {
     found_today?: number;
     upcoming_reviews?: { date: string; count: number }[];
     planted_total: number;
+    hard_word_count?: number;
   };
 }
 export interface Matcher {

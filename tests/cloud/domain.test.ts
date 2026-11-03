@@ -342,6 +342,7 @@ test('weak practice selects current difficulty once per planted word and exclude
   const before = structuredClone(g.state);
   assert.deepEqual(g.weakWords().map(word => word.id), ['word-1', 'word-0', 'word-2']);
   assert.equal(g.weakWords()[0].practice_reasons.length, 2);
+  assert.equal(g.home().summary.hard_word_count, 3);
   assert.deepEqual(g.weakWords('bag'), []);
   assert.deepEqual(g.weakWords('topic', 'work'), []);
   assert.deepEqual(g.state, before);

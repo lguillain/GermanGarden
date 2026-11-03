@@ -2,16 +2,30 @@ import { lazy, Suspense } from 'react';
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppShell } from './app-shell';
 import { Empty, Loading } from './components/feedback';
-import { AiRoute } from './pages/practice/practice-route';
 import { CloudLogin } from './pages/cloud-login-page';
-import { ExplorePage } from './pages/explore/explore-page';
-import { FlashcardsPage } from './pages/practice/flashcards-page';
 import { HomePage } from './pages/home/home-page';
-import { MatcherPage } from './pages/matcher-page';
-import { PracticePage } from './pages/practice/practice-page';
-import { ReviewPage } from './pages/review-page';
-import { TopicPage } from './pages/topic/topic-page';
 import { supabase } from './supabase';
+const AiRoute = lazy(() =>
+  import('./pages/practice/practice-route').then((module) => ({ default: module.AiRoute })),
+);
+const ExplorePage = lazy(() =>
+  import('./pages/explore/explore-page').then((module) => ({ default: module.ExplorePage })),
+);
+const FlashcardsPage = lazy(() =>
+  import('./pages/practice/flashcards-page').then((module) => ({ default: module.FlashcardsPage })),
+);
+const MatcherPage = lazy(() =>
+  import('./pages/matcher-page').then((module) => ({ default: module.MatcherPage })),
+);
+const PracticePage = lazy(() =>
+  import('./pages/practice/practice-page').then((module) => ({ default: module.PracticePage })),
+);
+const ReviewPage = lazy(() =>
+  import('./pages/review-page').then((module) => ({ default: module.ReviewPage })),
+);
+const TopicPage = lazy(() =>
+  import('./pages/topic/topic-page').then((module) => ({ default: module.TopicPage })),
+);
 const DesignPage = lazy(() =>
   import('./pages/design/design-page').then(({ DesignPage }) => ({ default: DesignPage })),
 );

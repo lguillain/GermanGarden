@@ -14,7 +14,7 @@ Each headword can be:
   - a noun with article + optional plural suffix:
       "die Abbildung, -en"      → article die, lemma Abbildung, plural Abbildungen
       "das Haus, -ä, er"        → article das, lemma Haus,     plural Häuser
-      "der Lehrer, -"           → article der, lemma Lehrer,   plural None
+      "der Lehrer, -"           → article der, lemma Lehrer,   plural Lehrer
   - a verb with optional conjugation forms:
       "abgeben, gibt ab, hat abgegeben"
   - a reflexive verb:
@@ -86,6 +86,10 @@ def _slug(pos: str, lemma: str) -> str:
 
 def _umlaut(s: str) -> str:
     """Apply standard German umlauting to the last vowel of a stem."""
+    # German au becomes äu, not aü (Haus → Häuser, Baum → Bäume).
+    au = max(s.rfind('au'), s.rfind('Au'))
+    if au >= 0:
+        return s[:au] + ('Äu' if s[au].isupper() else 'äu') + s[au + 2:]
     for i in range(len(s) - 1, -1, -1):
         if s[i] in "aou":
             return s[:i] + {"a": "ä", "o": "ö", "u": "ü"}[s[i]] + s[i + 1:]
@@ -100,15 +104,19 @@ def _parse_noun_tail(tail: str, lemma: str) -> str | None:
     Examples:
         tail=" -en"    lemma=Abbildung → Abbildungen
         tail=" -e"     lemma=Hund      → Hunde
-        tail=" -"      lemma=Lehrer    → None (no change — can't be an s-plural safely)
+        tail=" -"      lemma=Lehrer    → Lehrer (unchanged plural)
         tail=" -s"     lemma=Hobby     → Hobbys
         tail=" -ä, er" lemma=Haus      → Häuser
         tail=" -ü, e"  lemma=Zug       → Züge
         tail=" -nen"   lemma=Lehrerin  → Lehrerinnen
     """
     t = tail.strip().strip(",").strip()
-    if not t or t in ("-", "–", "—"):
+    if not t:
         return None
+    if t in ("-", "–", "—"):
+        return lemma
+    if re.fullmatch(r"-[äöüÄÖÜ]", t):
+        return _umlaut(lemma)
 
     # Umlaut forms: "-ä, er" or "-ü, e"
     m = re.match(r"^-([äöüÄÖÜ])\s*,\s*(\w+)$", t)
@@ -119,7 +127,15 @@ def _parse_noun_tail(tail: str, lemma: str) -> str | None:
     # Plain suffix: "-en", "-e", "-s", "-nen", ...
     m = re.match(r"^-(\w+)$", t)
     if m:
-        return lemma + m.group(1)
+        suffix = m.group(1)
+        if suffix == "en":
+            if lemma.endswith("e"):
+                return lemma + "n"
+            if lemma.endswith("um"):
+                return lemma[:-2] + "en"
+            if lemma.endswith(("a", "o")):
+                return lemma[:-1] + "en"
+        return lemma + suffix
 
     # Something unusual — leave None rather than guess.
     return None
@@ -182,7 +198,7 @@ def _parse_single(headword: str, level: str) -> dict | None:
     # Prefix placeholders like "Haupt-", "herunter-", "irgend-" — these are
     # productive compounding prefixes documented in the Goethe list, not
     # standalone words. The learner can't swipe on them meaningfully.
-    if head.endswith("-"):
+    if head.endswith("-") or head.count("(") != head.count(")"):
         return None
 
     lemma = head

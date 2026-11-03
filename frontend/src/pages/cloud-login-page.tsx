@@ -4,7 +4,8 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { ErrorNotice, Loading } from '../components/feedback';
 import { WelcomeLayout } from '../components/welcome-layout';
-import { api } from '../api';
+import { sessionQuery } from '../queries/session-query';
+import { gardenQuery } from '../queries/garden-query';
 
 export function CloudLogin() {
   const navigate = useNavigate(),
@@ -19,7 +20,9 @@ export function CloudLogin() {
       if (error) throw error;
       if (!data.session) return false;
       // Confirm the saved session before redirecting, avoiding a loop on API 401s.
-      await api('/session');
+      cache.setQueryData(['auth'], data.session.user);
+      void cache.prefetchQuery(gardenQuery());
+      await cache.fetchQuery(sessionQuery());
       return true;
     },
   });

@@ -17,6 +17,7 @@ A German vocabulary web app. Users discover words they care about, practise them
 | **Review** | A short knowledge check on a set of words. The only thing that changes growth stages. |
 
 ## Users and context
+- Noun dictionary entries include their canonical article and full plural, including unchanged forms such as Lehrer. Vocabulary corrections preserve learner progress. Confirmed duplicate words merge into the canonical ID: keep all review history, Learned marks and planted status, and retain the most recently reviewed schedule independently for recognition and production (canonical wins timestamp ties). Do not invent plurals for nouns without an ordinary plural in the taught sense.
 - Two users for now (the author and her husband), possibly more later.
 - The hosted app uses private email/password accounts created by the garden owner. Each account has its own progress, shared across devices; there is no public signup.
 - Imported accounts can sign in using their profile username (for example, `leo`) and password. Full email addresses are also accepted.
@@ -221,5 +222,6 @@ Topic word lists apply the level visibility rules described below.
 - Within a guided round, Exit round and Change activity remain buttons in the relevant session/activity header because they change local session state. Page navigation must not implicitly discard a saved round.
 
 ## Loading feedback
+- Saved-session validation shares its result with the app shell and starts loading the garden concurrently. The garden response includes its hard-word count; the home screen does not fetch a full practice word list just for that count. Other page code loads when its route is opened.
 - Shared loading feedback occupies a centered, padded region with a 72px-wide animated plant and visible body-sized “Loading…” underneath, giving missing panels a clear placeholder: its stem grows, leaves unfold, and a golden flower blooms before gently fading and repeating. It represents waiting, not learning progress or a growth-stage change. Keep loading scoped to the affected content.
 - The SVG is hidden from assistive technology; a single status region announces the unchanged loading label. Reserve the illustration’s space to avoid movement during the animation. The visible label cycles through one, two, and three dots in a fixed-width space; screen readers receive a single static “Loading…” label. Reduced-motion preferences show the fully grown plant and all three dots without animation.

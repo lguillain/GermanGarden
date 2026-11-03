@@ -1,0 +1,172 @@
+{
+  "noun_baum": {
+    "article": "der",
+    "lemma": "Baum",
+    "plural": "Bäume"
+  },
+  "noun_bruder": {
+    "article": "der",
+    "lemma": "Bruder",
+    "plural": "Brüder"
+  },
+  "noun_fieber": {
+    "article": "das",
+    "lemma": "Fieber",
+    "plural": null
+  },
+  "noun_geburtsjahr": {
+    "article": "das",
+    "lemma": "Geburtsjahr",
+    "plural": "Geburtsjahre"
+  },
+  "noun_geburtsort": {
+    "article": "der",
+    "lemma": "Geburtsort",
+    "plural": "Geburtsorte"
+  },
+  "noun_gemuse": {
+    "article": "das",
+    "lemma": "Gemüse",
+    "plural": null
+  },
+  "noun_haus": {
+    "article": "das",
+    "lemma": "Haus",
+    "plural": "Häuser"
+  },
+  "noun_laden": {
+    "article": "der",
+    "lemma": "Laden",
+    "plural": "Läden"
+  },
+  "noun_leiter": {
+    "article": "der",
+    "lemma": "Leiter",
+    "plural": "Leitern"
+  },
+  "noun_mutter": {
+    "article": "die",
+    "lemma": "Mutter",
+    "plural": "Mütter"
+  },
+  "noun_schnupfen": {
+    "article": "der",
+    "lemma": "Schnupfen",
+    "plural": null
+  },
+  "noun_tote": {
+    "article": "der",
+    "lemma": "Tote",
+    "plural": "Toten"
+  },
+  "noun_tour": {
+    "article": "die",
+    "lemma": "Tour",
+    "plural": "Touren"
+  },
+  "noun_tourismus": {
+    "article": "der",
+    "lemma": "Tourismus",
+    "plural": null
+  },
+  "noun_tourist": {
+    "article": "der",
+    "lemma": "Tourist",
+    "plural": "Touristen"
+  },
+  "noun_tradition": {
+    "article": "die",
+    "lemma": "Tradition",
+    "plural": "Traditionen"
+  },
+  "noun_trainer": {
+    "article": "der",
+    "lemma": "Trainer",
+    "plural": "Trainer"
+  },
+  "noun_training": {
+    "article": "das",
+    "lemma": "Training",
+    "plural": "Trainings"
+  },
+  "noun_tram": {
+    "article": "das",
+    "lemma": "Tram",
+    "plural": "Trams"
+  },
+  "noun_trane": {
+    "article": "die",
+    "lemma": "Träne",
+    "plural": "Tränen"
+  },
+  "noun_transport": {
+    "article": "der",
+    "lemma": "Transport",
+    "plural": "Transporte"
+  },
+  "noun_wort": {
+    "article": "das",
+    "lemma": "Wort",
+    "plural": "Wörter / Worte"
+  },
+  "other_abgase": {
+    "article": "das",
+    "lemma": "Abgas",
+    "plural": "Abgase"
+  },
+  "other_achtung": {
+    "article": "die",
+    "lemma": "Achtung",
+    "plural": null
+  },
+  "other_fruchte": {
+    "article": "die",
+    "lemma": "Frucht",
+    "plural": "Früchte"
+  },
+  "other_geburts_jahr": {
+    "article": "das",
+    "lemma": "Geburtsjahr",
+    "plural": "Geburtsjahre"
+  },
+  "other_golf": {
+    "article": "das",
+    "lemma": "Golf",
+    "plural": null
+  },
+  "other_grad": {
+    "article": "der",
+    "lemma": "Grad",
+    "plural": "Grade"
+  },
+  "other_ratschlag": {
+    "article": "der",
+    "lemma": "Ratschlag",
+    "plural": "Ratschläge"
+  },
+  "other_s_bahn": {
+    "article": "die",
+    "lemma": "S-Bahn",
+    "plural": "S-Bahnen"
+  },
+  "other_satz": {
+    "article": "der",
+    "lemma": "Satz",
+    "plural": "Sätze"
+  },
+  "other_speise_speise": {
+    "article": "die",
+    "lemma": "Speise",
+    "plural": "Speisen"
+  },
+  "other_verzeihung": {
+    "article": "die",
+    "lemma": "Verzeihung",
+    "plural": null
+  },
+  "other_volleyball": {
+    "article": "der",
+    "lemma": "Volleyball",
+    "plural": null
+  }
+}

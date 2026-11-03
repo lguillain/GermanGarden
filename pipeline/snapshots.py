@@ -145,3 +145,11 @@ def load_verb_objects() -> dict[str, str | None]:
 
 def save_verb_objects(data: dict[str, str | None]) -> None:
     _atomic_write_json(VERB_OBJECTS, data)
+
+NOUN_FORMS = DERIVED / 'noun_forms.json'
+
+def load_noun_forms() -> dict:
+    return _load(NOUN_FORMS, {})
+
+def save_noun_forms(data: dict) -> None:
+    _atomic_write_json(NOUN_FORMS, data)

@@ -582,10 +582,9 @@ export class Garden {
   home(timeZone = 'UTC') {
     const plots = [],
       topics = [];
+    const wordDetails = this.catalog.words.map((word) => this.details(word));
     for (const activity of this.catalog.activities) {
-      const all = this.catalog.words
-        .filter((word) => this.inTopic(word.id, activity.id))
-        .map((word) => this.details(word));
+      const all = wordDetails.filter((word) => this.inTopic(word.id, activity.id));
       const plants = all.filter((word) => word.status === 'planted' || word.learned);
       if (plants.length) plots.push({ ...activity, words: plants });
       const levelWords = all.filter(
@@ -601,9 +600,9 @@ export class Garden {
       });
     }
     const levelOverview = { unseen: 0, skipped: 0, seeds: 0, planted: 0, due: 0, grown: 0 };
-    for (const word of this.catalog.words) {
+    for (const word of wordDetails) {
       if (!this.state.user.level || word.level === this.state.user.level) {
-        levelOverview[this.details(word).visual_stage]++;
+        levelOverview[word.visual_stage]++;
       }
     }
     const seedBag = this.bag();
@@ -614,6 +613,7 @@ export class Garden {
       bag: seedBag,
       level_up: this.levelUpSuggestion(),
       summary: {
+        hard_word_count: this.weakWords().length,
         bag_count: seedBag.length,
         bag_cap: SEED_BAG_CAPACITY,
         due_now: this.reviewWords().length,

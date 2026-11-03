@@ -70,6 +70,7 @@ for (const expired of [false, true]) {
       user: { id: 'test', email: 'test@vocab-garden.test', user_metadata: {} },
     })), expired);
     let refreshes = 0;
+    let sessionRequests = 0;
     await page.route('https://auth-test.supabase.co/**', async route => {
       const url = new URL(route.request().url());
       if (url.pathname === '/auth/v1/token') {
@@ -80,7 +81,7 @@ for (const expired of [false, true]) {
           user: { id: 'test', email: 'test@vocab-garden.test', user_metadata: {} },
         } });
       }
-      if (url.pathname.endsWith('/session')) return route.fulfill({ json: { user: { name: 'Test', level: 'A2' }, ai_available: false } });
+      if (url.pathname.endsWith('/session')) { sessionRequests++; return route.fulfill({ json: { user: { name: 'Test', level: 'A2' }, ai_available: false } }); }
       if (url.pathname.endsWith('/practice/weak')) return route.fulfill({ json: { words: [] } });
       if (url.pathname.endsWith('/garden')) return route.fulfill({ json: { plots: [], topics: [], bag: [], summary: { bag_count: 0, bag_cap: 20, due_now: 0, planted_total: 0 } } });
       throw new Error(`Unexpected request ${url.pathname}`);
@@ -89,6 +90,7 @@ for (const expired of [false, true]) {
     await expect(page.getByRole('heading', { name: 'Your garden', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toHaveCount(0);
     expect(refreshes).toBe(expired ? 1 : 0);
+    expect(sessionRequests).toBe(1);
   });
 }
 
@@ -98,7 +100,7 @@ test('a rejected saved session shows sign-in without redirecting in a loop', asy
     expires_at: Math.floor(Date.now() / 1000) + 3600,
     user: { id: 'test', email: 'test@vocab-garden.test', user_metadata: {} },
   })));
-  await page.route('**/functions/v1/garden/session', route => route.fulfill({ status: 401, json: { detail: 'Please sign in.' } }));
+  await page.route('**/functions/v1/garden/**', route => route.fulfill({ status: 401, json: { detail: 'Please sign in.' } }));
   await page.goto('/#/profile');
   await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
   await expect(page).toHaveURL(/#\/profile$/);

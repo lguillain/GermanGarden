@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import type { Session } from './api';
-import { api, ApiError } from './api';
+import { ApiError } from './api';
 import { ErrorNotice, Loading } from './components/feedback';
 import { SetupPage } from './pages/setup-page';
 import { supabase } from './supabase';
+import { sessionQuery } from './queries/session-query';
 
 export function AppShell() {
   const cache = useQueryClient();
@@ -17,7 +17,7 @@ export function AppShell() {
       return data.session?.user ?? null;
     },
   });
-  const session = useQuery({ queryKey: ['session'], queryFn: () => api<Session>('/session') });
+  const session = useQuery(sessionQuery());
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
@@ -115,7 +115,9 @@ export function AppShell() {
               <button onClick={() => session.refetch()}>Retry</button>
             </>
           )}
-          <Outlet context={session.data} />
+          <Suspense fallback={<Loading />}>
+            <Outlet context={session.data} />
+          </Suspense>
         </main>
       </div>
     </>

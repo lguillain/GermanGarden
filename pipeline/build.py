@@ -17,7 +17,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from . import (activities, associations, enrich_sentences, goethe_json, seed, sentences,
+from . import (activities, associations, enrich_sentences, goethe_json, merge_geburtsjahr, noun_forms, seed, sentences,
                steps, tatoeba, translate, verb_objects, verify)
 from .db import session
 from .llm import available as llm_available
@@ -54,6 +54,7 @@ def main() -> None:
         todo = []
         if not skip_llm:
             todo += [("English glosses", translate.run),
+                     ("Noun articles and plurals", noun_forms.run),
                      ("Word → activity tags", activities.run),
                      ("Associated words", associations.run),
                      ("Verb objects", verb_objects.run)]
@@ -72,6 +73,9 @@ def main() -> None:
         print("\nDry run: no LLM calls made. Counts for later steps grow once "
               "earlier ones fill in (e.g. new word tags → new sentence gaps).")
         return
+
+    with session() as conn:
+        merge_geburtsjahr.run(conn)
 
     verify.run()
 
