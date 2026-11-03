@@ -544,3 +544,12 @@ and optional reflexive forms stay together. `scripts/non-noun-repairs-migration.
 exports these changes as `202611030003_non_noun_repairs.sql`. Apply it locally
 with `supabase migration up --local`, or with `supabase db push --linked` when
 deploying. The ID prefixes are historical identifiers, not grammatical labels.
+
+### Regional vocabulary labels
+
+`supabase/functions/garden/word-regions.ts` contains reviewed regional-usage
+annotations by stable word ID, sourced from the linked Goethe/ÖSD B1 word list.
+The API attaches these display annotations to word details. Cards and topic rows
+show country names; unverified or ambiguous senses remain unlabelled. Regions
+do not affect discovery or scheduling. Deploy the garden function and frontend
+for this feature; no database migration is needed.

@@ -1,0 +1,42 @@
+// Reviewed regional usage from the Goethe/ÖSD B1 word list, pp. 19–91:
+// https://www.goethe.de/pro/relaunch/prf/sl/Goethe-Zertifikat_B1_Wortliste.pdf
+// IDs identify the taught sense. These labels describe usage, not exclusivity.
+// Leave unverified and ambiguous senses unlabelled (e.g. Pension and Sessel).
+export type WordRegion = 'DE' | 'AT' | 'CH';
+export const WORD_REGIONS: Readonly<Record<string, readonly WordRegion[]>> = {
+  noun_brotchen: ['DE'],
+  noun_brotli: ['CH'],
+  noun_semmel: ['AT'],
+  noun_paradeiser: ['AT'],
+  noun_ruebli: ['CH'],
+  noun_velo: ['CH'],
+  verb_parkieren: ['CH'],
+  verb_parken: ['DE', 'AT'],
+  noun_stiege: ['AT'],
+  noun_treppe: ['DE', 'CH'],
+  noun_fasnacht: ['CH'],
+  noun_fasching: ['DE', 'AT'],
+  noun_fauteuil: ['AT', 'CH'],
+  noun_karneval: ['DE'],
+  noun_mohre: ['DE'],
+  noun_erdapfel: ['AT'],
+  noun_ober: ['DE', 'AT'],
+  noun_pensionist: ['AT'],
+  noun_pensionistin: ['AT'],
+  noun_perron: ['CH'],
+  noun_postler: ['CH'],
+  noun_serviceangestellte: ['CH'],
+  noun_marille: ['AT'],
+  noun_aprikose: ['DE', 'CH'],
+  noun_billett: ['CH'],
+  noun_couvert: ['CH'],
+  noun_kuvert: ['AT'],
+  noun_geldborse: ['AT'],
+  noun_schwammerl: ['AT'],
+  other_in_rente_gehen_sein: ['DE'],
+  verb_in_rente_sein: ['DE'],
+  other_in_pension_gehen_sein_d: ['DE', 'AT'],
+  verb_in_pension_sein: ['DE', 'AT'],
+  other_pensioniert_werden_sein_d: ['DE', 'CH'],
+  verb_pensioniert_sein: ['DE', 'CH'],
+};

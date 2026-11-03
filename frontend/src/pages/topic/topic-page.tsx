@@ -1,3 +1,4 @@
+import { WordRegions } from '../../components/word-regions';
 import { topicWordList, type TopicWordSort } from './topic-word-list';
 import { statuses, statusLabel } from '../../components/word-status';
 import { invalidateProgress } from '../../queries/invalidate-progress';
@@ -203,6 +204,7 @@ export function TopicPage() {
                 >
                   <td>
                     <WordTitle word={w} />
+                    <WordRegions word={w} />
                   </td>
                   <td>{w.english}</td>
                   <td>{w.level}</td>

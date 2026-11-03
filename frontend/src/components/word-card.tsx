@@ -1,4 +1,5 @@
 import { PlantIcon } from './garden-artwork';
+import { WordRegions } from './word-regions';
 import { FormsButton } from './forms-button';
 import { type ReactNode, useState } from 'react';
 import type { Word } from '../api';
@@ -73,6 +74,7 @@ function WordCardContent({
           <div className="word-meta">
             {word.level} <span>·</span> {word.pos}
           </div>
+          <WordRegions word={word} />
         </div>
         {showDirection && (direction || word.track) && (
           <span className="review-direction">{production ? 'EN → DE' : 'DE → EN'}</span>

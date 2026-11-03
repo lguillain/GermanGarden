@@ -44,6 +44,7 @@ export async function api<T>(path: string, body?: unknown, method?: string): Pro
   return result as T;
 }
 export interface Word {
+  regions?: ('DE' | 'AT' | 'CH')[];
   id: string;
   word_id?: string;
   lemma: string;

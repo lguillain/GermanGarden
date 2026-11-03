@@ -11,6 +11,7 @@ import {
   shuffle,
 } from './model.ts';
 import { initialSrs, growth, plantGrowth, scheduledOutcome, REVIEW_GRADES } from './scheduler.ts';
+import { WORD_REGIONS } from './word-regions.ts';
 import { relatedWordIds } from './related-words.ts';
 
 // Stable per decision so a preview and its later confirmed response select the
@@ -152,6 +153,7 @@ export class Garden {
 
     return {
       ...word,
+      regions: WORD_REGIONS[word.id],
       growth: stage,
       production_unlocked: learned || Boolean(srs?.production),
       production_growth: learned ? 5 : growth(srs?.production || {}),

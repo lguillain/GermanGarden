@@ -637,3 +637,8 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 .explore-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 24px; margin-bottom: 18px; }
 .explore-controls .explore-search { margin: 0; flex: 0 1 320px; }
 .explore-controls .topic-legend { margin: 0 0 0 auto; justify-content: flex-end; }
+
+.word-regions { display: inline-flex; flex-wrap: wrap; gap: 4px; vertical-align: middle; }
+.word-region { padding: 2px 7px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); font-size: var(--type-caption); font-weight: 500; white-space: nowrap; }
+.topic-words .word-regions { margin-left: 8px; }
+.word-card-context { flex-wrap: wrap; }
