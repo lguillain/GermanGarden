@@ -1,0 +1,368 @@
+{
+  "updates": {
+    "other_verbieten_verboten_sein": {
+      "source": "verbieten /verboten sein",
+      "lemma": "verboten sein",
+      "pos": "verb",
+      "english": "to be forbidden"
+    },
+    "other_in_rente_gehen_sein": {
+      "source": "in Rente gehen/sein",
+      "lemma": "in Rente gehen",
+      "pos": "verb",
+      "english": "to retire"
+    },
+    "other_in_pension_gehen_sein_d": {
+      "source": "in Pension gehen/sein (D",
+      "lemma": "in Pension gehen",
+      "pos": "verb",
+      "english": "to retire"
+    },
+    "other_pensioniert_werden_sein_d": {
+      "source": "pensioniert werden/sein (D",
+      "lemma": "pensioniert werden",
+      "pos": "verb",
+      "english": "to retire"
+    },
+    "verb_dafur_dagegen_sein": {
+      "source": "dafür/dagegen sein",
+      "lemma": "dafür sein",
+      "pos": "verb",
+      "english": "to be in favor"
+    },
+    "verb_zuruck_fahren": {
+      "source": "zurück-(fahren",
+      "lemma": "zurückfahren",
+      "pos": "verb",
+      "english": "to drive back"
+    },
+    "verb_aussen": {
+      "source": "außen",
+      "lemma": "außen",
+      "pos": "adv",
+      "english": "outside"
+    },
+    "verb_dagegen": {
+      "source": "dagegen",
+      "lemma": "dagegen",
+      "pos": "adv",
+      "english": "against it"
+    },
+    "verb_daneben": {
+      "source": "daneben",
+      "lemma": "daneben",
+      "pos": "adv",
+      "english": "beside / next to"
+    },
+    "verb_deswegen": {
+      "source": "deswegen",
+      "lemma": "deswegen",
+      "pos": "adv",
+      "english": "therefore"
+    },
+    "verb_draussen": {
+      "source": "draußen",
+      "lemma": "draußen",
+      "pos": "adv",
+      "english": "outside"
+    },
+    "verb_drinnen": {
+      "source": "drinnen",
+      "lemma": "drinnen",
+      "pos": "adv",
+      "english": "inside"
+    },
+    "verb_druben": {
+      "source": "drüben",
+      "lemma": "drüben",
+      "pos": "adv",
+      "english": "over there"
+    },
+    "verb_eben": {
+      "source": "eben",
+      "lemma": "eben",
+      "pos": "adv",
+      "english": "just / even"
+    },
+    "verb_gern": {
+      "source": "gern",
+      "lemma": "gern",
+      "pos": "adv",
+      "english": "gladly / willingly"
+    },
+    "verb_gestern": {
+      "source": "gestern",
+      "lemma": "gestern",
+      "pos": "adv",
+      "english": "yesterday"
+    },
+    "verb_hinten": {
+      "source": "hinten",
+      "lemma": "hinten",
+      "pos": "adv",
+      "english": "at the back / behind"
+    },
+    "verb_innen": {
+      "source": "innen",
+      "lemma": "innen",
+      "pos": "adv",
+      "english": "inside"
+    },
+    "verb_inzwischen": {
+      "source": "inzwischen",
+      "lemma": "inzwischen",
+      "pos": "adv",
+      "english": "meanwhile"
+    },
+    "verb_meinetwegen": {
+      "source": "meinetwegen",
+      "lemma": "meinetwegen",
+      "pos": "adv",
+      "english": "for my sake"
+    },
+    "verb_mitten": {
+      "source": "mitten",
+      "lemma": "mitten",
+      "pos": "adv",
+      "english": "in the middle"
+    },
+    "verb_morgen": {
+      "source": "morgen",
+      "lemma": "morgen",
+      "pos": "adv",
+      "english": "tomorrow"
+    },
+    "verb_oben": {
+      "source": "oben",
+      "lemma": "oben",
+      "pos": "adv",
+      "english": "above / upstairs"
+    },
+    "verb_unten": {
+      "source": "unten",
+      "lemma": "unten",
+      "pos": "adv",
+      "english": "below / downstairs"
+    },
+    "verb_vorgestern": {
+      "source": "vorgestern",
+      "lemma": "vorgestern",
+      "pos": "adv",
+      "english": "day before yesterday"
+    },
+    "verb_zusammen": {
+      "source": "zusammen",
+      "lemma": "zusammen",
+      "pos": "adv",
+      "english": "together"
+    },
+    "verb_ubermorgen": {
+      "source": "übermorgen",
+      "lemma": "übermorgen",
+      "pos": "adv",
+      "english": "day after tomorrow"
+    },
+    "verb_gegen": {
+      "source": "gegen",
+      "lemma": "gegen",
+      "pos": "prep",
+      "english": "against / toward"
+    },
+    "verb_wegen": {
+      "source": "wegen",
+      "lemma": "wegen",
+      "pos": "prep",
+      "english": "because of"
+    },
+    "verb_zwischen": {
+      "source": "zwischen",
+      "lemma": "zwischen",
+      "pos": "prep",
+      "english": "between"
+    },
+    "verb_sondern": {
+      "source": "sondern",
+      "lemma": "sondern",
+      "pos": "conj",
+      "english": "but / but rather"
+    },
+    "verb_betrunken": {
+      "source": "betrunken",
+      "lemma": "betrunken",
+      "pos": "adj",
+      "english": "drunk"
+    },
+    "verb_einzeln": {
+      "source": "einzeln",
+      "lemma": "einzeln",
+      "pos": "adj",
+      "english": "individual / separately"
+    },
+    "verb_entschlossen": {
+      "source": "entschlossen",
+      "lemma": "entschlossen",
+      "pos": "adj",
+      "english": "determined / resolved"
+    },
+    "verb_geboren": {
+      "source": "geboren",
+      "lemma": "geboren",
+      "pos": "adj",
+      "english": "born"
+    },
+    "verb_geschieden": {
+      "source": "geschieden",
+      "lemma": "geschieden",
+      "pos": "adj",
+      "english": "divorced"
+    },
+    "verb_geschlossen": {
+      "source": "geschlossen",
+      "lemma": "geschlossen",
+      "pos": "adj",
+      "english": "closed"
+    },
+    "verb_unentschieden": {
+      "source": "unentschieden",
+      "lemma": "unentschieden",
+      "pos": "adj",
+      "english": "undecided"
+    },
+    "verb_verboten": {
+      "source": "verboten",
+      "lemma": "verboten",
+      "pos": "adj",
+      "english": "forbidden / prohibited"
+    },
+    "verb_verschieden": {
+      "source": "verschieden",
+      "lemma": "verschieden",
+      "pos": "adj",
+      "english": "different"
+    },
+    "verb_willkommen": {
+      "source": "willkommen",
+      "lemma": "willkommen",
+      "pos": "adj",
+      "english": "welcome"
+    },
+    "verb_zufrieden": {
+      "source": "zufrieden",
+      "lemma": "zufrieden",
+      "pos": "adj",
+      "english": "satisfied"
+    },
+    "verb_bisschen": {
+      "source": "bisschen",
+      "lemma": "bisschen",
+      "pos": "other",
+      "english": "a little bit"
+    },
+    "verb_ein_bisschen": {
+      "source": "ein bisschen",
+      "lemma": "ein bisschen",
+      "pos": "other",
+      "english": "a little"
+    },
+    "verb_im_freien": {
+      "source": "im Freien",
+      "lemma": "im Freien",
+      "pos": "other",
+      "english": "outdoors"
+    },
+    "verb_gestorben": {
+      "source": "gestorben",
+      "lemma": "gestorben",
+      "pos": "other",
+      "english": "died"
+    },
+    "other_an_sein": {
+      "source": "an sein",
+      "lemma": "an sein",
+      "pos": "verb",
+      "english": "to be on"
+    },
+    "other_auf_sein": {
+      "source": "auf sein",
+      "lemma": "auf sein",
+      "pos": "verb",
+      "english": "to be up / open"
+    },
+    "other_aus_sein": {
+      "source": "aus sein",
+      "lemma": "aus sein",
+      "pos": "verb",
+      "english": "to be off / out"
+    },
+    "other_weg_sein": {
+      "source": "weg sein",
+      "lemma": "weg sein",
+      "pos": "verb",
+      "english": "to be away"
+    },
+    "other_weh_tun": {
+      "source": "weh tun",
+      "lemma": "weh tun",
+      "pos": "verb",
+      "english": "to hurt"
+    }
+  },
+  "additions": [
+    {
+      "id": "verb_in_rente_sein",
+      "lemma": "in Rente sein",
+      "pos": "verb",
+      "english": "to be retired",
+      "level": "B1",
+      "from_id": "other_in_rente_gehen_sein"
+    },
+    {
+      "id": "verb_in_pension_sein",
+      "lemma": "in Pension sein",
+      "pos": "verb",
+      "english": "to be retired",
+      "level": "B1",
+      "from_id": "other_in_pension_gehen_sein_d"
+    },
+    {
+      "id": "verb_pensioniert_sein",
+      "lemma": "pensioniert sein",
+      "pos": "verb",
+      "english": "to be retired",
+      "level": "B1",
+      "from_id": "other_pensioniert_werden_sein_d"
+    },
+    {
+      "id": "verb_dagegen_sein",
+      "lemma": "dagegen sein",
+      "pos": "verb",
+      "english": "to be against",
+      "level": "A2",
+      "from_id": "verb_dafur_dagegen_sein"
+    },
+    {
+      "id": "verb_verbieten",
+      "lemma": "verbieten",
+      "pos": "verb",
+      "english": "to forbid",
+      "level": "A2",
+      "from_id": "other_verbieten_verboten_sein"
+    }
+  ],
+  "sentence_moves": {
+    "5084": "verb_in_rente_sein",
+    "4887": "verb_in_pension_sein",
+    "4889": "verb_pensioniert_sein",
+    "6938": "verb_dagegen_sein",
+    "2270": "verb_ausziehen"
+  },
+  "merges": {
+    "verb_an_aus_ziehen": "verb_anziehen",
+    "verb_ab_fahren": "verb_abfahren",
+    "verb_ab_fliegen": "verb_abfliegen",
+    "verb_wer_wen": "other_wer",
+    "other_sein": "verb_sein",
+    "other_tun": "verb_tun",
+    "other_zu_sein": "verb_zu_sein"
+  }
+}

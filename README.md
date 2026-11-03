@@ -532,3 +532,15 @@ retains the latest schedule independently for each review track, preserves Learn
 and planted state, and increments affected learner versions to reject stale writes.
 The offline build runs `pipeline.merge_geburtsjahr` after enrichment; this step
 refuses to delete a duplicate with legacy SQLite learner progress.
+
+### Non-noun import repairs
+
+`pipeline/non-noun-repairs.json` records reviewed malformed verb groups, false
+verb classifications, example assignments and duplicate aliases. The build applies
+`python -m pipeline.non_noun_repairs` after enrichment. New split senses start
+unseen; existing progress stays with the primary sense or merges into an existing
+word using the same per-track schedule policy as Geburtsjahr. Spelling variants
+and optional reflexive forms stay together. `scripts/non-noun-repairs-migration.py`
+exports these changes as `202611030003_non_noun_repairs.sql`. Apply it locally
+with `supabase migration up --local`, or with `supabase db push --linked` when
+deploying. The ID prefixes are historical identifiers, not grammatical labels.

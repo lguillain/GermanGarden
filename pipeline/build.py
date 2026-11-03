@@ -17,7 +17,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from . import (activities, associations, enrich_sentences, goethe_json, merge_geburtsjahr, noun_forms, seed, sentences,
+from . import (activities, associations, enrich_sentences, goethe_json, merge_geburtsjahr, non_noun_repairs, noun_forms, seed, sentences,
                steps, tatoeba, translate, verb_objects, verify)
 from .db import session
 from .llm import available as llm_available
@@ -76,6 +76,7 @@ def main() -> None:
 
     with session() as conn:
         merge_geburtsjahr.run(conn)
+        non_noun_repairs.run(conn)
 
     verify.run()
 

@@ -17,6 +17,7 @@ A German vocabulary web app. Users discover words they care about, practise them
 | **Review** | A short knowledge check on a set of words. The only thing that changes growth stages. |
 
 ## Users and context
+- Distinct verb meanings and constructions are separate learning entries (for example, verbieten and verboten sein, or in Rente gehen and in Rente sein). Keep harmless spelling variants and optional reflexive pronouns together. When splitting an old grouped entry, retain its progress on one primary sense; additional senses start unseen. Move examples to the matching sense and merge into existing words rather than creating duplicates.
 - Noun dictionary entries include their canonical article and full plural, including unchanged forms such as Lehrer. Vocabulary corrections preserve learner progress. Confirmed duplicate words merge into the canonical ID: keep all review history, Learned marks and planted status, and retain the most recently reviewed schedule independently for recognition and production (canonical wins timestamp ties). Do not invent plurals for nouns without an ordinary plural in the taught sense.
 - Two users for now (the author and her husband), possibly more later.
 - The hosted app uses private email/password accounts created by the garden owner. Each account has its own progress, shared across devices; there is no public signup.

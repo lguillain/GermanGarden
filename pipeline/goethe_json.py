@@ -40,6 +40,11 @@ import unicodedata
 
 from .db import ROOT, session
 
+from .non_noun_repairs import repairs
+
+_REPAIRS = repairs()
+_NON_VERBS = {w["lemma"]: w["pos"] for w in _REPAIRS["updates"].values() if w["pos"] != "verb"}
+
 JSON_DIR = ROOT / "data" / "goethe"
 
 ARTICLE_RE = re.compile(r"^(der|die|das)\s+", re.IGNORECASE)
@@ -142,6 +147,8 @@ def _parse_noun_tail(tail: str, lemma: str) -> str | None:
 
 
 def _looks_like_verb(lemma: str, tail: list[str]) -> bool:
+    if lemma in _NON_VERBS:
+        return False
     # A conjugation tail like "gibt ab", "hat abgegeben" is a strong hint.
     for t in tail:
         if re.search(r"\b(hat|ist|habe|haben)\b", t):
@@ -154,6 +161,8 @@ def _looks_like_verb(lemma: str, tail: list[str]) -> bool:
 
 
 def _guess_pos_lower(lemma: str) -> str:
+    if lemma in _NON_VERBS:
+        return _NON_VERBS[lemma]
     low = lemma.lower()
     if low in _CONJ_WORDS: return "conj"
     if low in _ADV_WORDS:  return "adv"
@@ -237,6 +246,15 @@ def parse_headword(headword: str, level: str) -> list[dict]:
     (e.g. "der Freund, -e / die Freundin, -nen"). Does NOT split a slash
     that is part of a lemma like "ab-/anmelden" (we leave those as-is).
     """
+    # Reviewed grouped entries retain their legacy ID for one sense; any new
+    # sense gets its own word, without inheriting learner progress.
+    source = headword.split(",")[0].strip()
+    for wid, fixed in _REPAIRS["updates"].items():
+        if re.sub(r"\s*/\s*", "/", source) == re.sub(r"\s*/\s*", "/", fixed["source"]):
+            entries = [{"id": wid, **fixed}, *[w for w in _REPAIRS["additions"] if w["from_id"] == wid]]
+            return [{"id": w["id"], "lemma": w["lemma"], "pos": w["pos"],
+                     "english": w["english"], "article": None, "plural": None,
+                     "level": level, "goethe_headword": headword} for w in entries]
     # Split only on " / " surrounded by spaces — gender pairs are written that way.
     chunks = re.split(r"\s/\s", headword)
     # If any chunk doesn't contain a potential lemma head (e.g. "-nen"), treat
