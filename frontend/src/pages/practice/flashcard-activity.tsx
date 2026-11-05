@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { Word } from '../../api';
 import { WordCard } from '../../components/word-card';
+import { RelatedWordsDialog } from '../../components/related-words-dialog';
 
 type Direction = 'recognition' | 'production';
 
@@ -31,6 +32,7 @@ export function FlashcardActivity({
   action?: ReactNode;
   showDirection?: boolean;
 }) {
+  const [relatedTo, setRelatedTo] = useState<Word | null>(null);
   return (
     <div className="practice-flashcard-study">
       <div className="practice-flashcard-toolbar">
@@ -58,7 +60,19 @@ export function FlashcardActivity({
         direction={direction}
         revealed={revealed}
         onReveal={onReveal}
+        footerControls={
+          revealed && (
+            <button
+              className="button"
+              aria-haspopup="dialog"
+              onClick={() => setRelatedTo({ ...word, id: word.word_id || word.id })}
+            >
+              Related words
+            </button>
+          )
+        }
       />
+      <RelatedWordsDialog word={relatedTo} onClose={() => setRelatedTo(null)} />
       <div className="card-actions practice-flashcard-navigation">
         <button disabled={index === 0} onClick={onPrevious}>
           Previous

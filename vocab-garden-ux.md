@@ -124,7 +124,7 @@ Topic word lists apply the level visibility rules described below.
 - **Side panel:** the seed bag as a list of kept words, with actions to practise or review seeds.
 
 ## Practice and review
-- After reveal in either review direction, the card footer offers **Related words**, opening the same read-only popup as topic pages. Closing it preserves the revealed card and review progress; opening it never records a rating.
+- After reveal in either direction, review and practice flashcards (standalone and guided) offer **Related words** beside Context, opening the same read-only popup as topic pages. Closing it preserves the revealed card, direction, and session position; opening it never records a rating or changes learning progress. Related words hides again when the direction or card changes.
 - The practice menu, Reading, and Conversation load only word counts before starting. Context loads only when opened from a card and uses that card’s word, current topic (or its example-sentence topic), and learner CEFR level.
 - Both support planted words across the whole garden, planted words in one topic, or the seed bag. The **Plants / Seeds** switch keeps seeds separate from planted words and preserves the selected topic when switching back to plants.
 - Topic practice includes its planted and Learned words, including words marked Learned directly in the matcher. Unseen and Not now words must first be added to the seed bag to practise them.

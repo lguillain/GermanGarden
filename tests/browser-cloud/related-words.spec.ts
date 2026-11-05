@@ -102,3 +102,59 @@ for (const track of ['recognition', 'production']) {
     });
   }
 }
+
+for (const guided of [false, true]) {
+  for (const direction of ['recognition', 'production']) {
+    test(`${guided ? 'guided' : 'standalone'} practice offers related words after ${direction} reveal`, async ({ page }) => {
+      await page.addInitScript(() => localStorage.setItem('sb-auth-test-auth-token', JSON.stringify({
+        access_token: 'test-token', refresh_token: 'test-refresh', token_type: 'bearer', expires_at: Math.floor(Date.now()/1000)+3600,
+        user: { id: 'test', email: 'test@example.com', user_metadata: {} },
+      })));
+      const words = [
+        { id: 'fahrt', word_id: 'fahrt', lemma: 'Fahrt', article: 'die', pos: 'noun', english: 'journey', level: 'A2', growth: 1 },
+        { id: 'zug', word_id: 'zug', lemma: 'Zug', article: 'der', pos: 'noun', english: 'train', level: 'A2', growth: 1 },
+      ];
+      let relatedReads = 0;
+      await page.route('https://auth-test.supabase.co/**', async route => {
+        const path = new URL(route.request().url()).pathname.replace('/functions/v1/garden', '');
+        expect(route.request().method()).toBe('GET');
+        if (path === '/session') return route.fulfill({ json: { user: { name: 'Test', level: 'A2' }, ai_available: true } });
+        if (path === '/activities') return route.fulfill({ json: [] });
+        if (path === '/practice/summary') return route.fulfill({ json: { word_count: 2, counts: { plants: 2, seeds: 0 } } });
+        if (path === '/practice/weak') return route.fulfill({ json: { words } });
+        if (path === '/garden') return route.fulfill({ json: { plots: [], bag: [], topics: [] } });
+        if (path === '/flashcards') return route.fulfill({ json: { cards: words } });
+        if (path === '/words/fahrt/related') {
+          relatedReads++;
+          return route.fulfill({ json: related.fahrt });
+        }
+        throw new Error(`Unexpected request ${path}`);
+      });
+      await page.goto(guided ? '/#/practice' : '/#/practice/flashcards');
+      if (guided) {
+        await page.getByRole('button', { name: 'Start session', exact: true }).click();
+        await page.getByRole('button', { name: 'Go through flashcards' }).click();
+      }
+      await page.getByLabel('Flashcard direction').selectOption(direction);
+      await expect(page.getByRole('button', { name: 'Related words', exact: true })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Context', exact: true })).toBeVisible();
+      expect(relatedReads).toBe(0);
+      await page.getByRole('button', { name: direction === 'recognition' ? 'Show translation' : 'Show answer' }).click();
+      const before = await page.locator('.word-card').innerText();
+      await page.getByRole('button', { name: 'Related words', exact: true }).click();
+      const dialog = page.getByRole('dialog', { name: /Related words/ });
+      await expect(dialog.locator('.related-words-current')).toContainText('Fahrt');
+      await expect(dialog.getByRole('button', { name: /Fahrkarte/ })).toBeVisible();
+      await page.screenshot({ path: `test-results/practice-related-${guided}-${direction}.png`, fullPage: true });
+      await page.keyboard.press('Escape');
+      await expect(dialog).toBeHidden();
+      await expect(page.getByRole('button', { name: 'Related words', exact: true })).toBeFocused();
+      expect(await page.locator('.word-card').innerText()).toBe(before);
+      await expect(page.getByRole('progressbar', { name: 'Flashcard progress' })).toHaveAttribute('value', '1');
+      await page.getByLabel('Flashcard direction').selectOption(direction === 'recognition' ? 'production' : 'recognition');
+      await expect(page.getByRole('button', { name: 'Related words', exact: true })).toHaveCount(0);
+      await page.getByRole('button', { name: 'Next', exact: true }).click();
+      await expect(page.getByRole('button', { name: 'Related words', exact: true })).toHaveCount(0);
+    });
+  }
+}
