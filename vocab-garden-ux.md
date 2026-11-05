@@ -13,7 +13,7 @@ A German vocabulary web app. Users discover words they care about, practise them
 | **Seed bag** | The user's current set of newly kept words, not yet planted. At most 20. |
 | **Garden** | All words the user has planted, organised by topic. It is also the home screen. |
 | **Growth stage** | How well a user remembers a word, from seedling to fully grown. Determined by spaced repetition. |
-| **Practice** | Flashcards (including Forms), chat, or reading. Never changes growth stages. |
+| **Practice** | Flashcards (including Context), chat, or reading. Never changes growth stages. |
 | **Review** | A short knowledge check on a set of words. The only thing that changes growth stages. |
 
 ## Users and context
@@ -30,7 +30,7 @@ A German vocabulary web app. Users discover words they care about, practise them
 - The app uses Supabase accounts in development and production. Python is reserved for offline vocabulary creation and read-only imports; there is no local profile chooser.
 - The signed-in sidebar appears from browser login state while profile and page data load. Session bootstrap reads only the learner name, level, and AI availability, never vocabulary or learning progress. Topic names load separately when needed. Signed-in pages mount alongside session bootstrap. Headings, navigation, search/filter inputs, and practice-mode links stay available while independent data loads; loading/error messages are scoped to the affected content. AI actions wait for confirmed availability. Card decisions and review ratings remain disabled during saves to avoid conflicting writes. Server requests still verify authentication.
 - Supports laptops and phones. At phone widths (760px and below), navigation becomes a compact header with an expandable menu, and study flows use the full screen width. Opening another page closes the menu.
-- On phones, Find words starts with collapsed topic selection and seed bag panels, review ratings use a two-by-two grid, Forms opens as a full-width popup, and topic word tables become stacked rows while retaining sorting.
+- On phones, Find words starts with collapsed topic selection and seed bag panels, review ratings use a two-by-two grid, Context opens as a full-width popup, and topic word tables become stacked rows while retaining sorting.
 - The phone garden includes visible topic links and a labelled Seed bag button in Fresh finds, so navigation does not require hovering or selecting small artwork targets.
 - Not in scope: social features and adding your own vocabulary.
 
@@ -124,7 +124,7 @@ Topic word lists apply the level visibility rules described below.
 
 ## Practice and review
 - After reveal in either review direction, the card footer offers **Related words**, opening the same read-only popup as topic pages. Closing it preserves the revealed card and review progress; opening it never records a rating.
-- The practice menu, Reading, and Conversation load only word counts before starting. Forms loads its code and form options only when opened from a card; exercises use only that card’s word.
+- The practice menu, Reading, and Conversation load only word counts before starting. Context loads only when opened from a card and uses that card’s word, current topic (or its example-sentence topic), and learner CEFR level.
 - Both support planted words across the whole garden, planted words in one topic, or the seed bag. The **Plants / Seeds** switch keeps seeds separate from planted words and preserves the selected topic when switching back to plants.
 - Topic practice includes its planted and Learned words, including words marked Learned directly in the matcher. Unseen and Not now words must first be added to the seed bag to practise them.
 - Practice flashcards and review cards show each word's growth with the garden’s plant icon inside the card header, without a visible growth-stage or production-progress label. The icon retains an accessible description. AI practice shows its target vocabulary.
@@ -140,11 +140,13 @@ Topic word lists apply the level visibility rules described below.
 - In review and practice flashcards, noun articles are hidden in the word heading until the card is flipped.
 - Review and practice share the same word card and hide noun plurals until reveal in both directions.
 
-- The grammar playground is part of the **Forms** popup, not a separate practice mode. Practice flashcards offer Forms at any time; Review offers it only after reveal, in either direction. Existing grammar links redirect to flashcards with the selected word set preserved.
-- Forms opens a side popup for the current word, with the existing part-of-speech form selectors, Generate example, and sentence feedback. There is no word picker and no separately generated reference table. Examples and feedback use AI only when requested; opening the popup does not call AI.
-- Closing Forms (Close, Escape, or backdrop) returns focus to its button and preserves the card, direction, hint, reveal state, and review progress. Popup drafts and results survive reopening on the same card; changing words starts a fresh workspace. Forms never rates, plants, or changes schedules or growth. Learned words remain usable for this practice.
+- **Context** replaces the Forms grammar playground. Practice flashcards offer it at any time; Review offers it only after reveal, in either direction.
+- Opening Context loads a short English meaning/usage introduction, generating it on demand if missing. The introduction contains no example sentences. Cache it across accounts by word, topic, CEFR level and prompt version; concurrent opens reuse the same generation. Use the current topic or, in mixed-topic sets, the card’s example-sentence topic. With no learner level set, use A2.
+- Learners can ask follow-up questions, answered in English (German examples only when requested). Save conversations privately per account, word and topic across devices, retaining history across level changes. Clear conversation removes private messages while keeping the shared introduction. Use saved history as context for follow-ups, with the latest ten exchanges sent to the model to bound token use.
+- Context opens in a side popup, full width on phones. Close, Escape and backdrop dismissal return focus to its button and preserve the card, direction, hint, reveal state, and review progress. Drafts survive closing/reopening on the same card. Saved content remains readable when AI is unavailable; failed sends preserve the draft and can be retried without duplicating a successful reply.
+- Context never rates, plants, or changes schedules or growth. Learned words remain available.
 
-- Practice and review cards group level/part of speech and direction in a compact header. The word and example remain central; reveal and Forms share a footer, with Forms styled as a secondary tool.
+- Practice and review cards group level/part of speech and direction in a compact header. The word and example remain central; reveal and Context share a footer, with Context styled as a secondary tool.
 
 - Revealing an EN → DE card promotes the German answer (with its article) to the main heading, followed by its plural and German example. The English meaning and example move to a subdued context block below. This applies to practice and review.
 
@@ -157,7 +159,7 @@ Topic word lists apply the level visibility rules described below.
 - Practice defaults to words needing attention: planted, non-Learned words whose recognition or rated production track has a latest rating of Again/Hard, or a scheduled interval strictly shorter than one day. This is the interval, not time remaining until due. Newly unlocked, unrated production tracks do not qualify on their own. A word counts once across tracks; old ratings do not qualify a word after its current schedules improve.
 - Sort Again before Hard before other short-interval words, then shorter intervals and word ID. Weak-word sessions span the garden. Topic practice is a separate flow and does not filter by difficulty. Seed-bag practice remains a separate choice.
 - The practice overview states how many words need attention and how many sessions cover them once (ceiling of word count / 5). Starting a round snapshots that ordered list into stable groups of up to five; the final group can be smaller. New weak words join the next round.
-- Each session initially lists only its German words, including noun articles, without translations, difficulty reasons, or direction labels. It then offers optional flashcards or Skip to activity. Flashcards support both directions and Forms. Next, choose Conversation or Reading; both use exactly the same group of words. AI runs only when explicitly starting or submitting an activity.
+- Each session initially lists only its German words, including noun articles, without translations, difficulty reasons, or direction labels. It then offers optional flashcards or Skip to activity. Flashcards support both directions and Context. Next, choose Conversation or Reading; both use exactly the same group of words. AI runs only when explicitly starting or submitting an activity.
 - Finish session is explicit. Reading must have a successfully generated passage; conversation must have a successfully answered learner reply. Generating a chat greeting or finishing flashcards alone does not complete a session. Word-use checkmarks guide practice but do not gate completion.
 - Round completion is coverage, not mastery: show completed sessions, words practised, and sessions remaining. After completion offer another round, freshly selected from current schedules. No practice action changes review dates, ratings, planting, or growth.
 - Round groups, completion, current step, flashcard position/direction/reveal, reading passage, conversation and reply draft are saved in this browser, separately per account and word set. Leaving or refreshing resumes that round. This is not cross-device synchronization. If storage fails, show a warning and retain in-memory progress.
@@ -193,9 +195,9 @@ Topic word lists apply the level visibility rules described below.
 - Noun article choices appear directly beneath the heading inside the review card, close to the missing-article blank. The normal rating buttons appear below the card only after an article choice.
 - Before the article choice, DE → EN noun review headings show a blank before the noun (for example, “___ Baum”); reveal replaces it with the correct article. EN → DE keeps the English prompt to avoid giving away the German word.
 
-- In both guided and standalone practice, Previous and Next (or Continue to activity) sit below and outside the flashcard panel. Reveal, Hint, and Forms stay inside the card.
+- In both guided and standalone practice, Previous and Next (or Continue to activity) sit below and outside the flashcard panel. Reveal, Hint, and Context stay inside the card.
 
-- Practice flashcards show card progress in the review-style progress bar above the card, alongside the direction selector and activity navigation. The card contains only vocabulary and its reveal, hint, and Forms controls; no duplicate direction badge. This applies to guided and standalone practice.
+- Practice flashcards show card progress in the review-style progress bar above the card, alongside the direction selector and activity navigation. The card contains only vocabulary and its reveal, hint, and Context controls; no duplicate direction badge. This applies to guided and standalone practice.
 
 - During guided flashcards, the direction selector sits in the session summary beside the session heading and word progress. Skip to activity sits alongside Exit round in that header; neither appears beside the flashcard progress bar.
 

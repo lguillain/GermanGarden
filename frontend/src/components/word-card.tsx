@@ -1,6 +1,6 @@
 import { PlantIcon } from './garden-artwork';
 import { WordRegions } from './word-regions';
-import { FormsButton } from './forms-button';
+import { ContextButton } from './context-button';
 import { type ReactNode, useState } from 'react';
 import type { Word } from '../api';
 
@@ -34,7 +34,7 @@ interface WordCardProps {
   onReveal: () => void;
   direction?: 'recognition' | 'production';
   showDirection?: boolean;
-  forms?: 'practice' | 'review';
+  context?: 'practice' | 'review';
   revealControls?: ReactNode;
   articlePrompt?: boolean;
   promptControls?: ReactNode;
@@ -57,7 +57,7 @@ function WordCardContent({
   onReveal,
   direction,
   showDirection = true,
-  forms,
+  context,
   revealControls,
   articlePrompt = false,
   promptControls,
@@ -70,7 +70,7 @@ function WordCardContent({
     <article className="panel word-card">
       <div className="word-card-header">
         <div className="word-card-context">
-          {forms && <PlantIcon word={word} />}
+          {context && <PlantIcon word={word} />}
           <div className="word-meta">
             {word.level} <span>·</span> {word.pos}
           </div>
@@ -166,8 +166,8 @@ function WordCardContent({
           </div>
           {footerControls && <div className="actions">{footerControls}</div>}
         </div>
-        {(forms === 'practice' || (forms === 'review' && revealed)) && (
-          <FormsButton key={word.id} word={word} />
+        {(context === 'practice' || (context === 'review' && revealed)) && (
+          <ContextButton key={word.id} word={word} />
         )}
       </div>
     </article>

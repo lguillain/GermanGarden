@@ -52,7 +52,7 @@ export function FlashcardActivity({
       </div>
       <WordCard
         key={`${word.id}:${direction}`}
-        forms="practice"
+        context="practice"
         showDirection={false}
         word={word}
         direction={direction}

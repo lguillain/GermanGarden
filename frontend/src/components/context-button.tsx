@@ -3,39 +3,42 @@ import { lazy, Suspense, useId, useRef, useState } from 'react';
 import type { Word } from '../api';
 import { Loading } from './feedback';
 
-const FormsWorkspace = lazy(() => import('./forms-workspace'));
+const ContextWorkspace = lazy(() => import('./context-workspace'));
 
-export function FormsButton({ word }: { word: Word }) {
+export function ContextButton({ word }: { word: Word }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const [opened, setOpened] = useState(false);
+  const [mounted, setMounted] = useState(false);
   return (
-    <div className="card-forms">
+    <div className="card-context">
       <button
         className="button"
         aria-haspopup="dialog"
         onClick={() => {
+          setMounted(true);
           setOpened(true);
           dialog.current?.showModal();
         }}
       >
-        Forms
+        Context
       </button>
       <dialog
         ref={dialog}
-        className="forms-dialog"
+        className="context-dialog"
         aria-labelledby={titleId}
+        onClose={() => setOpened(false)}
         onClick={closeOnBackdropClick}
       >
-        <header className="forms-dialog-header">
-          <h2 id={titleId}>Forms</h2>
+        <header className="context-dialog-header">
+          <h2 id={titleId}>Context</h2>
           <button autoFocus onClick={() => dialog.current?.close()}>
             Close
           </button>
         </header>
-        {opened && (
+        {mounted && (
           <Suspense fallback={<Loading />}>
-            <FormsWorkspace word={word} />
+            <ContextWorkspace word={word} open={opened} />
           </Suspense>
         )}
       </dialog>

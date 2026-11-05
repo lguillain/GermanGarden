@@ -306,15 +306,15 @@ export function DesignPage() {
           <div>
             <h3>Practice</h3>
             <p className="muted">
-              Direction and progress sit above; Previous and Next sit below. Forms is a secondary
+              Direction and progress sit above; Previous and Next sit below. Context is a secondary
               tool. Practice never changes growth.
             </p>
           </div>
           <div>
             <h3>Review</h3>
             <p className="muted">
-              Nouns require an article choice before reveal. Ratings sit below; Forms appears after
-              reveal. Each rated seed is planted immediately.
+              Nouns require an article choice before reveal. Ratings sit below; Context appears
+              after reveal. Each rated seed is planted immediately.
             </p>
           </div>
         </div>
@@ -423,7 +423,7 @@ export function DesignPage() {
           </Example>
           <Example
             title="Dialogs"
-            usage="Upcoming reviews uses a centered dialog; Forms uses a right-side sheet, full width on phones. Both support Escape, Close and backdrop dismissal."
+            usage="Upcoming reviews uses a centered dialog; Context uses a right-side sheet, full width on phones. Both support Escape, Close and backdrop dismissal."
           >
             <button onClick={() => dialog.current?.showModal()}>Preview dialog</button>
             <dialog

@@ -227,7 +227,7 @@ level, plus the AI availability flag; `/activities` separately returns cached
 topic IDs and names when a page needs them. The garden skips sentences too.
 The practice menu, Reading, and Conversation call `/practice/summary`, backed by
 `load_practice_summary`, which counts seeds/plants without loading word details
-or scheduling history. Forms loads `/grammar/options` only when opened and uses `/grammar` for examples and sentence feedback for the current card. Opening it never calls AI or changes progress. Signed-in pages mount alongside session bootstrap, so their data requests run
+or scheduling history. Context loads `/context` only when opened, reusing a shared cached English introduction and private saved chat. It never changes progress. Signed-in pages mount alongside session bootstrap, so their data requests run
 concurrently. Headings, navigation, and independent controls stay visible; only
 data-dependent content waits for its API response. Browser queries stay fresh for 30 seconds; keep/review
 mutations invalidate the affected counts and word lists.
@@ -435,13 +435,23 @@ and their RPCs, and removes time fields from progress reads and imports.
 Vocabulary progress, review history, and review schedules are preserved.
 Dataset schema initialization drops old SQLite `sessions` tables. Exports no longer include time-tracking data.
 
-### Forms popup
+### Word context
 
-Forms replaces the standalone grammar playground. It is available on practice
-flashcards at any time and on review cards after reveal. Old grammar URLs redirect
-to flashcards, preserving the word set. The popup reuses the existing grammar
-exercises and is loaded on demand. Deploy the garden function and frontend together
-for the new `/grammar/options` endpoint; no database migration is needed.
+Context replaces Forms on practice flashcards and revealed review cards. Opening
+it generates a short English meaning/usage explanation with no example sentences,
+using the current topic (or card sentence topic) and learner CEFR level. Introductions
+are shared by word/topic/level; follow-up chats belong to the authenticated account
+and word/topic and persist across devices. Clear conversation retains the introduction.
+
+Apply `202611050001_word_context.sql` with `supabase migration up --local` locally
+or `supabase db push` for the linked hosted project before deploying the garden
+Edge Function (`supabase functions deploy garden`) and frontend. The existing
+`ANTHROPIC_API_KEY` and optional `ANTHROPIC_MODEL` configuration are reused.
+Database leases prevent overlapping generation; request IDs deduplicate retried
+chat sends. Documents are accessible only through the authenticated Edge Function;
+private keys use the verified account ID. No learner data belongs in exports or commits.
+The last ten exchanges are included in follow-up prompts; the full history stays saved.
+
 
 ### Guided weak-word practice
 

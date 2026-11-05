@@ -1,3 +1,4 @@
+import { wordContext, type ContextStorage } from './word-context.ts';
 import { topicKeepRequest, topicKeepResponse, type TopicKeepResult } from './topic-keep.ts';
 import { matcherPreview } from './matcher-preview.ts';
 import { relatedWordIds } from './related-words.ts';
@@ -5,6 +6,7 @@ import { Garden, grammarOptions, reviewSelectionResponse } from './domain.ts';
 import { Body, Complete, text, aiPractice, guidance } from './ai.ts';
 import { Catalog, Learner, ReviewSelection, HttpError, requireThat, shuffle } from './model.ts';
 export interface Store {
+  context?: ContextStorage;
   keepTopicWord?(wordId: string, topic: string): Promise<TopicKeepResult>;
   associations?(wordId: string): Promise<string[]>;
   verbObjects?(wordId: string, pos: string): Promise<{ related_id: string; phrase: string }[]>;
@@ -157,6 +159,10 @@ export async function dispatch(
     }
   }
   if (method === 'POST') {
+    if (path === '/context') {
+      requireThat(store.context, 'Context storage is unavailable.', 503);
+      return wordContext(body, garden, store.context, complete);
+    }
     if (path === '/level-up')
       return transact(
         store,

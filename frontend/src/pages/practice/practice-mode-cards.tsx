@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 
 export type PracticeMode = 'flashcards' | 'chat' | 'read';
 const modes: { mode: PracticeMode; title: string; description: string }[] = [
-  { mode: 'flashcards', title: 'Flashcards', description: 'Flip cards and explore word forms.' },
+  { mode: 'flashcards', title: 'Flashcards', description: 'Flip cards and explore word context.' },
   { mode: 'chat', title: 'Conversation', description: 'Use your words in a German conversation.' },
   { mode: 'read', title: 'Reading', description: 'Read a short passage using your words.' },
 ];

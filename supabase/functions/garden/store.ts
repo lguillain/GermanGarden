@@ -20,7 +20,37 @@ export function createStore(admin: SupabaseClient, options: StoreOptions): Store
   let loadFunction = 'load_learner_progress';
   if (scoped) loadFunction = 'load_scoped_progress';
   else if (matcher) loadFunction = 'load_matcher_progress';
+  const contextKey = (key: string, shared: boolean) => `${shared ? 'shared' : userId}:${key}`;
   return {
+    context: {
+      async read(key, shared) {
+        const { data, error } = await admin
+          .from('word_context_documents')
+          .select('content')
+          .eq('key', contextKey(key, shared))
+          .maybeSingle();
+        if (error) throw error;
+        return data?.content ?? null;
+      },
+      async claim(key, shared, token) {
+        const { data, error } = await admin.rpc('claim_word_context', {
+          p_key: contextKey(key, shared),
+          p_user_id: shared ? null : userId,
+          p_token: token,
+        });
+        if (error) throw error;
+        return data;
+      },
+      async finish(key, shared, token, content) {
+        const { data, error } = await admin.rpc('finish_word_context', {
+          p_key: contextKey(key, shared),
+          p_token: token,
+          p_content: content,
+        });
+        if (error) throw error;
+        return data === true;
+      },
+    },
     async keepTopicWord(wordId, topic) {
       const { data, error } = await measure('keep', () =>
         admin.rpc('keep_topic_word', {
