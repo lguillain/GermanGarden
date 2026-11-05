@@ -146,6 +146,7 @@ export function MatcherPage() {
               <div className="matcher-card">
                 <WordCard
                   key={card.word_id}
+                  context="discovery"
                   word={card}
                   revealed={revealed}
                   onReveal={() => setRevealed(true)}

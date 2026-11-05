@@ -12,7 +12,7 @@ interface ContextReply {
 export default function ContextWorkspace({ word, open }: { word: Word; open: boolean }) {
   const session = useOutletContext<Session | undefined>();
   const [params] = useSearchParams();
-  const topic = params.get('topic') || word.activity_id || '';
+  const topic = word.activity_id || params.get('topic') || '';
   const queryClient = useQueryClient();
   const queryKey = ['word-context', word.id, topic, session?.user.level];
   const [question, setQuestion] = useState('');

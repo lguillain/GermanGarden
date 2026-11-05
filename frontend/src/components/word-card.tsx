@@ -34,7 +34,7 @@ interface WordCardProps {
   onReveal: () => void;
   direction?: 'recognition' | 'production';
   showDirection?: boolean;
-  context?: 'practice' | 'review';
+  context?: 'practice' | 'review' | 'discovery';
   revealControls?: ReactNode;
   articlePrompt?: boolean;
   promptControls?: ReactNode;
@@ -70,7 +70,7 @@ function WordCardContent({
     <article className="panel word-card">
       <div className="word-card-header">
         <div className="word-card-context">
-          {context && <PlantIcon word={word} />}
+          {context && context !== 'discovery' && <PlantIcon word={word} />}
           <div className="word-meta">
             {word.level} <span>·</span> {word.pos}
           </div>
@@ -166,8 +166,11 @@ function WordCardContent({
           </div>
           {footerControls && <div className="actions">{footerControls}</div>}
         </div>
-        {(context === 'practice' || (context === 'review' && revealed)) && (
-          <ContextButton key={word.id} word={word} />
+        {(context === 'practice' || (context && revealed)) && (
+          <ContextButton
+            key={word.word_id || word.id}
+            word={{ ...word, id: word.word_id || word.id }}
+          />
         )}
       </div>
     </article>
