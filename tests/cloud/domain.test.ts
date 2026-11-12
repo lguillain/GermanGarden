@@ -45,10 +45,11 @@ test('seed bag capacity, practice, planting and review completion', () => {
   assert.throws(() => g.add('word-20', 'home'), /full/);
   const before = structuredClone(g.state); g.practice('bag', ''); g.targets('bag', '');
   assert.deepEqual(g.state, before);
+  g.state.srs['word-0'] = { ...initialSrs(), due_at: g.iso(), article: { ...initialSrs(), due_at: '2099-01-01' } };
   g.grade('word-0', 3, 'bag'); assert.equal(g.bag().length, 19); assert.equal(g.scope().length, 1);
   assert.equal(g.review().card, null); assert.equal(g.review().remaining, 0);
   assert.equal(g.review('topic', 'home').card, null);
-  assert.throws(() => g.grade('word-0', 3), /no longer due/);
+  assert.throws(() => g.grade('word-0', 3, 'all', '', 'recognition', [], 'recognition'), /no longer due/);
   g.add('word-20', 'home'); assert.equal(g.bag().length, 20);
   g.now += 86_401_000;
   assert.equal(g.review().card?.word_id, 'word-0'); assert.equal(g.details(g.word('word-0')).review_due, true);
@@ -241,7 +242,7 @@ test('today counts each planted word once across tracks, including overdue but e
   for (let i = 0; i < 8; i++) {
     g.add(`word-${i}`, 'home');
     g.kept(`word-${i}`)!.planted_at = g.iso();
-    g.state.srs[`word-${i}`] = { ...initialSrs(), due_at: '2026-10-26T12:00:00Z' };
+    g.state.srs[`word-${i}`] = { ...initialSrs(), due_at: '2026-10-26T12:00:00Z', article: { ...initialSrs(), due_at: '2099-01-01' } };
   }
   g.state.srs['word-0'].due_at = '2026-10-24T10:00:00Z'; // overdue
   g.state.srs['word-1'].due_at = '2026-10-25T22:59:59Z'; // just before local midnight
@@ -275,7 +276,7 @@ test('today uses local calendar dates across DST and UTC date boundaries', () =>
     g.now = Date.parse(now);
     g.add('word-0', 'home');
     g.kept('word-0')!.planted_at = g.iso();
-    g.state.srs['word-0'] = { ...initialSrs(), due_at: lastToday };
+    g.state.srs['word-0'] = { ...initialSrs(), due_at: lastToday, article: { ...initialSrs(), due_at: '2099-01-01' } };
     assert.equal(g.home(zone).summary.due_today, 1);
     assert.equal(g.home(zone).summary.due_now, 0);
     g.state.srs['word-0'].due_at = tomorrow;

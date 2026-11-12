@@ -1,73 +1,87 @@
 import { invalidateProgress } from '../queries/invalidate-progress';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import type { Card, Word } from '../api';
 import { api } from '../api';
+import { storageGet, storageRemove, storageSet } from '../browser-storage';
 import { Empty, ErrorNotice, Heading, Loading } from '../components/feedback';
+import { ProgressBar } from '../components/progress-bar';
+import { useRelatedWords } from '../components/related-words-dialog';
+import { DIRECTION_LABELS, RATING_LABELS, hasArticle } from '../components/review-terms';
+import { SegmentedLinks } from '../components/segmented-links';
 import { WordCard } from '../components/word-card';
-import { RelatedWordsDialog } from '../components/related-words-dialog';
 import { WordSetSwitch } from '../components/word-set-switch';
+import { useAccountId } from '../hooks/use-account-id';
+import { reviewMode } from '../hooks/use-review-mode';
 import { useScope } from '../hooks/use-scope';
+import { plural } from '../plural';
+import { ArticleChoices } from './article-choices';
+import { ArticleReviewCard } from './article-review-card';
 
 function reviewDelay(seconds: number) {
   if (seconds < 3600) return `${Math.max(1, Math.round(seconds / 60))} min`;
   if (seconds < 86400) return `${Math.round(seconds / 3600)} hr`;
   const days = Math.round((seconds / 86400) * 10) / 10;
-  return `${days} ${days === 1 ? 'day' : 'days'}`;
+  return `${days} ${plural(days, 'day')}`;
+}
+// The next card in this set, skipping words already reviewed this visit.
+function reviewPath(query: string, mode: string, reviewed: string[]) {
+  const params = new URLSearchParams(query);
+  params.set('mode', mode);
+  reviewed.forEach((id) => params.append('exclude', id));
+  return `/review?${params}`;
 }
 
 interface ReviewResult {
   card: Card | null;
+  mode_counts?: Record<string, number>;
   remaining: number;
   counts: { plants: number; seeds: number };
   graduated?: Word | null;
 }
-export function ReviewPage() {
+export function ReviewPage({ articles = false }: { articles?: boolean }) {
   const { query } = useScope();
-  const cache = useQueryClient();
-  const user = cache.getQueryData<{ id: string }>(['auth'])?.id || 'pending';
-  return <ReviewSession key={`${user}:${query}`} storageKey={`garden-review:${user}:${query}`} />;
+  const [params] = useSearchParams();
+  const mode = reviewMode(params, articles);
+  const user = useAccountId() || 'pending';
+  if (!articles && mode === 'article') return <Navigate to={`/articles${query}`} replace />;
+  return (
+    <ReviewSession
+      key={`${user}:${query}:${mode}`}
+      storageKey={`garden-review:v2:${user}:${query}:${mode}`}
+      mode={mode}
+    />
+  );
 }
-function ReviewSession({ storageKey }: { storageKey: string }) {
+function ReviewSession({ storageKey, mode }: { storageKey: string; mode: string }) {
   const { scope, topic, query, label } = useScope();
   const cache = useQueryClient();
   const [revealed, setRevealed] = useState(false);
-  const [relatedTo, setRelatedTo] = useState<Word | null>(null);
-  const [session, saveSession] = useState<{ reviewed: string[]; graduated: Word | null }>(() => {
+  const related = useRelatedWords();
+  const [session, saveSession] = useState<{
+    reviewed: string[];
+    graduated: Word | null;
+    pending?: Card;
+    articleCorrect?: boolean;
+    articleChoice?: string;
+  }>(() => {
     try {
-      const saved = JSON.parse(sessionStorage.getItem(storageKey) || 'null');
+      const saved = JSON.parse(storageGet('session', storageKey) || 'null');
       if (saved && Array.isArray(saved.reviewed)) return saved;
     } catch {
-      /* Start a fresh session if browser storage is unavailable. */
+      /* Start a fresh session if the saved one is unreadable. */
     }
     return { reviewed: [], graduated: null };
   });
-  useEffect(() => {
-    try {
-      sessionStorage.setItem(storageKey, JSON.stringify(session));
-    } catch {
-      /* Storage is optional. */
-    }
-  }, [storageKey, session]);
-  useEffect(() => {
-    return () => {
-      try {
-        sessionStorage.removeItem(storageKey);
-      } catch {
-        /* Storage is optional. */
-      }
-    };
-  }, [storageKey]);
+  // Session storage is optional; a lost save only restarts this visit's exclusions.
+  useEffect(() => void storageSet('session', storageKey, session), [storageKey, session]);
+  useEffect(() => () => void storageRemove('session', storageKey), [storageKey]);
   const reviewed = new Set(session.reviewed);
   const key = ['review', storageKey];
   const result = useQuery({
     queryKey: key,
-    queryFn: () => {
-      const params = new URLSearchParams(query);
-      session.reviewed.forEach((id) => params.append('exclude', id));
-      return api<ReviewResult>(`/review?${params}`);
-    },
+    queryFn: () => api<ReviewResult>(reviewPath(query, mode, session.reviewed)),
     staleTime: Infinity,
     refetchOnMount: 'always',
   });
@@ -78,18 +92,22 @@ function ReviewSession({ storageKey }: { storageKey: string }) {
       invalidateProgress(cache, 'review');
     },
   });
+  const card = session.pending || result.data?.card;
   const grade = useMutation({
-    mutationFn: (value: number) =>
+    mutationFn: (value: number | 'wrong-article') =>
       api<ReviewResult>('/review', {
-        word_id: result.data!.card!.word_id,
-        grade: value,
+        word_id: card!.word_id,
+        grade: value === 'wrong-article' ? 3 : value,
+        wrong_article: value === 'wrong-article',
         scope,
         topic,
-        track: result.data!.card!.track || 'recognition',
+        track: card!.track || 'recognition',
         excluded: session.reviewed,
+        mode,
+        continuation: !!session.pending,
       }),
     onSuccess: (data) => {
-      const reviewedId = result.data!.card!.word_id;
+      const reviewedId = card!.word_id;
       cache.setQueryData(key, data);
       cache.invalidateQueries({ queryKey: ['review'], refetchType: 'none' });
       invalidateProgress(cache, 'review');
@@ -100,33 +118,86 @@ function ReviewSession({ storageKey }: { storageKey: string }) {
       });
     },
   });
-  const card = result.data?.card;
-  const expectedArticle = card?.article?.trim().toLowerCase();
-  const checkArticle =
-    card?.pos === 'noun' && ['der', 'die', 'das'].includes(expectedArticle || '');
-  const chooseArticle = () => {
-    if (grade.isPending || revealed) return;
-    setRevealed(true);
+
+  const checkArticle = mode !== 'production' && hasArticle(card);
+  const articleGrade = useMutation({
+    mutationFn: (choice: string) =>
+      api<{ card: Card; correct: boolean }>('/review/article', {
+        word_id: card!.word_id,
+        choice,
+        expected_article_reviewed_at: card!.article_reviewed_at || null,
+        scope,
+        topic,
+        mode,
+        excluded: session.reviewed,
+      }),
+    onSuccess: (data, choice) => {
+      saveSession({
+        ...session,
+        pending: data.card,
+        articleCorrect: data.correct,
+        articleChoice: choice,
+      });
+      void result.refetch();
+      invalidateProgress(cache, 'review');
+    },
+  });
+  const nextArticle = async () => {
+    const reviewed = [...session.reviewed, card!.word_id];
+    const data = await api<ReviewResult>(reviewPath(query, mode, reviewed));
+    cache.setQueryData(key, data);
+    saveSession({ reviewed, graduated: null });
   };
+  const advance = useMutation({ mutationFn: nextArticle });
+  const busy = grade.isPending || articleGrade.isPending || advance.isPending;
+  const articleChoices = checkArticle ? (
+    <ArticleChoices
+      article={card?.article}
+      choice={session.articleChoice}
+      answered={!!session.pending}
+      busy={busy}
+      onChoose={articleGrade.mutate}
+    />
+  ) : undefined;
   return (
     <>
-      <Heading title="Review" actions={<WordSetSwitch counts={result.data?.counts} />}>
+      <Heading
+        title={mode === 'article' ? 'Articles' : 'Review'}
+        actions={
+          <>
+            {mode !== 'article' && (
+              <SegmentedLinks
+                label="Review mode"
+                current="page"
+                links={(['production', 'recognition'] as const).map((value) => ({
+                  key: value,
+                  to: `/review${query}&mode=${value}`,
+                  active: mode === value,
+                  children: DIRECTION_LABELS[value],
+                  count: result.data?.mode_counts?.[value],
+                }))}
+              />
+            )}
+            <WordSetSwitch counts={result.data?.counts} />
+          </>
+        }
+      >
         {scope === 'topic' ? label : undefined}
       </Heading>
-      <div className="study">
+      <div className={`study${mode === 'article' ? ' article-study' : ''}`}>
         {result.data && (
-          <div className="review-progress">
-            <div className="review-progress-counts">
-              <span>{reviewed.size} reviewed</span>
-              <span>{result.data.remaining} to review</span>
-            </div>
-            <progress
-              aria-label="Review progress"
-              aria-valuetext={`${reviewed.size} words reviewed this visit, ${result.data.remaining} words to review`}
-              value={reviewed.size}
-              max={Math.max(1, reviewed.size + result.data.remaining)}
-            />
-          </div>
+          <ProgressBar
+            counts={
+              <>
+                <span>{reviewed.size} reviewed</span>
+                <span>{result.data.remaining} to review</span>
+              </>
+            }
+            label="Review progress"
+            valueText={`${reviewed.size} words reviewed this visit, ${result.data.remaining} words to review`}
+            value={reviewed.size}
+            max={reviewed.size + result.data.remaining}
+          />
         )}
         {session.graduated ? (
           <div className="panel">
@@ -152,10 +223,22 @@ function ReviewSession({ storageKey }: { storageKey: string }) {
           <Loading />
         ) : result.error ? (
           <ErrorNotice error={result.error} />
+        ) : card && mode === 'article' ? (
+          <ArticleReviewCard
+            card={card}
+            answered={!!session.pending}
+            correct={session.articleCorrect}
+            choice={session.articleChoice}
+            busy={busy}
+            advanceFailed={advance.isError}
+            onChoose={articleGrade.mutate}
+            onNext={advance.mutate}
+          />
         ) : card ? (
           <>
             <WordCard
               context="review"
+              showDirection={false}
               key={card.word_id}
               word={card}
               revealed={revealed}
@@ -165,45 +248,34 @@ function ReviewSession({ storageKey }: { storageKey: string }) {
                   <button
                     className="button"
                     aria-haspopup="dialog"
-                    disabled={grade.isPending}
-                    onClick={() => setRelatedTo({ ...card, id: card.word_id })}
+                    disabled={busy}
+                    onClick={() => related.show(card)}
                   >
                     Related words
                   </button>
                 )
               }
-              hintsEnabled={!checkArticle}
-              articlePrompt={checkArticle}
-              revealControls={checkArticle ? false : undefined}
-              promptControls={
-                checkArticle ? (
-                  <fieldset className="review-article-choice">
-                    <legend>Choose the correct article</legend>
-                    <div className="actions">
-                      {['der', 'die', 'das'].map((article) => (
-                        <button
-                          key={article}
-                          disabled={grade.isPending || revealed}
-                          onClick={chooseArticle}
-                        >
-                          {article}
-                        </button>
-                      ))}
-                    </div>
-                  </fieldset>
-                ) : undefined
-              }
+              hintsEnabled={!checkArticle || !!session.pending}
+              articlePrompt={checkArticle && !session.pending}
+              articleAnswered={!!session.pending}
+              revealControls={checkArticle && !session.pending ? false : undefined}
             />
+            {articleChoices && <div className="article-answer-controls">{articleChoices}</div>}
             {revealed && (
               <div className="grade-actions">
+                {mode === 'production' && hasArticle(card) && (
+                  <button disabled={busy} onClick={() => grade.mutate('wrong-article')}>
+                    <strong>Wrong article</strong>
+                  </button>
+                )}
                 {card.rating_options?.map((option) => (
                   <button
                     key={option.grade}
-                    disabled={grade.isPending}
+                    disabled={busy}
                     className={option.grade === 3 ? 'primary' : ''}
                     onClick={() => grade.mutate(option.grade)}
                   >
-                    <strong>{['Again', 'Hard', 'Good', 'Easy'][option.grade - 1]}</strong>
+                    <strong>{RATING_LABELS[option.grade - 1]}</strong>
                     <span className="rating-delay">
                       In {reviewDelay(option.next_review_seconds)}
                     </span>
@@ -233,11 +305,13 @@ function ReviewSession({ storageKey }: { storageKey: string }) {
             <Link to="/matcher">Find new words</Link>.
           </Empty>
         )}
-        <ErrorNotice error={grade.error} />
+        <ErrorNotice error={grade.error || articleGrade.error || advance.error} />
         {grade.error && (
           <button
             onClick={() => {
               grade.reset();
+              articleGrade.reset();
+              saveSession({ ...session, pending: undefined });
               setRevealed(false);
               result.refetch();
             }}
@@ -246,7 +320,7 @@ function ReviewSession({ storageKey }: { storageKey: string }) {
           </button>
         )}
       </div>
-      <RelatedWordsDialog word={relatedTo} onClose={() => setRelatedTo(null)} />
+      {related.dialog}
     </>
   );
 }

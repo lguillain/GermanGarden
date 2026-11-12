@@ -1,6 +1,6 @@
 import { text, type Body, type Complete, type Message } from './ai.ts';
 import { Garden } from './domain.ts';
-import { requireThat } from './model.ts';
+import { MESSAGES, requireThat } from './model.ts';
 
 export interface ContextDocument {
   introduction?: string;
@@ -27,10 +27,7 @@ export async function wordContext(
   const requestedTopic = text(body, 'topic');
   if (requestedTopic) {
     garden.topic(requestedTopic);
-    requireThat(
-      garden.inTopic(word.id, requestedTopic),
-      'This word does not belong to this topic.',
-    );
+    requireThat(garden.inTopic(word.id, requestedTopic), MESSAGES.wrongTopic);
   }
   const card = garden.sentence(word, requestedTopic);
   const topic = card.activity_id || '';

@@ -3,7 +3,8 @@ import { tracksDatabase, otherAccount } from '../helpers/review-tracks';
 import { connectPage } from '../helpers/cloud-page';
 import { revealReviewCard } from '../helpers/study';
 
-for (const width of [320, 390, 768, 1440]) {
+// The layout branches at 760px: one phone width and one desktop width cover both paths.
+for (const width of [320, 1440]) {
   test(`discover, practise, plant and revisit a topic at ${width}px`, async ({ page }) => {
     const { db, catalog, store } = await tracksDatabase();
     try {

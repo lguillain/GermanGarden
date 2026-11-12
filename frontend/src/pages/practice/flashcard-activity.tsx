@@ -1,7 +1,9 @@
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import type { Word } from '../../api';
 import { WordCard } from '../../components/word-card';
-import { RelatedWordsDialog } from '../../components/related-words-dialog';
+import { useRelatedWords } from '../../components/related-words-dialog';
+import { ProgressBar } from '../../components/progress-bar';
+import { DIRECTION_LABELS } from '../../components/review-terms';
 
 type Direction = 'recognition' | 'production';
 
@@ -32,23 +34,21 @@ export function FlashcardActivity({
   action?: ReactNode;
   showDirection?: boolean;
 }) {
-  const [relatedTo, setRelatedTo] = useState<Word | null>(null);
+  const related = useRelatedWords();
   return (
     <div className="practice-flashcard-study">
       <div className="practice-flashcard-toolbar">
-        <div className="review-progress">
-          <div className="review-progress-counts">
+        <ProgressBar
+          counts={
             <span>
               Card {index + 1} of {count}
             </span>
-          </div>
-          <progress
-            aria-label="Flashcard progress"
-            aria-valuetext={`Card ${index + 1} of ${count}`}
-            value={index + 1}
-            max={Math.max(1, count)}
-          />
-        </div>
+          }
+          label="Flashcard progress"
+          valueText={`Card ${index + 1} of ${count}`}
+          value={index + 1}
+          max={count}
+        />
         {showDirection && <FlashcardDirection direction={direction} onDirection={onDirection} />}
         {action}
       </div>
@@ -62,17 +62,13 @@ export function FlashcardActivity({
         onReveal={onReveal}
         footerControls={
           revealed && (
-            <button
-              className="button"
-              aria-haspopup="dialog"
-              onClick={() => setRelatedTo({ ...word, id: word.word_id || word.id })}
-            >
+            <button className="button" aria-haspopup="dialog" onClick={() => related.show(word)}>
               Related words
             </button>
           )
         }
       />
-      <RelatedWordsDialog word={relatedTo} onClose={() => setRelatedTo(null)} />
+      {related.dialog}
       <div className="card-actions practice-flashcard-navigation">
         <button disabled={index === 0} onClick={onPrevious}>
           Previous
@@ -96,8 +92,8 @@ export function FlashcardDirection({
     <label className="practice-direction">
       <span className="sr-only">Flashcard direction</span>
       <select value={direction} onChange={(event) => onDirection(event.target.value as Direction)}>
-        <option value="recognition">DE → EN</option>
-        <option value="production">EN → DE</option>
+        <option value="recognition">{DIRECTION_LABELS.recognition}</option>
+        <option value="production">{DIRECTION_LABELS.production}</option>
       </select>
     </label>
   );

@@ -2,7 +2,9 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/browser-cloud',
-  workers: 1,
+  // Each test mocks its own routes and builds its own database, so tests run in parallel.
+  fullyParallel: true,
+  workers: 4,
   use: { baseURL: 'http://127.0.0.1:5174', trace: 'retain-on-failure' },
   webServer: {
     command: 'npm run dev -- --port 5174 --strictPort',

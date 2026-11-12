@@ -1,13 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { signIn } from '../helpers/cloud-page';
 
 const counts = { unseen: 1, skipped: 0, seeds: 0, planted: 0, due: 0, grown: 0 };
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('sb-auth-test-auth-token', JSON.stringify({
-    access_token: 'test-token', refresh_token: 'test-refresh', token_type: 'bearer',
-    expires_at: Math.floor(Date.now() / 1000) + 3600,
-    user: { id: 'test-user', email: 'test@vocab-garden.test', user_metadata: {} },
-  })));
+  await signIn(page, { email: 'test@vocab-garden.test' });
   await page.route('**/functions/v1/garden/practice/weak?*', route => route.fulfill({ json: { words: [] } }));
   await page.route('https://auth-test.supabase.co/**', async route => {
     const path = new URL(route.request().url()).pathname;

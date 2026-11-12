@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { signIn } from '../helpers/cloud-page';
 
 const words = [
   { id: 'tree', lemma: 'Baum', article: 'der', english: 'tree', pos: 'noun', level: 'A2', status: 'new', visual_stage: 'unseen', growth: 0 },
@@ -6,10 +7,7 @@ const words = [
 ];
 for (const outcome of ['added', 'duplicate', 'full'] as const) {
   test(`topic keep ${outcome} updates only confirmed state without waiting for unrelated refreshes`, async ({ page }) => {
-    await page.addInitScript(() => localStorage.setItem('sb-auth-test-auth-token', JSON.stringify({
-      access_token: 'test-token', refresh_token: 'test-refresh', token_type: 'bearer', expires_at: Math.floor(Date.now()/1000)+3600,
-      user: { id: 'test', email: 'test@example.com', user_metadata: {} },
-    })));
+    await signIn(page, { id: 'test', email: 'test@example.com' });
     let release!: () => void;
     const pending = new Promise<void>(resolve => { release = resolve; });
     let saved = false;

@@ -27,9 +27,27 @@ export interface Catalog {
   // Ranked associated word IDs; loaded only for Find words.
   associations?: Record<string, string[]>;
 }
-export type ReviewTrack = 'recognition' | 'production';
+export const REVIEW_TRACKS = ['recognition', 'production', 'article'] as const;
+export type ReviewTrack = (typeof REVIEW_TRACKS)[number];
+export type ReviewMode = ReviewTrack | 'mixed';
+export const REVIEW_MODES: readonly ReviewMode[] = ['mixed', ...REVIEW_TRACKS];
+// "all" means planted words across topics. Seeds always have their own set.
+export const WORD_SETS = ['all', 'topic', 'bag'] as const;
+export const ARTICLES = ['der', 'die', 'das'] as const;
+export const VISUAL_STAGES = ['unseen', 'skipped', 'seeds', 'planted', 'due', 'grown'] as const;
+export type VisualStage = (typeof VISUAL_STAGES)[number];
+// Shared by the domain and atomic database paths, which report the same failures.
+export const MESSAGES = {
+  unknownTopic: 'Unknown topic.',
+  unknownWord: 'Unknown word.',
+  unknownWordSet: 'Unknown word set.',
+  wrongTopic: 'This word does not belong to this topic.',
+  learnedComplete: 'Learned words are permanently complete.',
+  bagFull: 'Your seed bag is full. Review a seed to make room.',
+} as const;
 export interface Srs {
   production?: Srs | null;
+  article?: Srs | null;
   ease: number;
   interval_days: number;
   reps: number;
@@ -49,6 +67,7 @@ export interface Swipe {
   planted_at: string | null;
 }
 export interface ReviewSelection {
+  mode_counts?: Record<ReviewTrack, number>;
   topic_exists: boolean;
   vocabulary_available: boolean;
   selected: {
@@ -87,6 +106,9 @@ export class HttpError extends Error {
   ) {
     super(message);
   }
+}
+export function requireWordSet(scope: string): asserts scope is (typeof WORD_SETS)[number] {
+  requireThat((WORD_SETS as readonly string[]).includes(scope), MESSAGES.unknownWordSet);
 }
 export function requireThat(condition: unknown, message: string, status = 422): asserts condition {
   if (!condition) throw new HttpError(status, message);

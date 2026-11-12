@@ -1,49 +1,34 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { storageGet, storageRemove, storageSet } from '../../browser-storage';
 import { weakWordsQuery } from '../../queries/weak-words-query';
 import { nextSession, readRound, startRound, type PracticeRound } from './practice-round';
 
 export function usePracticeRound(storageKey: string, query: string) {
   const [round, setRound] = useState<PracticeRound | null>(() => {
     try {
-      return readRound(storageKey);
+      return readRound(storageGet('local', storageKey));
     } catch {
       return null;
     }
   });
   const [storageError, setStorageError] = useState(false);
   useEffect(() => {
-    if (!round) return;
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(round));
-      setStorageError(false);
-    } catch {
-      setStorageError(true);
-    }
+    if (round) setStorageError(!storageSet('local', storageKey, round));
   }, [round, storageKey]);
   const candidates = useQuery(weakWordsQuery(query));
   const [starting, setStarting] = useState(false);
   const exitRound = () => {
     setRound(null);
-    try {
-      localStorage.removeItem(storageKey);
-      setStorageError(false);
-    } catch {
-      setStorageError(true);
-    }
+    setStorageError(!storageRemove('local', storageKey));
   };
   const begin = async () => {
     setStarting(true);
     try {
       const fresh = await candidates.refetch();
       if (!fresh.error) setRound(fresh.data?.words.length ? startRound(fresh.data.words) : null);
-      if (!fresh.error && !fresh.data?.words.length) {
-        try {
-          localStorage.removeItem(storageKey);
-        } catch {
-          setStorageError(true);
-        }
-      }
+      if (!fresh.error && !fresh.data?.words.length && !storageRemove('local', storageKey))
+        setStorageError(true);
     } finally {
       setStarting(false);
     }

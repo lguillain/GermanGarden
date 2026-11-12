@@ -1,5 +1,6 @@
 import { Catalog, requireThat } from './model.ts';
 import { catalogCache } from './catalog-cache.ts';
+import { relatedWordsPath, topicDetailPath } from './routes.ts';
 
 export interface CatalogRequest {
   p_topic: string | null;
@@ -11,11 +12,11 @@ export function catalogRequest(path: string, method: string): CatalogRequest {
   // This shared loader scopes only read-only topic lists; practice has its own
   // snapshot-based loader and atomic topic additions bypass it entirely.
   // Remaining mutations and discovery need the full catalogue.
-  const topic = method === 'GET' ? path.match(/^\/topics\/([^/]+)$/) : null;
+  const topic = method === 'GET' ? topicDetailPath(path) : null;
   const full =
-    !topic && !['/garden', '/onboarding'].includes(path) && !/^\/words\/[^/]+\/related$/.test(path);
+    topic === null && !['/garden', '/onboarding'].includes(path) && relatedWordsPath(path) === null;
   return {
-    p_topic: topic ? decodeURIComponent(topic[1]) : null,
+    p_topic: topic,
     p_include_sentences: full,
     p_activities_only: path === '/onboarding',
     // Find words lets related words follow a kept word. The full catalogue

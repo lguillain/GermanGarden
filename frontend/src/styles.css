@@ -645,3 +645,22 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 .context-message { padding: 12px 16px; border-radius: 12px; background: var(--surface); }
 .context-user { background: #edf0e4; }
 .context-message strong { display: block; margin-bottom: 6px; font-size: var(--type-small); }
+
+/* Fast article reviews keep the prompt and choices close together. */
+.article-study { max-width: 480px; }
+.article-review-card { padding: 32px 24px 20px; text-align: center; }
+.article-review-card h2 { margin: 0 0 28px; font-size: var(--type-word); overflow-wrap: anywhere; }
+.article-review-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.article-review-options button { min-height: 52px; padding: 10px; font-size: var(--type-compact-heading); }
+.article-review-options button:disabled { opacity: 1; }
+.article-review-options .article-correct { background: #18733c; color: #fff; border-color: #18733c; }
+.article-review-options .article-incorrect { background: #b52d35; color: #fff; border-color: #b52d35; }
+.article-review-feedback { min-height: 52px; padding-top: 12px; }
+@media (max-width: 480px) {
+  .article-review-card { padding: 28px 16px 16px; }
+  .article-review-options { gap: 8px; }
+}
+
+
+.article-answer-controls { margin: 18px auto 0; text-align: center; }
+.article-answer-controls .article-review-options { width: min(100%, 360px); margin: 0 auto; }

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { signIn } from '../helpers/cloud-page';
 
 const words = [
   { id: 'tree', lemma: 'Baum', article: 'der', pos: 'noun', english: 'tree', level: 'A2' },
@@ -6,18 +7,7 @@ const words = [
 ];
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() =>
-    localStorage.setItem(
-      'sb-auth-test-auth-token',
-      JSON.stringify({
-        access_token: 'test-token',
-        refresh_token: 'test-refresh',
-        token_type: 'bearer',
-        expires_at: Math.floor(Date.now() / 1000) + 3600,
-        user: { id: 'test-user', email: 'test@vocab-garden.test', user_metadata: {} },
-      }),
-    ),
-  );
+  await signIn(page, { email: 'test@vocab-garden.test' });
   await page.route('https://auth-test.supabase.co/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith('/practice/weak')) return route.fulfill({ json: { words: [] } });
@@ -133,7 +123,8 @@ test('practice pages keep their own state and reset it when the word set changes
   expect(errors).toEqual([]);
 });
 
-for (const path of ['/practice', '/practice/read', '/practice/chat']) {
+// Reading and conversation share the activity-page summary request.
+for (const path of ['/practice', '/practice/read']) {
   test(`${path} starts a counts-only request before session completes and reuses it`, async ({
     page,
   }) => {

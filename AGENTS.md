@@ -50,6 +50,9 @@ Use the shared `Heading` component’s `navigation` and `actions` props for page
 
 ## Style and tests
 
+Keep answer feedback on the answer buttons; do not repeat it in explanatory text or color the entire card.
+Do not use eyebrow labels (small labels above headings), redundant direction badges, or instructional subtitles that repeat obvious controls. Put page-level switches together in the shared Heading actions, using the existing compact segmented-control styling.
+
 Use strict TypeScript, clear domain names, and lowercase hyphenated new filenames.
 Keep learning rules in `domain.ts` and pure scheduling rules in `scheduler.ts`.
 Keep HTTP/authentication in `index.ts`, routing and atomic retries in `service.ts`,

@@ -1,3 +1,4 @@
+import { plural } from '../../plural';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api';
 import { Link } from 'react-router-dom';
@@ -23,7 +24,7 @@ export function HomePage() {
   const gnomeCount =
     garden?.plots.reduce((total, plot) => total + gardenGnomeCount(plot.words, now), 0) ?? 0;
   const summary = garden?.summary;
-  const hardWordCount = summary?.hard_word_count;
+  const articlesDue = summary?.articles_due;
   const highlightDiscovery = summary?.found_today === 0;
   return (
     <>
@@ -61,13 +62,13 @@ export function HomePage() {
             title="A little tending"
             kind="watering"
             count={summary?.due_now}
-            detail={summary?.due_now === 1 ? 'word due now' : 'words due now'}
+            detail={`${plural(summary?.due_now ?? 0, 'word')} due now`}
             inlineDetail
           >
             {summary && summary.due_now > 0 && (
               <Link className="button primary" to="/review">
                 {gnomeCount > 0 && <GnomeReviewIcon />}
-                Review {summary.due_now} {summary.due_now === 1 ? 'word' : 'words'}
+                Review {summary.due_now} {plural(summary.due_now, 'word')}
               </Link>
             )}
             <div className="garden-dashboard-forecast">
@@ -80,6 +81,19 @@ export function HomePage() {
             </div>
           </DashboardCard>
           <DashboardCard
+            title="Finishing touches"
+            kind="support"
+            count={articlesDue}
+            detail={`${plural(articlesDue ?? 0, 'article')} due now`}
+            inlineDetail
+          >
+            {articlesDue !== undefined && articlesDue > 0 && (
+              <Link className="button primary" to="/articles">
+                Review {articlesDue} {plural(articlesDue, 'article')}
+              </Link>
+            )}
+          </DashboardCard>
+          <DashboardCard
             title="Fresh finds"
             kind="seeds"
             count={summary?.found_today}
@@ -89,18 +103,6 @@ export function HomePage() {
               Find new words
             </Link>
             <SeedBagDialog words={garden?.bag} />
-          </DashboardCard>
-          <DashboardCard
-            title="Extra care"
-            kind="support"
-            count={hardWordCount}
-            detail="words to practise"
-          >
-            {hardWordCount !== undefined && hardWordCount > 0 && (
-              <Link className="button primary" to="/practice">
-                Practice hard words
-              </Link>
-            )}
           </DashboardCard>
         </section>
         {garden && summary && (

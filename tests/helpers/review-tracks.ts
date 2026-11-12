@@ -75,11 +75,11 @@ export async function tracksDatabase() {
           ])
         ).rows[0].saved;
       },
-      async review(scope, topic, excluded = []) {
+      async review(scope, topic, excluded = [], mode = 'mixed') {
         return (
           await db.query<{ data: ReviewSelection }>(
-            'select load_review_selection($1,$2,$3,now(),$4) data',
-            [userId, scope, topic, excluded],
+            'select load_review_selection($1,$2,$3,now(),$4,$5) data',
+            [userId, scope, topic, excluded, mode],
           )
         ).rows[0].data;
       },

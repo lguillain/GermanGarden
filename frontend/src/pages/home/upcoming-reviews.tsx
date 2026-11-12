@@ -1,3 +1,4 @@
+import { plural } from '../../plural';
 import { closeOnBackdropClick } from '../../components/dialog-backdrop';
 import { useRef } from 'react';
 import type { Garden } from '../../api';
@@ -52,10 +53,7 @@ export function UpcomingReviews({ summary }: { summary: Garden['summary'] }) {
                   year: 'numeric',
                 });
                 return (
-                  <li
-                    key={date}
-                    aria-label={`${label}: ${count} ${count === 1 ? 'word' : 'words'}`}
-                  >
+                  <li key={date} aria-label={`${label}: ${count} ${plural(count, 'word')}`}>
                     <time dateTime={date} title={label}>
                       <span>
                         {day.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}

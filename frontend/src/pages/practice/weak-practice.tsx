@@ -1,4 +1,3 @@
-import { useQueryClient } from '@tanstack/react-query';
 import { type ReactNode } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { type Session } from '../../api';
@@ -16,6 +15,8 @@ import {
   sessionCount,
 } from './practice-round';
 import { usePracticeRound } from './use-practice-round';
+import { useAccountId } from '../../hooks/use-account-id';
+import { plural } from '../../plural';
 
 export function WeakPractice({
   scope,
@@ -30,9 +31,8 @@ export function WeakPractice({
   children?: ReactNode;
   overview?: ReactNode;
 }) {
-  const cache = useQueryClient();
   const session = useOutletContext<Session | undefined>();
-  const account = cache.getQueryData<{ id: string }>(['auth'])?.id;
+  const account = useAccountId();
   if (!account)
     return (
       <>
@@ -106,8 +106,8 @@ function WeakPracticeRound({
                   <h2>{candidates.data.words.length} words need attention</h2>
                   <p className="muted">
                     {sessionCount(candidates.data.words.length)}{' '}
-                    {sessionCount(candidates.data.words.length) === 1 ? 'session' : 'sessions'} · up
-                    to {PRACTICE_SESSION_SIZE} words each
+                    {plural(sessionCount(candidates.data.words.length), 'session')} · up to{' '}
+                    {PRACTICE_SESSION_SIZE} words each
                   </p>
                 </div>
                 {candidates.data.words.length ? (
@@ -173,8 +173,8 @@ function WeakPracticeRound({
           </h2>
           {!complete && (
             <p>
-              {total - round.completed} {total - round.completed === 1 ? 'session' : 'sessions'}{' '}
-              remaining to cover this round.
+              {total - round.completed} {plural(total - round.completed, 'session')} remaining to
+              cover this round.
             </p>
           )}
           <div className="actions">

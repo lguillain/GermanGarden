@@ -1,3 +1,4 @@
+import { DIRECTION_LABELS } from './review-terms';
 import { PlantIcon } from './garden-artwork';
 import { WordRegions } from './word-regions';
 import { ContextButton } from './context-button';
@@ -37,7 +38,9 @@ interface WordCardProps {
   context?: 'practice' | 'review' | 'discovery';
   revealControls?: ReactNode;
   articlePrompt?: boolean;
+  articleAnswered?: boolean;
   promptControls?: ReactNode;
+  answerControls?: ReactNode;
   hintsEnabled?: boolean;
   footerControls?: ReactNode;
 }
@@ -60,7 +63,9 @@ function WordCardContent({
   context,
   revealControls,
   articlePrompt = false,
+  articleAnswered = false,
   promptControls,
+  answerControls,
   hintsEnabled = true,
   footerControls,
 }: WordCardProps) {
@@ -77,7 +82,11 @@ function WordCardContent({
           <WordRegions word={word} />
         </div>
         {showDirection && (direction || word.track) && (
-          <span className="review-direction">{production ? 'EN → DE' : 'DE → EN'}</span>
+          <span className="review-direction">
+            {word.track === 'article'
+              ? 'Articles'
+              : DIRECTION_LABELS[production ? 'production' : 'recognition']}
+          </span>
         )}
       </div>
       <div className="word-card-body">
@@ -95,16 +104,11 @@ function WordCardContent({
                     ___{' '}
                   </span>
                 )}
-                <WordTitle word={word} showArticle={false} />
+                <WordTitle word={word} showArticle={articleAnswered} />
               </>
             )}
           </h2>
           {promptControls && <div className="word-card-prompt-controls">{promptControls}</div>}
-          <div className="word-card-detail">
-            {production && word.pos === 'noun' && (
-              <p className="word-detail muted">Include the article</p>
-            )}
-          </div>
           {production
             ? word.en && (
                 <p className="sentence" lang="en">
@@ -128,6 +132,7 @@ function WordCardContent({
           <h2>
             <WordTitle word={word} />
           </h2>
+          {answerControls && <div className="word-card-prompt-controls">{answerControls}</div>}
           <div className="word-card-detail">
             {word.plural && (
               <p className="word-detail muted" lang="de">

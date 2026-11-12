@@ -1,3 +1,4 @@
+import { plural } from '../plural';
 import { OriginalGnome } from './gnome-original';
 import { GnomeVariant } from './gnome-variant';
 
@@ -33,12 +34,11 @@ export function GardenGnomes({ count, plotId }: { count: number; plotId: string 
   return (
     <g
       role="img"
-      aria-label={`${count} garden ${count === 1 ? 'gnome' : 'gnomes'} · Overdue reviews`}
+      aria-label={`${count} garden ${plural(count, 'gnome')} · Overdue reviews`}
       pointerEvents="none"
     >
       <title>
-        {count} {count === 1 ? 'gnome' : 'gnomes'} have gathered. Review overdue words to send them
-        away.
+        {count} {plural(count, 'gnome')} have gathered. Review overdue words to send them away.
       </title>
       {positions
         .slice(0, count)

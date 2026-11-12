@@ -1,31 +1,46 @@
-import { Link } from 'react-router-dom';
+import { useReviewMode } from '../hooks/use-review-mode';
 import { useScope } from '../hooks/use-scope';
 import { PlantIcon, SeedIcon } from './garden-artwork';
+import { SegmentedLinks } from './segmented-links';
 
 export function WordSetSwitch({ counts }: { counts?: { plants: number; seeds: number } }) {
   const { scope, topic } = useScope();
+  const { articles, mode } = useReviewMode();
+  const destination = articles ? '/articles' : '/review';
+  const link = (params: Record<string, string>) => `${destination}?${new URLSearchParams(params)}`;
   return (
-    <div className="word-set-switch" role="group" aria-label="Word set">
-      <Link
-        className={`button${scope !== 'bag' ? ' primary' : ''}`}
-        aria-current={scope !== 'bag' ? 'true' : undefined}
-        to={`/review?${new URLSearchParams({ scope: topic ? 'topic' : 'all', topic })}`}
-      >
-        <span aria-hidden="true">
-          <PlantIcon />
-        </span>
-        Plants{counts && <span className="word-set-count">{counts.plants}</span>}
-      </Link>
-      <Link
-        className={`button${scope === 'bag' ? ' primary' : ''}`}
-        aria-current={scope === 'bag' ? 'true' : undefined}
-        to={`/review?${new URLSearchParams({ scope: 'bag', topic })}`}
-      >
-        <span aria-hidden="true">
-          <SeedIcon />
-        </span>
-        Seeds{counts && <span className="word-set-count">{counts.seeds}</span>}
-      </Link>
-    </div>
+    <SegmentedLinks
+      label="Word set"
+      links={[
+        {
+          key: 'plants',
+          to: link({ scope: topic ? 'topic' : 'all', topic, mode }),
+          active: scope !== 'bag',
+          children: (
+            <>
+              <span aria-hidden="true">
+                <PlantIcon />
+              </span>
+              Plants
+            </>
+          ),
+          count: counts?.plants,
+        },
+        {
+          key: 'seeds',
+          to: link({ scope: 'bag', topic, mode: articles ? 'article' : 'recognition' }),
+          active: scope === 'bag',
+          children: (
+            <>
+              <span aria-hidden="true">
+                <SeedIcon />
+              </span>
+              Seeds
+            </>
+          ),
+          count: counts?.seeds,
+        },
+      ]}
+    />
   );
 }

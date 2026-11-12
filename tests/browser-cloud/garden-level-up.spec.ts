@@ -1,14 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { signIn } from '../helpers/cloud-page';
 
 for (const level of ['A1', 'A2']) {
   test(`garden suggests ${level} level-up and saves the next level`, async ({ page }, testInfo) => {
     let currentLevel = level;
     const nextLevel = level === 'A1' ? 'A2' : 'B1';
-    await page.addInitScript(() => localStorage.setItem('sb-auth-test-auth-token', JSON.stringify({
-      access_token: 'test-token', refresh_token: 'test-refresh', token_type: 'bearer',
-      expires_at: Math.floor(Date.now() / 1000) + 3600,
-      user: { id: 'test-user', email: 'test@vocab-garden.test', user_metadata: {} },
-    })));
+    await signIn(page, { email: 'test@vocab-garden.test' });
     await page.route('https://auth-test.supabase.co/**', async route => {
       const path = new URL(route.request().url()).pathname;
       if (path.endsWith('/session')) return route.fulfill({ json: { user: { name: 'Test', level: currentLevel }, ai_available: false } });

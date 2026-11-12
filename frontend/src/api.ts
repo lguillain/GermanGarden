@@ -60,7 +60,8 @@ export interface Word {
   production_unlocked?: boolean;
   production_growth?: number;
   can_mark_learned?: boolean;
-  track?: 'recognition' | 'production';
+  track?: 'recognition' | 'production' | 'article';
+  article_reviewed_at?: string | null;
   review_due?: boolean;
   overdue_since?: string | null;
   visual_stage?: 'unseen' | 'skipped' | 'seeds' | 'planted' | 'due' | 'grown';
@@ -114,6 +115,7 @@ export interface Garden {
     upcoming_reviews?: { date: string; count: number }[];
     planted_total: number;
     hard_word_count?: number;
+    articles_due?: number;
   };
 }
 export interface Matcher {

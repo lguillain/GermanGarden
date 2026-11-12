@@ -1,12 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { signIn } from '../helpers/cloud-page';
 
 const word = { id: 'tree', word_id: 'tree', lemma: 'Baum', article: 'der', pos: 'noun', english: 'tree', level: 'A2', growth: 2, plural: 'Bäume', de: 'Der Baum ist groß.', en: 'The tree is tall.', activity_id: 'nature' };
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('sb-auth-test-auth-token', JSON.stringify({
-    access_token: 'test-token', refresh_token: 'test-refresh', token_type: 'bearer',
-    expires_at: Math.floor(Date.now() / 1000) + 3600,
-    user: { id: 'test-user', email: 'test@example.test', user_metadata: {} },
-  })));
+  await signIn(page);
 });
 for (const mode of ['practice', 'recognition', 'production']) {
   test(`Context loads on open and preserves the ${mode} card and conversation`, async ({ page }) => {
@@ -23,6 +20,8 @@ for (const mode of ['practice', 'recognition', 'production']) {
         card: { ...word, track: mode, rating_options: [{ grade: 3, next_review_seconds: 86400, growth: 2 }] },
         remaining: 2, counts: { plants: 2, seeds: 0 },
       } });
+      if (path === '/review/article')
+        return route.fulfill({ json: { card: { ...word, track: mode, article_reviewed_at: '2026-01-01T00:00:00Z', rating_options: [{ grade: 3, next_review_seconds: 86400, growth: 2 }] }, correct: true } });
       if (path === '/context') {
         const body = route.request().postDataJSON();
         requests.push(body);
@@ -37,14 +36,15 @@ for (const mode of ['practice', 'recognition', 'production']) {
       }
       throw new Error(`Unexpected request: ${route.request().method()} ${path}`);
     });
-    await page.goto(mode === 'practice' ? '/#/practice/flashcards' : '/#/review');
+    await page.goto(mode === 'practice' ? '/#/practice/flashcards' : `/#/review?mode=${mode}`);
     const card = page.locator('.word-card');
     await expect(card).toBeVisible();
     expect(opens).toBe(0);
     if (mode === 'practice') await card.getByRole('button', { name: 'Hint', exact: true }).click();
     else {
       await expect(page.getByRole('button', { name: 'Context', exact: true })).toHaveCount(0);
-      await page.getByRole('button', { name: 'der', exact: true }).click();
+      if (mode === 'recognition') await page.getByRole('button', { name: 'der', exact: true }).click();
+      await page.getByRole('button', { name: mode === 'recognition' ? 'Show translation' : 'Show answer', exact: true }).click();
     }
     const before = await card.innerText();
     await page.getByRole('button', { name: 'Context', exact: true }).click();
@@ -66,7 +66,9 @@ for (const mode of ['practice', 'recognition', 'production']) {
     expect(sends[0].request_id).toBe(sends[1].request_id);
     await page.screenshot({ path: `test-results/context-${mode}.png`, fullPage: true });
     await page.reload();
-    if (mode !== 'practice') await page.getByRole('button', { name: 'der', exact: true }).click();
+    // The saved article answer survives refresh; the reveal step does not.
+    if (mode !== 'practice')
+      await page.getByRole('button', { name: mode === 'recognition' ? 'Show translation' : 'Show answer', exact: true }).click();
     await page.getByRole('button', { name: 'Context', exact: true }).click();
     await expect(dialog).toContainText('Use the plural Bäume.');
     await page.setViewportSize({ width: 390, height: 844 });

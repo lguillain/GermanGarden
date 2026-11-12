@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { signIn } from '../helpers/cloud-page';
 
 const word = (id: string, lemma: string, english: string, status = 'new', visual_stage = 'unseen') =>
   ({ id, lemma, english, pos: 'noun', level: 'A2', status, visual_stage, growth: 0 });
@@ -9,10 +10,7 @@ const related: Record<string, unknown> = {
 };
 
 test('related words popup opens from the topic list and follows connected words', async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('sb-auth-test-auth-token', JSON.stringify({
-    access_token: 'test-token', refresh_token: 'test-refresh', token_type: 'bearer', expires_at: Math.floor(Date.now()/1000)+3600,
-    user: { id: 'test', email: 'test@example.com', user_metadata: {} },
-  })));
+  await signIn(page, { id: 'test', email: 'test@example.com' });
   await page.route('https://auth-test.supabase.co/**', async route => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith('/session')) return route.fulfill({json:{user:{name:'Test',level:'A2'},ai_available:false}});
@@ -42,10 +40,7 @@ test('related words popup opens from the topic list and follows connected words'
 });
 
 test('find words offers related words once the translation is shown, without saving a choice', async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('sb-auth-test-auth-token', JSON.stringify({
-    access_token: 'test-token', refresh_token: 'test-refresh', token_type: 'bearer', expires_at: Math.floor(Date.now()/1000)+3600,
-    user: { id: 'test', email: 'test@example.com', user_metadata: {} },
-  })));
+  await signIn(page, { id: 'test', email: 'test@example.com' });
   const card = { id: 'card-1', word_id: 'fahrt', lemma: 'Fahrt', article: 'die', pos: 'noun', english: 'journey', level: 'A2', de: 'Gute Fahrt!', en: 'Have a good trip!', activity_id: 'travel', activity_name: 'Travel', sentence_id: 1 };
   await page.route('https://auth-test.supabase.co/**', async route => {
     const path = new URL(route.request().url()).pathname;
@@ -67,29 +62,32 @@ test('find words offers related words once the translation is shown, without sav
   await expect(page.getByRole('button', { name: 'Keep word', exact: true })).toBeEnabled();
 });
 
+// DE → EN covers the article step before reveal; EN → DE reveals directly.
 for (const track of ['recognition', 'production']) {
-  for (const article of ['die', null]) {
-    test(`review offers related words after ${article ? 'article choice' : 'reveal'} in ${track}`, async ({ page }) => {
-      await page.addInitScript(() => localStorage.setItem('sb-auth-test-auth-token', JSON.stringify({
-        access_token: 'test-token', refresh_token: 'test-refresh', token_type: 'bearer', expires_at: Math.floor(Date.now()/1000)+3600,
-        user: { id: 'test', email: 'test@example.com', user_metadata: {} },
-      })));
+  test(`review offers related words after reveal in ${track}`, async ({ page }) => {
+      await signIn(page, { id: 'test', email: 'test@example.com' });
       const card = {
-        id: 'card-1', word_id: 'fahrt', lemma: 'Fahrt', article, pos: 'noun', english: 'journey', level: 'A2', track,
+        id: 'card-1', word_id: 'fahrt', lemma: 'Fahrt', article: 'die', pos: 'noun', english: 'journey', level: 'A2', track,
         rating_options: [1, 2, 3, 4].map(grade => ({ grade, next_review_seconds: 86400, growth: 1 })),
       };
       await page.route('https://auth-test.supabase.co/**', async route => {
         const path = new URL(route.request().url()).pathname;
+        if (path.endsWith('/review/article') && track === 'recognition')
+          return route.fulfill({json:{card:{...card, article_reviewed_at:'2026-01-01T00:00:00Z'}, correct:true}});
         expect(route.request().method()).toBe('GET');
         if (path.endsWith('/session')) return route.fulfill({json:{user:{name:'Test',level:'A2'},ai_available:false}});
         if (path.endsWith('/review')) return route.fulfill({json:{card, remaining:1, counts:{plants:1,seeds:0}}});
         if (path.endsWith('/words/fahrt/related')) return route.fulfill({json:related.fahrt});
         throw new Error(`Unexpected request ${path}`);
       });
-      await page.goto('/#/review');
+      await page.goto(`/#/review?mode=${track}`);
       const trigger = page.getByRole('button', { name: 'Related words', exact: true });
       await expect(trigger).toHaveCount(0);
-      await page.getByRole('button', { name: article || (track === 'production' ? 'Show answer' : 'Show translation'), exact: true }).click();
+      if (track === 'recognition') {
+        await page.getByRole('button', { name: 'die', exact: true }).click();
+        await expect(trigger).toHaveCount(0);
+      }
+      await page.getByRole('button', { name: track === 'production' ? 'Show answer' : 'Show translation', exact: true }).click();
       await trigger.click();
       const dialog = page.getByRole('dialog', { name: /Related words/ });
       await expect(dialog.locator('.related-words-current')).toContainText('Fahrt');
@@ -99,17 +97,13 @@ for (const track of ['recognition', 'production']) {
       await expect(trigger).toBeFocused();
       await expect(page.getByRole('button', { name: /^Good/ })).toBeEnabled();
       await expect(page.getByText('0 reviewed', { exact: true })).toBeVisible();
-    });
-  }
+  });
 }
 
-for (const guided of [false, true]) {
-  for (const direction of ['recognition', 'production']) {
+// Both entry points render the same flashcard; each covers one direction.
+for (const [guided, direction] of [[false, 'recognition'], [true, 'production']] as const) {
     test(`${guided ? 'guided' : 'standalone'} practice offers related words after ${direction} reveal`, async ({ page }) => {
-      await page.addInitScript(() => localStorage.setItem('sb-auth-test-auth-token', JSON.stringify({
-        access_token: 'test-token', refresh_token: 'test-refresh', token_type: 'bearer', expires_at: Math.floor(Date.now()/1000)+3600,
-        user: { id: 'test', email: 'test@example.com', user_metadata: {} },
-      })));
+      await signIn(page, { id: 'test', email: 'test@example.com' });
       const words = [
         { id: 'fahrt', word_id: 'fahrt', lemma: 'Fahrt', article: 'die', pos: 'noun', english: 'journey', level: 'A2', growth: 1 },
         { id: 'zug', word_id: 'zug', lemma: 'Zug', article: 'der', pos: 'noun', english: 'train', level: 'A2', growth: 1 },
@@ -156,5 +150,4 @@ for (const guided of [false, true]) {
       await page.getByRole('button', { name: 'Next', exact: true }).click();
       await expect(page.getByRole('button', { name: 'Related words', exact: true })).toHaveCount(0);
     });
-  }
 }

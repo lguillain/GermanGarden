@@ -3,22 +3,34 @@ import type { tracksDatabase } from './review-tracks';
 import { dispatch } from '../../supabase/functions/garden/service';
 import { HttpError } from '../../supabase/functions/garden/model';
 
+interface TestUser {
+  id?: string;
+  email?: string;
+  user_metadata?: Record<string, unknown>;
+}
+// Store a valid Supabase session so the app starts signed in against mocked routes.
+export function signIn(page: Page, user: TestUser = {}) {
+  return page.addInitScript(
+    (user) =>
+      localStorage.setItem(
+        'sb-auth-test-auth-token',
+        JSON.stringify({
+          access_token: 'test-token',
+          refresh_token: 'test-refresh',
+          token_type: 'bearer',
+          expires_at: Math.floor(Date.now() / 1000) + 3600,
+          user: { id: 'test-user', email: 'test@example.test', user_metadata: {}, ...user },
+        }),
+      ),
+    user,
+  );
+}
+
 export async function connectPage(
   page: Page,
   { catalog, store }: Pick<Awaited<ReturnType<typeof tracksDatabase>>, 'catalog' | 'store'>,
 ) {
-  await page.addInitScript(() =>
-    localStorage.setItem(
-      'sb-auth-test-auth-token',
-      JSON.stringify({
-        access_token: 'test-token',
-        refresh_token: 'test-refresh',
-        token_type: 'bearer',
-        expires_at: Math.floor(Date.now() / 1000) + 3600,
-        user: { id: 'test-user', email: 'test@example.test', user_metadata: {} },
-      }),
-    ),
-  );
+  await signIn(page);
   await page.route('https://auth-test.supabase.co/**', async (route) => {
     const request = route.request(),
       url = new URL(request.url());

@@ -1,13 +1,22 @@
 import {
+  ARTICLES,
   Catalog,
   Learner,
+  MESSAGES,
+  REVIEW_TRACKS,
   Word,
   Sentence,
+  Activity,
   ReviewSelection,
   ReviewTrack,
+  Srs,
+  Swipe,
   HttpError,
+  VISUAL_STAGES,
+  VisualStage,
   freshLearner,
   requireThat,
+  requireWordSet,
   shuffle,
 } from './model.ts';
 import { initialSrs, growth, plantGrowth, scheduledOutcome, REVIEW_GRADES } from './scheduler.ts';
@@ -76,6 +85,29 @@ const PRACTICE_TARGET_COUNT = 5;
 // Experimental: chance that Find words follows a kept or Learned word with a related word.
 const RELATED_FOLLOW_UP_CHANCE = 0.7;
 
+// Recognition, production and article schedules, in that order; absent tracks are undefined.
+function trackSchedules(srs: Srs | undefined) {
+  return [srs, srs?.production ?? undefined, srs?.article ?? undefined] as const;
+}
+function dueTime(schedule: Partial<Srs> | null | undefined) {
+  return Date.parse(schedule?.due_at || '');
+}
+// Missing or unparsable due dates compare false, matching Date.parse(NaN) <= now.
+function isDue(schedule: Partial<Srs> | null | undefined, now: number) {
+  return dueTime(schedule) <= now;
+}
+function stageOverview(stages: Iterable<VisualStage>) {
+  const overview = Object.fromEntries(VISUAL_STAGES.map((stage) => [stage, 0])) as Record<
+    VisualStage,
+    number
+  >;
+  for (const stage of stages) overview[stage]++;
+  return overview;
+}
+function isArticle(value: string): value is (typeof ARTICLES)[number] {
+  return (ARTICLES as readonly string[]).includes(value);
+}
+
 function localCalendar(timeZone: string): Intl.DateTimeFormat {
   try {
     return new Intl.DateTimeFormat('en-CA', {
@@ -100,13 +132,16 @@ export class Garden {
     return new Date(this.now).toISOString();
   }
   topic(id: string) {
-    const topic = this.catalog.activities.find((a) => a.id === id);
-    requireThat(topic, 'Unknown topic.');
+    const topic = this.activity(id);
+    requireThat(topic, MESSAGES.unknownTopic);
     return topic;
+  }
+  private activity(id: string | null | undefined) {
+    return this.catalog.activities.find((a) => a.id === id);
   }
   word(id: string) {
     const word = catalogIndex(this.catalog).words.get(id);
-    requireThat(word, 'Unknown word.', 404);
+    requireThat(word, MESSAGES.unknownWord, 404);
     return word;
   }
   inTopic(id: string, topic: string) {
@@ -118,16 +153,30 @@ export class Garden {
   learned(id: string) {
     return this.state.known.includes(id) || this.state.learned.includes(id);
   }
-  due(id: string) {
+  hasArticle(id: string) {
+    const word = this.word(id);
+    return word.pos === 'noun' && isArticle(word.article || '');
+  }
+  trackDue(id: string, track: ReviewTrack) {
     const srs = this.state.srs[id];
-    return !srs || Date.parse(srs.due_at || '') <= this.now || this.productionDue(id);
+    if (track === 'production') return this.productionDue(id);
+    if (track === 'article')
+      return this.hasArticle(id) && (!srs?.article || isDue(srs.article, this.now));
+    return !srs || isDue(srs, this.now);
+  }
+  due(id: string) {
+    return REVIEW_TRACKS.some((track) => this.trackDue(id, track));
   }
   productionDue(id: string) {
     const production = this.state.srs[id]?.production;
-    return Boolean(production && Date.parse(production.due_at || '') <= this.now);
+    return Boolean(production && isDue(production, this.now));
   }
   reviewTrack(id: string): ReviewTrack {
-    return this.productionDue(id) ? 'production' : 'recognition';
+    return this.productionDue(id)
+      ? 'production'
+      : this.trackDue(id, 'recognition')
+        ? 'recognition'
+        : 'article';
   }
   details(word: Word) {
     const kept = this.kept(word.id);
@@ -143,7 +192,7 @@ export class Garden {
     else if (this.state.swipes.some((swipe) => swipe.word_id === word.id)) status = 'not_now';
     else status = 'new';
 
-    let visualStage: 'unseen' | 'skipped' | 'seeds' | 'planted' | 'due' | 'grown';
+    let visualStage: VisualStage;
     if (reviewDue) visualStage = 'due';
     else if (learned || stage === 5) visualStage = 'grown';
     else if (status === 'planted') visualStage = 'planted';
@@ -161,13 +210,9 @@ export class Garden {
       learned,
       review_due: reviewDue,
       overdue_since: reviewDue
-        ? [srs?.due_at, srs?.production?.due_at]
-            .filter(
-              (dueAt): dueAt is string =>
-                Boolean(dueAt) &&
-                Number.isFinite(Date.parse(dueAt!)) &&
-                Date.parse(dueAt!) <= this.now,
-            )
+        ? trackSchedules(srs)
+            .filter((schedule) => Number.isFinite(dueTime(schedule)) && isDue(schedule, this.now))
+            .map((schedule) => schedule!.due_at!)
             .sort((a, b) => Date.parse(a) - Date.parse(b))[0] || null
         : null,
       status,
@@ -187,8 +232,7 @@ export class Garden {
       de: sentence?.text || '',
       en: sentence?.english || '',
       activity_id: topic || sentence?.activity_id || null,
-      activity_name:
-        this.catalog.activities.find((a) => a.id === (topic || sentence?.activity_id))?.name || '',
+      activity_name: this.activity(topic || sentence?.activity_id)?.name || '',
     };
   }
   bag() {
@@ -203,7 +247,7 @@ export class Garden {
   }
   // "all" means planted words across topics. Seeds always have their own set.
   scope(scope = 'all', topic = '') {
-    requireThat(['all', 'topic', 'bag'].includes(scope), 'Unknown word set.');
+    requireWordSet(scope);
     if (scope === 'topic') this.topic(topic);
 
     return this.catalog.words.filter((word) => {
@@ -217,10 +261,18 @@ export class Garden {
     });
   }
 
-  reviewWords(scope = 'all', topic = '', excluded: string[] = []) {
+  reviewWords(
+    scope = 'all',
+    topic = '',
+    excluded: string[] = [],
+    mode: ReviewTrack | 'mixed' = 'mixed',
+  ) {
     const seen = new Set(excluded);
     return this.scope(scope, topic).filter(
-      (word) => !seen.has(word.id) && !this.learned(word.id) && this.due(word.id),
+      (word) =>
+        !seen.has(word.id) &&
+        !this.learned(word.id) &&
+        (mode === 'mixed' ? this.due(word.id) : this.trackDue(word.id, mode)),
     );
   }
 
@@ -237,30 +289,57 @@ export class Garden {
     };
   }
 
-  review(scope = 'all', topic = '', excluded: string[] = []) {
+  review(
+    scope = 'all',
+    topic = '',
+    excluded: string[] = [],
+    mode: ReviewTrack | 'mixed' = 'mixed',
+  ) {
     // Unscheduled words come first, then the earliest due date. Keep catalogue
     // order for ties, matching load_review_selection's word-ID ordering.
-    const words = this.reviewWords(scope, topic, excluded).sort((first, second) => {
+    const words = this.reviewWords(scope, topic, excluded, mode).sort((first, second) => {
       const firstSchedule = this.state.srs[first.id];
       const secondSchedule = this.state.srs[second.id];
       const scheduledOrder = Number(Boolean(firstSchedule)) - Number(Boolean(secondSchedule));
-      return (
-        scheduledOrder ||
-        Date.parse(firstSchedule?.due_at || '') - Date.parse(secondSchedule?.due_at || '')
-      );
+      return scheduledOrder || dueTime(firstSchedule) - dueTime(secondSchedule);
     });
     const nextWord = words[0];
-    const card = nextWord ? this.reviewCard(nextWord, scope === 'topic' ? topic : '') : null;
-    return { card, remaining: words.length, counts: this.counts(topic, true) };
+    const card = nextWord
+      ? this.reviewCard(
+          nextWord,
+          scope === 'topic' ? topic : '',
+          mode === 'mixed' ? undefined : mode,
+        )
+      : null;
+    return {
+      card,
+      remaining: words.length,
+      counts: this.counts(topic, true),
+      ...(mode !== 'mixed'
+        ? {
+            mode_counts: Object.fromEntries(
+              REVIEW_TRACKS.map((track) => [
+                track,
+                this.reviewWords(scope, topic, [], track).length,
+              ]),
+            ),
+          }
+        : {}),
+    };
   }
-  reviewCard(word: Word, topic = '') {
-    const track = this.reviewTrack(word.id);
+  reviewCard(word: Word, topic = '', track: ReviewTrack = this.reviewTrack(word.id)) {
     return {
       ...this.sentence(word, topic),
       track,
+      article_reviewed_at: this.state.srs[word.id]?.article?.last_review_at || null,
       rating_options: REVIEW_GRADES.map((grade) => {
         const outcome = this.ratedSchedules(word.id, grade, track);
-        const rated = track === 'production' ? outcome.production! : outcome;
+        const rated =
+          track === 'article'
+            ? outcome.article!
+            : track === 'production'
+              ? outcome.production!
+              : outcome;
         return {
           grade,
           growth: plantGrowth(outcome),
@@ -273,6 +352,12 @@ export class Garden {
     const previous = this.state.srs[id] || initialSrs();
     let recognition = { ...previous };
     let production = previous.production;
+    if (track === 'article')
+      return {
+        ...previous,
+        due_at: previous.due_at || this.iso(),
+        article: scheduledOutcome(previous.article || initialSrs(), grade, this.now),
+      };
     if (track === 'production') {
       requireThat(production, 'Production is still locked.', 409);
       production = scheduledOutcome(production, grade, this.now);
@@ -280,7 +365,11 @@ export class Garden {
     } else recognition = scheduledOutcome(previous, grade, this.now);
     if (!production && growth(recognition) >= 3)
       production = { ...initialSrs(), ease: recognition.ease, due_at: this.iso() };
-    return { ...recognition, production: production || null };
+    return {
+      ...recognition,
+      production: production || null,
+      ...(previous.article ? { article: previous.article } : {}),
+    };
   }
   grade(
     id: string,
@@ -289,26 +378,73 @@ export class Garden {
     topic = '',
     track: ReviewTrack = this.reviewTrack(id),
     excluded: string[] = [],
+    mode: ReviewTrack | 'mixed' = 'mixed',
+    continuation = false,
+    wrongArticle = false,
   ) {
-    const eligible = this.reviewWords(scope, topic, excluded).some((word) => word.id === id);
+    requireThat(track !== 'article', 'Use the article choice to rate articles.');
     requireThat(
-      eligible && track === this.reviewTrack(id),
+      !wrongArticle || (track === 'production' && grade === 3 && this.hasArticle(id)),
+      'Wrong article requires a Good production rating for a noun.',
+    );
+    const unfinishedSeed =
+      continuation &&
+      scope === 'bag' &&
+      track === 'recognition' &&
+      this.kept(id)?.planted_at &&
+      !this.state.srs[id]?.last_review_at &&
+      this.state.srs[id]?.article?.last_review_at &&
+      !this.learned(id) &&
+      !excluded.includes(id);
+    const eligible = this.reviewWords(scope, topic, excluded, mode).some((word) => word.id === id);
+    requireThat(
+      (eligible || unfinishedSeed) && track === (mode === 'mixed' ? this.reviewTrack(id) : mode),
       'This word is no longer due in this review set. Refresh to continue.',
       409,
     );
-    this.state.srs[id] = this.ratedSchedules(id, grade, track);
-
-    // Every rating plants just this seed, even "Again". Practice never calls this.
-    for (const swipe of this.state.swipes) {
-      if (swipe.word_id === id && swipe.action === 'keep' && !swipe.planted_at) {
-        swipe.planted_at = this.iso();
-      }
-    }
-    this.state.reviews.push({ word_id: id, grade, reviewed_at: this.iso(), track });
+    this.recordReview(id, grade, track);
+    if (track === 'production' && grade >= 3 && this.hasArticle(id))
+      this.recordReview(id, wrongArticle ? 1 : 3, 'article');
     return {
-      ...this.review(scope, topic, [...excluded, id]),
+      ...this.review(scope, topic, [...excluded, id], mode),
       graduated: plantGrowth(this.state.srs[id]) === 5 ? this.details(this.word(id)) : null,
     };
+  }
+
+  gradeArticle(
+    id: string,
+    choice: string,
+    expected: string | null,
+    scope: string,
+    topic: string,
+    mode: ReviewTrack,
+    excluded: string[],
+  ) {
+    requireThat(isArticle(choice), 'Choose a valid article.');
+    requireThat(this.hasArticle(id), 'This word has no article check.');
+    requireThat(
+      this.reviewWords(scope, topic, excluded, mode).some((word) => word.id === id),
+      'This word is no longer due. Refresh to continue.',
+      409,
+    );
+    const previous = this.state.srs[id]?.article;
+    requireThat(
+      (previous?.last_review_at || null) === expected,
+      'The article was already reviewed. Refresh to continue.',
+      409,
+    );
+    const grade = choice === this.word(id).article ? 3 : 1;
+    this.recordReview(id, grade, 'article');
+    return { card: this.reviewCard(this.word(id), topic, mode), correct: grade === 3 };
+  }
+
+  // Every rating plants just this seed, even "Again". Practice never calls this.
+  private recordReview(id: string, grade: number, track: ReviewTrack) {
+    this.state.srs[id] = this.ratedSchedules(id, grade, track);
+    for (const swipe of this.state.swipes)
+      if (swipe.word_id === id && swipe.action === 'keep' && !swipe.planted_at)
+        swipe.planted_at = this.iso();
+    this.state.reviews.push({ word_id: id, grade, reviewed_at: this.iso(), track });
   }
 
   markLearned(id: string) {
@@ -323,18 +459,14 @@ export class Garden {
     return this.details(this.word(id));
   }
   private ensureSeedBagSpace() {
-    requireThat(
-      this.bag().length < SEED_BAG_CAPACITY,
-      'Your seed bag is full. Review a seed to make room.',
-      409,
-    );
+    requireThat(this.bag().length < SEED_BAG_CAPACITY, MESSAGES.bagFull, 409);
   }
 
   add(id: string, topic: string) {
     const word = this.word(id);
     this.topic(topic);
-    requireThat(this.inTopic(id, topic), 'This word does not belong to this topic.');
-    requireThat(!this.learned(id), 'Learned words are permanently complete.', 409);
+    requireThat(this.inTopic(id, topic), MESSAGES.wrongTopic);
+    requireThat(!this.learned(id), MESSAGES.learnedComplete, 409);
     if (this.kept(id)) return { added: false };
     this.ensureSeedBagSpace();
 
@@ -512,8 +644,8 @@ export class Garden {
       if (this.learned(word.id)) return false;
       if (this.due(word.id)) return true;
       const schedule = this.state.srs[word.id];
-      return [schedule, schedule?.production].some((track) => {
-        const dueAt = Date.parse(track?.due_at || '');
+      return trackSchedules(schedule).some((track) => {
+        const dueAt = dueTime(track);
         return Number.isFinite(dueAt) && calendar.format(dueAt) === today;
       });
     }).length;
@@ -524,9 +656,7 @@ export class Garden {
     for (const word of this.scope()) {
       if (this.learned(word.id) || this.due(word.id)) continue;
       const schedule = this.state.srs[word.id];
-      const dates = [schedule, schedule?.production]
-        .map((track) => Date.parse(track?.due_at || ''))
-        .filter(Number.isFinite);
+      const dates = trackSchedules(schedule).map(dueTime).filter(Number.isFinite);
       if (!dates.length) continue;
       const parts = calendar.formatToParts(Math.min(...dates));
       const part = (type: string) => parts.find((item) => item.type === type)!.value;
@@ -592,21 +722,18 @@ export class Garden {
       const levelWords = all.filter(
         (word) => !this.state.user.level || word.level === this.state.user.level,
       );
-      const overview = { unseen: 0, skipped: 0, seeds: 0, planted: 0, due: 0, grown: 0 };
-      for (const word of levelWords) overview[word.visual_stage]++;
       topics.push({
         ...activity,
-        overview,
+        overview: stageOverview(levelWords.map((word) => word.visual_stage)),
         total: all.length,
         planted: plants.length,
       });
     }
-    const levelOverview = { unseen: 0, skipped: 0, seeds: 0, planted: 0, due: 0, grown: 0 };
-    for (const word of wordDetails) {
-      if (!this.state.user.level || word.level === this.state.user.level) {
-        levelOverview[word.visual_stage]++;
-      }
-    }
+    const levelOverview = stageOverview(
+      wordDetails
+        .filter((word) => !this.state.user.level || word.level === this.state.user.level)
+        .map((word) => word.visual_stage),
+    );
     const seedBag = this.bag();
     return {
       level_progress: { level: this.state.user.level, overview: levelOverview },
@@ -616,6 +743,7 @@ export class Garden {
       level_up: this.levelUpSuggestion(),
       summary: {
         hard_word_count: this.weakWords().length,
+        articles_due: this.reviewWords('all', '', [], 'article').length,
         bag_count: seedBag.length,
         bag_cap: SEED_BAG_CAPACITY,
         due_now: this.reviewWords().length,
@@ -631,13 +759,9 @@ export class Garden {
     return this.scope(scope, topic)
       .flatMap((word) => {
         if (this.learned(word.id)) return [];
-        const recognition = this.state.srs[word.id];
-        const reasons = (
-          [
-            ['recognition', recognition],
-            ['production', recognition?.production],
-          ] as const
-        ).flatMap(([track, schedule]) => {
+        const schedules = trackSchedules(this.state.srs[word.id]);
+        const reasons = REVIEW_TRACKS.flatMap((track, index) => {
+          const schedule = schedules[index];
           // A newly unlocked production schedule is not evidence of difficulty.
           if (
             !schedule ||
@@ -705,27 +829,59 @@ export class Garden {
   }
 }
 
-// Reuse card formatting and scheduling rules with only the selected word's data.
-export function reviewSelectionResponse(selection: ReviewSelection, scope: string, topic: string) {
-  requireThat(selection.vocabulary_available, 'Vocabulary has not been imported yet.', 503);
-  if (scope === 'topic' || topic) requireThat(selection.topic_exists, 'Unknown topic.');
-  const { selected, remaining, counts } = selection;
-  if (!selected) return { card: null, remaining, counts };
+// Reuse card formatting and scheduling rules with only one word's data, as
+// returned by the atomic database paths that avoid loading a full snapshot.
+export function singleWordGarden({
+  word,
+  swipe,
+  srs,
+  learned = false,
+  sentence = null,
+  activity = null,
+}: {
+  word: Word;
+  swipe: Swipe;
+  srs: Srs | null;
+  learned?: boolean;
+  sentence?: Sentence | null;
+  activity?: Activity | null;
+}) {
   const state = freshLearner('');
-  state.swipes = [selected.swipe];
-  if (selected.srs) state.srs[selected.word.id] = selected.srs;
-  const garden = new Garden(
+  state.swipes = [swipe];
+  if (learned) state.learned = [word.id];
+  if (srs) state.srs[word.id] = srs;
+  return new Garden(
     {
-      words: [selected.word],
-      activities: selected.activity ? [selected.activity] : [],
+      words: [word],
+      activities: activity ? [activity] : [],
       word_activities: [],
-      sentences: selected.sentence ? [selected.sentence] : [],
+      sentences: sentence ? [sentence] : [],
     },
     state,
   );
+}
+
+export function reviewSelectionResponse(
+  selection: ReviewSelection,
+  scope: string,
+  topic: string,
+  mode: ReviewTrack | 'mixed' = 'mixed',
+) {
+  requireThat(selection.vocabulary_available, 'Vocabulary has not been imported yet.', 503);
+  if (scope === 'topic' || topic) requireThat(selection.topic_exists, MESSAGES.unknownTopic);
+  const { selected, remaining, counts } = selection;
+  const modeCounts =
+    mode !== 'mixed' && selection.mode_counts ? { mode_counts: selection.mode_counts } : {};
+  if (!selected) return { card: null, remaining, counts, ...modeCounts };
+  const garden = singleWordGarden(selected);
   return {
-    card: garden.reviewCard(selected.word, scope === 'topic' ? topic : ''),
+    card: garden.reviewCard(
+      selected.word,
+      scope === 'topic' ? topic : '',
+      mode === 'mixed' ? undefined : mode,
+    ),
     remaining,
     counts,
+    ...modeCounts,
   };
 }

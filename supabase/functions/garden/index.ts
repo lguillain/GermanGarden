@@ -2,7 +2,7 @@ import { topicKeepRequest } from './topic-keep.ts';
 import { createClient } from '@supabase/supabase-js';
 import { Catalog, HttpError, requireThat } from './model.ts';
 import { Complete } from './ai.ts';
-import { dispatch } from './service.ts';
+import { dispatch, type Snapshot } from './service.ts';
 import { catalogCache } from './catalog-cache.ts';
 import { createCatalogLoader } from './catalog-loader.ts';
 import { createStore } from './store.ts';
@@ -99,32 +99,28 @@ export async function handler(request: Request): Promise<Response> {
       matcher: path === '/matcher',
       scoped: scopedProgressRequest(path, request.method),
     });
+    const run = (vocabulary: Catalog, ai?: Complete, snapshot?: Snapshot) =>
+      dispatch(
+        path,
+        request.method,
+        requestUrl.searchParams,
+        body,
+        store,
+        vocabulary,
+        ai,
+        snapshot,
+      );
     if (path === '/activities' && request.method === 'GET')
       return respond(await measure('activities', activities));
     if (
       ((path === '/review' || path === '/practice/summary' || path === '/grammar/options') &&
         request.method === 'GET') ||
       topicKeepRequest(path, request.method)
-    ) {
-      return respond(
-        await measure('dispatch', () =>
-          dispatch(path, request.method, requestUrl.searchParams, body, store, emptyCatalog),
-        ),
-      );
-    }
-    if (path === '/session' && request.method === 'GET') {
-      return respond(
-        await dispatch(
-          path,
-          request.method,
-          requestUrl.searchParams,
-          body,
-          store,
-          emptyCatalog,
-          complete,
-        ),
-      );
-    }
+    )
+      return respond(await measure('dispatch', () => run(emptyCatalog)));
+    // The session profile needs no catalogue; it only reports whether AI is configured.
+    if (path === '/session' && request.method === 'GET')
+      return respond(await run(emptyCatalog, complete));
     const [vocabulary, snapshot] =
       path === '/practice' && request.method === 'GET'
         ? await loadPracticeData(
@@ -145,20 +141,7 @@ export async function handler(request: Request): Promise<Response> {
     const timedComplete: Complete | undefined = complete
       ? (...args) => measure('ai', () => complete(...args))
       : undefined;
-    return respond(
-      await measure('dispatch', () =>
-        dispatch(
-          path,
-          request.method,
-          requestUrl.searchParams,
-          body,
-          store,
-          vocabulary,
-          timedComplete,
-          snapshot,
-        ),
-      ),
-    );
+    return respond(await measure('dispatch', () => run(vocabulary, timedComplete, snapshot)));
   } catch (error) {
     if (error instanceof HttpError) return respond({ detail: error.message }, error.status);
     // Avoid logging tokens, request bodies, database rows or API keys.

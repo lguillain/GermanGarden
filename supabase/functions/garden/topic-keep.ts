@@ -1,38 +1,28 @@
-import { Garden } from './domain.ts';
-import { freshLearner, HttpError, type Word, type Swipe, type Srs } from './model.ts';
+import { singleWordGarden } from './domain.ts';
+import { topicKeepPath } from './routes.ts';
+import { HttpError, MESSAGES, type Word, type Swipe, type Srs } from './model.ts';
 
 export type TopicKeepResult =
   | { error: 'unknown_word' | 'unknown_topic' | 'wrong_topic' | 'bag_full' | 'learned' }
   | { added: boolean; word: Word; swipe: Swipe; srs: Srs | null; learned: boolean };
 
 export function topicKeepRequest(path: string, method: string) {
-  if (method !== 'POST') return null;
-  const match = path.match(/^\/topics\/([^/]+)\/words\/([^/]+)\/keep$/);
-  return match
-    ? { topic: decodeURIComponent(match[1]), wordId: decodeURIComponent(match[2]) }
-    : null;
+  return method === 'POST' ? topicKeepPath(path) : null;
 }
 
 // Keep display rules in the domain, including permanently grown learned words.
 export function topicKeepResponse(result: TopicKeepResult) {
   if ('error' in result) {
     const errors = {
-      learned: [409, 'Learned words are permanently complete.'],
-      unknown_word: [404, 'Unknown word.'],
-      unknown_topic: [422, 'Unknown topic.'],
-      wrong_topic: [422, 'This word does not belong to this topic.'],
-      bag_full: [409, 'Your seed bag is full. Review a seed to make room.'],
+      learned: [409, MESSAGES.learnedComplete],
+      unknown_word: [404, MESSAGES.unknownWord],
+      unknown_topic: [422, MESSAGES.unknownTopic],
+      wrong_topic: [422, MESSAGES.wrongTopic],
+      bag_full: [409, MESSAGES.bagFull],
     } as const;
     const [status, message] = errors[result.error];
     throw new HttpError(status, message);
   }
-  const state = freshLearner('');
-  state.swipes = [result.swipe];
-  if (result.learned) state.learned = [result.word.id];
-  if (result.srs) state.srs[result.word.id] = result.srs;
-  const garden = new Garden(
-    { words: [result.word], activities: [], word_activities: [], sentences: [] },
-    state,
-  );
+  const garden = singleWordGarden(result);
   return { added: result.added, word: garden.details(result.word) };
 }

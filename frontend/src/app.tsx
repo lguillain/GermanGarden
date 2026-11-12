@@ -50,6 +50,7 @@ export function App() {
         <Route path="topics/:topic" element={<TopicPage />} />
         <Route path="matcher" element={<MatcherPage />} />
         <Route path="review" element={<ReviewPage />} />
+        <Route path="articles" element={<ReviewPage articles />} />
         <Route path="practice" element={<PracticePage />} />
         <Route path="practice/flashcards" element={<FlashcardsPage />} />
         <Route path="practice/chat" element={<AiRoute mode="chat" />} />

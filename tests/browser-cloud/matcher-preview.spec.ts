@@ -1,12 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { signIn } from '../helpers/cloud-page';
 
 const card = (id: string) => ({ id, word_id: id, lemma: id, article: 'das', pos: 'noun', english: 'word', level: 'A2', de: 'Ein Beispiel.', en: 'An example.', activity_id: 'home', activity_name: 'Home', sentence_id: 1 });
 for (const failure of [false, true]) {
   test(`next card appears during save and ${failure ? 'rolls back on failure' : 'waits for confirmation before accepting another choice'}`, async ({ page }) => {
-    await page.addInitScript(() => localStorage.setItem('sb-auth-test-auth-token', JSON.stringify({
-      access_token: 'test-token', refresh_token: 'test-refresh', token_type: 'bearer', expires_at: Math.floor(Date.now() / 1000) + 3600,
-      user: { id: 'test-user', email: 'test@vocab-garden.test', user_metadata: {} },
-    })));
+    await signIn(page, { email: 'test@vocab-garden.test' });
     let release!: () => void;
     const pending = new Promise<void>(resolve => { release = resolve; });
     let writes = 0;

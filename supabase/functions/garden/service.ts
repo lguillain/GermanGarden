@@ -4,7 +4,20 @@ import { matcherPreview } from './matcher-preview.ts';
 import { relatedWordIds } from './related-words.ts';
 import { Garden, grammarOptions, reviewSelectionResponse } from './domain.ts';
 import { Body, Complete, text, aiPractice, guidance } from './ai.ts';
-import { Catalog, Learner, ReviewSelection, HttpError, requireThat, shuffle } from './model.ts';
+import { relatedWordsPath, topicDetailPath } from './routes.ts';
+import {
+  Catalog,
+  Learner,
+  ReviewSelection,
+  ReviewMode,
+  ReviewTrack,
+  REVIEW_MODES,
+  MESSAGES,
+  HttpError,
+  requireThat,
+  requireWordSet,
+  shuffle,
+} from './model.ts';
 export interface Store {
   context?: ContextStorage;
   keepTopicWord?(wordId: string, topic: string): Promise<TopicKeepResult>;
@@ -18,7 +31,12 @@ export interface Store {
     all_plants: number;
     topic_exists: boolean;
   }>;
-  review?(scope: string, topic: string, excluded?: string[]): Promise<ReviewSelection>;
+  review?(
+    scope: string,
+    topic: string,
+    excluded?: string[],
+    mode?: ReviewMode,
+  ): Promise<ReviewSelection>;
 }
 export type Snapshot = Awaited<ReturnType<Store['load']>>;
 const MAX_WRITE_ATTEMPTS = 5;
@@ -47,20 +65,22 @@ export async function dispatch(
   complete?: Complete,
   initial?: Snapshot,
 ) {
+  const session = (user: { name: string; level: string | null }) => ({
+    user: { name: user.name, level: user.level },
+    ai_available: !!complete,
+  });
+  // GET requests carry parameters in the query string, POST requests in the body.
+  const param = (name: string, fallback = '') =>
+    method === 'GET' ? query.get(name) || fallback : text(body, name, fallback);
   // These read paths deliberately avoid loading a full learner snapshot.
-  if (path === '/session' && method === 'GET' && store.profile) {
-    const profile = await store.profile();
-    return {
-      user: { name: profile.name, level: profile.level },
-      ai_available: !!complete,
-    };
-  }
-  const scope = method === 'GET' ? query.get('scope') || 'all' : text(body, 'scope', 'all');
-  const topic = method === 'GET' ? query.get('topic') || '' : text(body, 'topic');
+  if (path === '/session' && method === 'GET' && store.profile)
+    return session(await store.profile());
+  const scope = param('scope', 'all');
+  const topic = param('topic');
   if (path === '/practice/summary' && method === 'GET' && store.practiceSummary) {
-    requireThat(['all', 'topic', 'bag'].includes(scope), 'Unknown word set.');
+    requireWordSet(scope);
     const summary = await store.practiceSummary(topic);
-    requireThat(!(topic || scope === 'topic') || summary.topic_exists, 'Unknown topic.');
+    requireThat(!(topic || scope === 'topic') || summary.topic_exists, MESSAGES.unknownTopic);
     return {
       counts: summary.counts,
       word_count:
@@ -79,9 +99,16 @@ export async function dispatch(
     'Invalid review session.',
   );
   const excluded = excludedValue as string[];
+  const mode = param('mode', 'mixed') as ReviewMode;
+  requireThat(REVIEW_MODES.includes(mode), 'Unknown review mode.');
   if (path === '/review' && method === 'GET' && store.review) {
-    requireThat(['all', 'topic', 'bag'].includes(scope), 'Unknown word set.');
-    return reviewSelectionResponse(await store.review(scope, topic, excluded), scope, topic);
+    requireWordSet(scope);
+    return reviewSelectionResponse(
+      await store.review(scope, topic, excluded, mode),
+      scope,
+      topic,
+      mode,
+    );
   }
   const keep = topicKeepRequest(path, method);
   if (keep && store.keepTopicWord)
@@ -89,17 +116,17 @@ export async function dispatch(
   if (path === '/grammar/options' && method === 'GET') return grammarOptions;
   const snapshot = initial ?? (await store.load());
   const garden = new Garden(catalog, snapshot.data);
+  // Every write starts from this request's snapshot and retries against newer state.
+  const mutate = <T>(operation: (currentGarden: Garden) => T) =>
+    transact(store, catalog, operation, snapshot);
   if (method === 'GET') {
     switch (path) {
       case '/session':
-        return {
-          user: { name: garden.state.user.name, level: garden.state.user.level },
-          ai_available: !!complete,
-        };
+        return session(garden.state.user);
       case '/garden':
         return garden.home(query.get('time_zone') || 'UTC');
       case '/review':
-        return garden.review(scope, topic, excluded);
+        return garden.review(scope, topic, excluded, mode);
       case '/practice/summary':
         return { word_count: garden.scope(scope, topic).length, counts: garden.counts(topic) };
       case '/practice/weak':
@@ -113,21 +140,16 @@ export async function dispatch(
             .map((w) => garden.sentence(w, topic)),
         };
       case '/matcher':
-        return transact(
-          store,
-          catalog,
-          (currentGarden) => {
-            if (topic) currentGarden.setTopic(topic);
-            return matcherPreview(currentGarden, currentGarden.matcher());
-          },
-          snapshot,
-        );
+        return mutate((currentGarden) => {
+          if (topic) currentGarden.setTopic(topic);
+          return matcherPreview(currentGarden, currentGarden.matcher());
+        });
     }
-    const match = path.match(/^\/topics\/([^/]+)$/);
-    if (match) return garden.topicDetail(decodeURIComponent(match[1]));
-    const related = path.match(/^\/words\/([^/]+)\/related$/);
-    if (related) {
-      const word = garden.word(decodeURIComponent(related[1]));
+    const detailTopic = topicDetailPath(path);
+    if (detailTopic !== null) return garden.topicDetail(detailTopic);
+    const relatedId = relatedWordsPath(path);
+    if (relatedId !== null) {
+      const word = garden.word(relatedId);
       const [associated, objects] = await Promise.all([
         store.associations?.(word.id) ?? [],
         store.verbObjects?.(word.id, word.pos) ?? [],
@@ -164,12 +186,7 @@ export async function dispatch(
       return wordContext(body, garden, store.context, complete);
     }
     if (path === '/level-up')
-      return transact(
-        store,
-        catalog,
-        (currentGarden) => currentGarden.levelUp(text(body, 'current_level')),
-        snapshot,
-      );
+      return mutate((currentGarden) => currentGarden.levelUp(text(body, 'current_level')));
 
     if (['/reading', '/chat', '/grammar'].includes(path)) {
       requireThat(complete, 'AI practice is not configured.', 503);
@@ -187,73 +204,72 @@ export async function dispatch(
         requireThat(complete, 'AI guidance is not configured.', 503);
         weights = await guidance(garden, input, complete);
       }
-      return transact(
-        store,
-        catalog,
-        (currentGarden) => {
-          if (weights) currentGarden.state.weights = weights;
-          if (path === '/onboarding') {
-            currentGarden.setLevel(level === 'unsure' ? 'A1' : level);
-            return currentGarden.state.user;
-          }
-          currentGarden.setTopic(
-            topic ||
-              (weights ? Object.entries(weights).sort((a, b) => b[1] - a[1])[0]?.[0] : null) ||
-              currentGarden.bestTopic(),
-          );
-          return matcherPreview(currentGarden, currentGarden.matcher());
-        },
-        snapshot,
-      );
+      return mutate((currentGarden) => {
+        if (weights) currentGarden.state.weights = weights;
+        if (path === '/onboarding') {
+          currentGarden.setLevel(level === 'unsure' ? 'A1' : level);
+          return currentGarden.state.user;
+        }
+        currentGarden.setTopic(
+          topic ||
+            (weights ? Object.entries(weights).sort((a, b) => b[1] - a[1])[0]?.[0] : null) ||
+            currentGarden.bestTopic(),
+        );
+        return matcherPreview(currentGarden, currentGarden.matcher());
+      });
     }
     if (path === '/review/learned')
-      return transact(
-        store,
-        catalog,
-        (currentGarden) => currentGarden.markLearned(text(body, 'word_id')),
-        snapshot,
+      return mutate((currentGarden) => currentGarden.markLearned(text(body, 'word_id')));
+    if (path === '/review/article') {
+      requireThat(mode !== 'mixed', 'Choose a review direction.');
+      requireThat(
+        body.expected_article_reviewed_at === null ||
+          typeof body.expected_article_reviewed_at === 'string',
+        'Missing article version.',
       );
+      return mutate((currentGarden) =>
+        currentGarden.gradeArticle(
+          text(body, 'word_id'),
+          text(body, 'choice'),
+          body.expected_article_reviewed_at as string | null,
+          scope,
+          topic,
+          mode as ReviewTrack,
+          excluded,
+        ),
+      );
+    }
     if (path === '/review')
-      return transact(
-        store,
-        catalog,
-        (currentGarden) =>
-          currentGarden.grade(
-            text(body, 'word_id'),
-            Number(body.grade),
-            scope,
-            topic,
-            text(body, 'track', 'recognition') as 'recognition' | 'production',
-            excluded,
-          ),
-        snapshot,
+      return mutate((currentGarden) =>
+        currentGarden.grade(
+          text(body, 'word_id'),
+          Number(body.grade),
+          scope,
+          topic,
+          text(body, 'track', 'recognition') as ReviewTrack,
+          excluded,
+          mode,
+          body.continuation === true,
+          body.wrong_article === true,
+        ),
       );
     if (path === '/matcher')
-      return transact(
-        store,
-        catalog,
-        (currentGarden) =>
-          matcherPreview(
-            currentGarden,
-            currentGarden.swipe(
-              text(body, 'word_id'),
-              text(body, 'action'),
-              text(body, 'activity_id') || null,
-              Number(body.sentence_id),
-            ),
+      return mutate((currentGarden) =>
+        matcherPreview(
+          currentGarden,
+          currentGarden.swipe(
+            text(body, 'word_id'),
+            text(body, 'action'),
+            text(body, 'activity_id') || null,
+            Number(body.sentence_id),
           ),
-        snapshot,
+        ),
       );
     if (keep)
-      return transact(
-        store,
-        catalog,
-        (currentGarden) => {
-          const result = currentGarden.add(keep.wordId, keep.topic);
-          return { ...result, word: currentGarden.details(currentGarden.word(keep.wordId)) };
-        },
-        snapshot,
-      );
+      return mutate((currentGarden) => {
+        const result = currentGarden.add(keep.wordId, keep.topic);
+        return { ...result, word: currentGarden.details(currentGarden.word(keep.wordId)) };
+      });
   }
   throw new HttpError(404, 'Page not found.');
 }

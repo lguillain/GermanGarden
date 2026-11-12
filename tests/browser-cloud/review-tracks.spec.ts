@@ -13,16 +13,18 @@ test('production graduates both tracks and Learned stays fully grown, unreviewab
       [account],
     );
     await connectPage(page, { catalog, store });
-    await page.goto('/#/review');
+    await page.goto('/#/review?mode=production');
     const card = page.locator('.word-card');
-    await expect(card).toContainText('EN → DE');
+    await expect(page.getByRole('group', {name:'Review mode'}).getByRole('link', {name:/EN → DE/})).toHaveAttribute('aria-current', 'page');
     await expect(card.getByRole('heading')).toHaveText('tree');
     await expect(card).toContainText('The tree is tall.');
     await expect(card).not.toContainText('B _ _ _', { useInnerText: true });
     await expect(card).not.toContainText('Der Baum ist groß.', { useInnerText: true });
-    await expect(card.getByRole('button', { name: 'Hint', exact: true })).toHaveCount(0);
+    // EN → DE asks no article question, so the first-letter hint is available.
+    await expect(card.getByRole('button', { name: 'Hint', exact: true })).toHaveCount(1);
+    await expect(page.getByRole('group', { name: 'Choose the correct article' })).toHaveCount(0);
     await expect(card).not.toContainText('Baum', { useInnerText: true });
-    await page.getByRole('button', { name: 'der', exact: true }).click();
+    await page.getByRole('button', { name: 'Show answer', exact: true }).click();
     await expect(card.getByRole('heading')).toHaveText('der Baum');
     await expect(card.locator('.answer-context')).toContainText('tree');
     await page.getByRole('button', { name: /^Good In/ }).click();
@@ -81,7 +83,7 @@ test('production graduates both tracks and Learned stays fully grown, unreviewab
           [account],
         )
       ).rows[0].n,
-    ).toBe(1);
+    ).toBe(2);
   } finally {
     await db.close();
   }
@@ -94,9 +96,9 @@ test('failed production stays excluded across refresh, while recognition remains
   try {
     await connectPage(page, { catalog, store });
     const before = (await store().load()).data.srs.tree;
-    await page.goto('/#/review');
-    await expect(page.locator('.word-card')).toContainText('EN → DE');
-    await page.getByRole('button', { name: 'der', exact: true }).click();
+    await page.goto('/#/review?mode=production');
+    await expect(page.getByRole('group', {name:'Review mode'}).getByRole('link', {name:/EN → DE/})).toHaveAttribute('aria-current', 'page');
+    await page.getByRole('button', { name: 'Show answer', exact: true }).click();
     await page.getByRole('button', { name: /^Again In/ }).click();
     await expect(page.getByText('Session complete.', { exact: false })).toBeVisible();
     const after = (await store().load()).data.srs.tree;
@@ -113,7 +115,9 @@ test('failed production stays excluded across refresh, while recognition remains
     await expect(page.locator('.production-flower').first()).toBeVisible();
     await page.screenshot({ path: 'test-results/production-bud-due.png', fullPage: true });
     await page.getByRole('link', { name: 'Review', exact: true }).first().click();
-    await expect(page.locator('.word-card')).toContainText('DE → EN');
+    // Planted words open in EN → DE; the recognition review is still due in DE → EN.
+    await page.getByRole('group', {name:'Review mode'}).getByRole('link', {name:/DE → EN/}).click();
+    await expect(page.getByRole('group', {name:'Review mode'}).getByRole('link', {name:/DE → EN/})).toHaveAttribute('aria-current', 'page');
     await expect(page.locator('.word-card').getByRole('heading')).toHaveText('___ Baum');
   } finally {
     await db.close();

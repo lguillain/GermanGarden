@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { signIn } from '../helpers/cloud-page';
 
 function matcher(word: string) {
   return {
@@ -20,18 +21,7 @@ function matcher(word: string) {
   };
 }
 async function mockApi(page: Page, getMatcher: () => Promise<ReturnType<typeof matcher>>) {
-  await page.addInitScript(() =>
-    localStorage.setItem(
-      'sb-auth-test-auth-token',
-      JSON.stringify({
-        access_token: 'test-token',
-        refresh_token: 'test-refresh',
-        token_type: 'bearer',
-        expires_at: Math.floor(Date.now() / 1000) + 3600,
-        user: { id: 'test-user', email: 'test@example.test', user_metadata: {} },
-      }),
-    ),
-  );
+  await signIn(page);
   let added = false;
   await page.route('https://auth-test.supabase.co/**', async (route) => {
     const path = new URL(route.request().url()).pathname.replace('/functions/v1/garden', '/api');

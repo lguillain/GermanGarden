@@ -2,13 +2,13 @@ import { invalidateProgress } from '../queries/invalidate-progress';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
-import type { Matcher, Session, Word } from '../api';
+import type { Matcher, Session } from '../api';
 import { api } from '../api';
 import { Empty, ErrorNotice, Heading, Loading } from '../components/feedback';
 import { useActivities } from '../hooks/use-activities';
 import { SeedBag } from '../components/seed-bag';
 import { WordCard } from '../components/word-card';
-import { RelatedWordsDialog } from '../components/related-words-dialog';
+import { useRelatedWords } from '../components/related-words-dialog';
 
 export function MatcherPage() {
   const aiAvailable = useOutletContext<Session | undefined>()?.ai_available;
@@ -19,7 +19,7 @@ export function MatcherPage() {
   const [guidance, setGuidance] = useState('');
   const [revealed, setRevealed] = useState(false);
   const [selectionOpen, setSelectionOpen] = useState(false);
-  const [relatedTo, setRelatedTo] = useState<Word | null>(null);
+  const related = useRelatedWords();
   const cache = useQueryClient();
   const key = ['matcher', initialTopic];
   const result = useQuery({
@@ -156,7 +156,7 @@ export function MatcherPage() {
                       <button
                         className="button"
                         aria-haspopup="dialog"
-                        onClick={() => setRelatedTo({ ...card, id: card.word_id })}
+                        onClick={() => related.show(card)}
                       >
                         Related words
                       </button>
@@ -192,7 +192,7 @@ export function MatcherPage() {
         </section>
         <SeedBag words={result.data?.bag} error={result.error} collapsible />
       </div>
-      <RelatedWordsDialog word={relatedTo} onClose={() => setRelatedTo(null)} />
+      {related.dialog}
     </>
   );
 }

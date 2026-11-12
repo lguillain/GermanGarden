@@ -88,6 +88,7 @@ export function AppShell() {
           <NavLink to="/matcher">Find words</NavLink>
           <NavLink to="/practice">Practice</NavLink>
           <NavLink to="/review">Review</NavLink>
+          <NavLink to="/articles">Articles</NavLink>
         </nav>
         <button
           className="profile-button"

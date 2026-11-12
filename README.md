@@ -563,3 +563,17 @@ The API attaches these display annotations to word details. Cards and topic rows
 show country names; unverified or ambiguous senses remain unlabelled. Regions
 do not affect discovery or scheduling. Deploy the garden function and frontend
 for this feature; no database migration is needed.
+
+### Separate article reviews
+
+Apply `202611120001_article_reviews.sql` with `supabase db push --linked`, then
+immediately deploy `supabase functions deploy garden` and publish the frontend
+through **Deploy GitHub Pages**. The migration changes review selection and adds
+independent article schedules without resetting meaning or production progress.
+Existing non-Learned nouns start with articles due; Learned words stay complete.
+
+Review opens EN → DE first. Good/Easy reinforces meaning and rates the article
+Good; Wrong article rates the word Good and the article Again. DE → EN saves
+article choices separately before revealing meaning. The Articles tab handles
+article-only reviews, with automatic progression and feedback on answer buttons.
+The overview's Finishing touches card opens due articles.

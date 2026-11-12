@@ -41,8 +41,8 @@ export function startRound(words: PracticeWord[]): PracticeRound {
 export function nextSession(round: PracticeRound): PracticeRound {
   return { ...startRound(round.words), completed: round.completed };
 }
-export function readRound(key: string): PracticeRound | null {
-  const raw = localStorage.getItem(key);
+// Validate a stored round; malformed JSON or shapes may throw, so callers start fresh.
+export function readRound(raw: string | null): PracticeRound | null {
   if (!raw) return null;
   const value = JSON.parse(raw) as PracticeRound;
   if (

@@ -9,6 +9,8 @@ import './design-page.css';
 import { DashboardConcept } from './dashboard-concept';
 import { GnomeConcept } from './gnome-concept';
 import { GnomeDesigns } from './gnome-designs';
+import { ProgressBar } from '../../components/progress-bar';
+import { DIRECTION_LABELS, RATING_LABELS } from '../../components/review-terms';
 
 const word: Word = {
   id: 'design-demo',
@@ -219,7 +221,7 @@ export function DesignPage() {
             usage="Only shown after reveal. These are self-assessments, not success/error colors. Actual review delays come from the scheduler."
           >
             <div className="grade-actions">
-              {['Again', 'Hard', 'Good', 'Easy'].map((label) => (
+              {RATING_LABELS.map((label) => (
                 <button
                   key={label}
                   onClick={() => setNotice(`${label} selected — no rating saved.`)}
@@ -284,8 +286,8 @@ export function DesignPage() {
                 setRevealed(false);
               }}
             >
-              <option value="recognition">DE → EN</option>
-              <option value="production">EN → DE</option>
+              <option value="recognition">{DIRECTION_LABELS.recognition}</option>
+              <option value="production">{DIRECTION_LABELS.production}</option>
             </select>
             <button onClick={() => setRevealed(false)}>Reset card</button>
           </div>
@@ -392,13 +394,17 @@ export function DesignPage() {
             title="Progress"
             usage="Review and practice flashcards pair a bar with visible counts. Practice coverage is not mastery."
           >
-            <div className="review-progress">
-              <div className="review-progress-counts">
-                <span>3 of 5 words</span>
-                <span>2 remaining</span>
-              </div>
-              <progress value={3} max={5} aria-label="Sample card progress" />
-            </div>
+            <ProgressBar
+              counts={
+                <>
+                  <span>3 of 5 words</span>
+                  <span>2 remaining</span>
+                </>
+              }
+              label="Sample card progress"
+              value={3}
+              max={5}
+            />
           </Example>
           <Example
             title="Badges & target words"

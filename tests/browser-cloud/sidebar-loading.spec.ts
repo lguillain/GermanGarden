@@ -1,13 +1,8 @@
 import { test, expect } from '@playwright/test';
+import { signIn } from '../helpers/cloud-page';
 
 test('signed-in navigation and sign-out work while session bootstrap is stalled', async ({ page }) => {
-  await page.addInitScript(() => {
-    localStorage.setItem('sb-auth-test-auth-token', JSON.stringify({
-      access_token: 'test-token', refresh_token: 'test-refresh', token_type: 'bearer',
-      expires_at: Math.floor(Date.now() / 1000) + 3600,
-      user: { id: 'test-user', email: 'test@vocab-garden.test', user_metadata: { name: 'Test' } },
-    }));
-  });
+  await signIn(page, { email: 'test@vocab-garden.test', user_metadata: { name: 'Test' } });
   let requested = false;
   const pageRequests: string[] = [];
   await page.route('https://auth-test.supabase.co/**', async route => {

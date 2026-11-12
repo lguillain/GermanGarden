@@ -14,6 +14,15 @@ interface RelatedWords {
   objects?: (Word & { object_phrase: string })[];
 }
 
+// Pages open the dialog from a card or row; cards carry the catalogue ID as word_id.
+export function useRelatedWords() {
+  const [word, setWord] = useState<Word | null>(null);
+  return {
+    show: (target: Word) => setWord({ ...target, id: target.word_id || target.id }),
+    dialog: <RelatedWordsDialog word={word} onClose={() => setWord(null)} />,
+  };
+}
+
 // Experimental: browse connected words one word at a time, without changing progress.
 export function RelatedWordsDialog({ word, onClose }: { word: Word | null; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
