@@ -73,7 +73,7 @@ Python's standard library to verify SQLite exports.
 - `tests/cloud/`, `tests/browser-cloud/`: domain, database, and browser tests.
 - `tests/test_*.py`: isolated dataset tests.
 
-Product behavior is documented in `vocab-garden-ux.md`; repository conventions are in `AGENTS.md`.
+Product behavior is documented in [App behavior and UX](vocab-garden-ux.md), including every page, loading/error states, navigation, and a code/test map. [How German Garden works](vocab-garden-how-it-works.md) explains discovery, vocabulary and article schedules, growth, practice, and what is saved. Repository conventions are in `AGENTS.md`.
 
 ### Frontend structure
 
@@ -254,6 +254,17 @@ the `review` query duration, so these two values should not be added together.
 Deploy backend performance changes with
 `supabase functions deploy garden`; publishing GitHub Pages alone does not update
 the backend. Apply pending database migrations first with `supabase db push`.
+
+Garden API requests explicitly use `x-region: eu-west-1` so the Edge Function runs
+in Ireland alongside the hosted database. Without this, Supabase selects a region
+near the browser, adding intercontinental latency to each authentication/read/write
+when the learner is far from Ireland. The function's CORS allowlist includes
+`x-region`; deploy the function before publishing this frontend change. Local
+Supabase still executes locally. GitHub Pages assets remain globally distributed.
+If the database moves, update the region in `frontend/src/api.ts` too. Explicit
+region routing disables automatic regional failover; during a regional outage,
+change or remove the header and republish. Verify `x-sb-edge-region` in the API
+response headers and compare `Server-Timing` after deployment.
 
 ### Publish the frontend
 

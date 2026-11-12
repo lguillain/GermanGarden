@@ -13,6 +13,7 @@ for (const outcome of ['added', 'duplicate', 'full'] as const) {
     let saved = false;
     const readsAfterSave: string[] = [];
     await page.route('https://auth-test.supabase.co/**', async route => {
+      expect(route.request().headers()['x-region']).toBe('eu-west-1');
       const path = new URL(route.request().url()).pathname;
       if (path.endsWith('/keep')) {
         await pending;

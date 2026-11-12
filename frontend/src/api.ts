@@ -16,6 +16,8 @@ export async function api<T>(path: string, body?: unknown, method?: string): Pro
   if (error || !data.session) throw new ApiError(401, 'Please sign in.');
   headers.Authorization = `Bearer ${data.session.access_token}`;
   headers.apikey = publishableKey;
+  // Keep database-heavy requests beside the hosted database, not near the browser.
+  headers['x-region'] = 'eu-west-1';
   let response: Response;
   try {
     response = await fetch(`${cloudApiUrl}${path}`, {
