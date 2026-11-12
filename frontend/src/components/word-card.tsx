@@ -36,11 +36,9 @@ interface WordCardProps {
   direction?: 'recognition' | 'production';
   showDirection?: boolean;
   context?: 'practice' | 'review' | 'discovery';
-  revealControls?: ReactNode;
+  revealEnabled?: boolean;
   articlePrompt?: boolean;
   articleAnswered?: boolean;
-  promptControls?: ReactNode;
-  answerControls?: ReactNode;
   hintsEnabled?: boolean;
   footerControls?: ReactNode;
 }
@@ -61,11 +59,9 @@ function WordCardContent({
   direction,
   showDirection = true,
   context,
-  revealControls,
+  revealEnabled = true,
   articlePrompt = false,
   articleAnswered = false,
-  promptControls,
-  answerControls,
   hintsEnabled = true,
   footerControls,
 }: WordCardProps) {
@@ -108,7 +104,6 @@ function WordCardContent({
               </>
             )}
           </h2>
-          {promptControls && <div className="word-card-prompt-controls">{promptControls}</div>}
           {production
             ? word.en && (
                 <p className="sentence" lang="en">
@@ -132,7 +127,6 @@ function WordCardContent({
           <h2>
             <WordTitle word={word} />
           </h2>
-          {answerControls && <div className="word-card-prompt-controls">{answerControls}</div>}
           <div className="word-card-detail">
             {word.plural && (
               <p className="word-detail muted" lang="de">
@@ -157,7 +151,7 @@ function WordCardContent({
             className={`actions${revealed ? ' concealed' : ''}`}
             aria-hidden={revealed || undefined}
           >
-            {revealControls ?? (
+            {revealEnabled && (
               <button className="button" onClick={onReveal}>
                 {production ? 'Show answer' : 'Show translation'}
               </button>

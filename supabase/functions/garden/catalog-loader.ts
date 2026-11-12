@@ -2,7 +2,7 @@ import { Catalog, requireThat } from './model.ts';
 import { catalogCache } from './catalog-cache.ts';
 import { relatedWordsPath, topicDetailPath } from './routes.ts';
 
-export interface CatalogRequest {
+interface CatalogRequest {
   p_topic: string | null;
   p_include_sentences: boolean;
   p_activities_only: boolean;

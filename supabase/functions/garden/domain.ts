@@ -58,25 +58,6 @@ function catalogIndex(catalog: Catalog) {
   return index;
 }
 
-export const grammarOptions: Record<string, Record<string, string[]>> = {
-  noun: { case: ['Nominativ', 'Akkusativ', 'Dativ', 'Genitiv'], number: ['Singular', 'Plural'] },
-  verb: {
-    tense: [
-      'Präsens',
-      'Perfekt',
-      'Präteritum',
-      'Plusquamperfekt',
-      'Futur I',
-      'Konjunktiv II',
-      'Imperativ',
-    ],
-    person: ['ich', 'du', 'er/sie/es', 'wir', 'ihr', 'sie/Sie'],
-  },
-  adj: {
-    degree: ['Positiv', 'Komparativ', 'Superlativ'],
-    declension: ['stark (no article)', 'schwach (der/die/das)', 'gemischt (ein/kein/mein)'],
-  },
-};
 // Keep these limits visible beside the rules that enforce them.
 const SEED_BAG_CAPACITY = 20;
 const LEVELS = ['A1', 'A2', 'B1'];
@@ -831,7 +812,6 @@ export class Garden {
   practice(scope: string, topic: string) {
     return {
       words: this.scope(scope, topic).map((word) => this.details(word)),
-      grammar_options: grammarOptions,
       counts: this.counts(topic),
     };
   }

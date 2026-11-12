@@ -37,7 +37,7 @@ const complete = createCompletion(
   Deno.env.get('ANTHROPIC_MODEL') || undefined,
 );
 
-export async function handler(request: Request): Promise<Response> {
+async function handler(request: Request): Promise<Response> {
   const timings: string[] = [];
   const measure: Measure = async (name, operation) => {
     const started = performance.now();
@@ -113,8 +113,7 @@ export async function handler(request: Request): Promise<Response> {
     if (path === '/activities' && request.method === 'GET')
       return respond(await measure('activities', activities));
     if (
-      ((path === '/review' || path === '/practice/summary' || path === '/grammar/options') &&
-        request.method === 'GET') ||
+      ((path === '/review' || path === '/practice/summary') && request.method === 'GET') ||
       topicKeepRequest(path, request.method)
     )
       return respond(await measure('dispatch', () => run(emptyCatalog)));

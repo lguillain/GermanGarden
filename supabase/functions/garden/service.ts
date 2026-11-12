@@ -2,7 +2,7 @@ import { wordContext, type ContextStorage } from './word-context.ts';
 import { topicKeepRequest, topicKeepResponse, type TopicKeepResult } from './topic-keep.ts';
 import { matcherPreview } from './matcher-preview.ts';
 import { relatedWordIds } from './related-words.ts';
-import { Garden, grammarOptions, reviewSelectionResponse } from './domain.ts';
+import { Garden, reviewSelectionResponse } from './domain.ts';
 import { Body, Complete, text, aiPractice, guidance } from './ai.ts';
 import { relatedWordsPath, topicDetailPath } from './routes.ts';
 import {
@@ -41,7 +41,7 @@ export interface Store {
 export type Snapshot = Awaited<ReturnType<Store['load']>>;
 const MAX_WRITE_ATTEMPTS = 5;
 // Recompute mutations against the newest state on conflicts; never retry an AI call.
-export async function transact<T>(
+async function transact<T>(
   store: Store,
   catalog: Catalog,
   operation: (garden: Garden) => T,
@@ -113,7 +113,6 @@ export async function dispatch(
   const keep = topicKeepRequest(path, method);
   if (keep && store.keepTopicWord)
     return topicKeepResponse(await store.keepTopicWord(keep.wordId, keep.topic));
-  if (path === '/grammar/options' && method === 'GET') return grammarOptions;
   const snapshot = initial ?? (await store.load());
   const garden = new Garden(catalog, snapshot.data);
   // Every write starts from this request's snapshot and retries against newer state.
@@ -188,7 +187,7 @@ export async function dispatch(
     if (path === '/level-up')
       return mutate((currentGarden) => currentGarden.levelUp(text(body, 'current_level')));
 
-    if (['/reading', '/chat', '/grammar'].includes(path)) {
+    if (['/reading', '/chat'].includes(path)) {
       requireThat(complete, 'AI practice is not configured.', 503);
       return aiPractice(path, body, garden, complete);
     }

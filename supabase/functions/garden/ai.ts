@@ -1,13 +1,6 @@
-import { Garden, grammarOptions } from './domain.ts';
+import { Garden } from './domain.ts';
 import { requireThat, HttpError } from './model.ts';
-import {
-  READ_SYSTEM,
-  CHAT_SYSTEM,
-  GRAMMAR_GEN_SYSTEM,
-  GRAMMAR_CHECK_SYSTEM,
-  LEVEL_GUIDANCE,
-  GUIDE_SYSTEM,
-} from './prompts.ts';
+import { READ_SYSTEM, CHAT_SYSTEM, LEVEL_GUIDANCE, GUIDE_SYSTEM } from './prompts.ts';
 export type Body = Record<string, unknown>;
 export type Message = { role: 'user' | 'assistant'; content: string; corrections?: unknown[] };
 export type Complete = (
@@ -139,35 +132,6 @@ export async function aiPractice(path: string, body: Body, garden: Garden, compl
       })
       .map((w) => w.lemma);
     return { targets, history: updated, used };
-  }
-  if (path === '/grammar') {
-    const word = garden.word(text(body, 'word_id'));
-    requireThat(garden.kept(word.id) || garden.learned(word.id), 'Practice word not found.', 404);
-    const supplied = body.config ?? {};
-    requireThat(
-      supplied && typeof supplied === 'object' && !Array.isArray(supplied),
-      'Invalid grammar options.',
-    );
-    const config: Record<string, string> = {};
-    for (const [key, options] of Object.entries(grammarOptions[word.pos] || {})) {
-      const value = (supplied as Body)[key] ?? options[0];
-      requireThat(
-        typeof value === 'string' && options.includes(value),
-        'Choose a valid grammar option.',
-      );
-      config[key] = value;
-    }
-    const action = text(body, 'action', 'generate');
-    requireThat(['generate', 'correct'].includes(action), 'Invalid grammar action.');
-    const sentence = text(body, 'sentence').trim();
-    if (action === 'correct') requireThat(sentence, 'Write a sentence first.');
-    const result = await complete(
-      format(action === 'correct' ? GRAMMAR_CHECK_SYSTEM : GRAMMAR_GEN_SYSTEM, values),
-      `Target: ${JSON.stringify(word)}\nConfiguration: ${JSON.stringify(config)}\nLearner sentence: ${sentence}`,
-    );
-    return action === 'correct'
-      ? { ...result, corrections: corrections(result, sentence) }
-      : result;
   }
   throw new HttpError(404, 'Unknown AI activity.');
 }

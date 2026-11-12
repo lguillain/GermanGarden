@@ -7,7 +7,6 @@ import { Catalog, freshLearner } from '../../supabase/functions/garden/model.ts'
 import { growth, initialSrs, reviewOutcome, scheduledOutcome } from '../../supabase/functions/garden/scheduler.ts';
 import { dispatch, Store } from '../../supabase/functions/garden/service.ts';
 import { aiPractice } from '../../supabase/functions/garden/ai.ts';
-import { createCompletion } from '../../supabase/functions/garden/anthropic.ts';
 
 export const catalog: Catalog = {
   words: Array.from({ length: 24 }, (_, i) => ({ id: `word-${i}`, lemma: `Wort${i}`, article: 'das', pos: 'noun', english: `word ${i}`, level: 'A2' })),
@@ -17,22 +16,6 @@ export const catalog: Catalog = {
 };
 function fixture() { const state = freshLearner('Test'); state.user.level = 'A2'; return new Garden(catalog, state, Date.parse('2026-10-19T12:00:00Z')); }
 
-test('Forms generation supplies a valid JSON example that the provider parser accepts', async (t) => {
-  const g = fixture();
-  g.add('word-0', 'home');
-  const before = structuredClone(g.state);
-  let example: Record<string, string> | undefined;
-  t.mock.method(globalThis, 'fetch', async (_url: unknown, init: RequestInit) => {
-    const request = JSON.parse(init.body as string);
-    const raw = request.system.slice(request.system.lastIndexOf('\n') + 1);
-    example = JSON.parse(raw);
-    return Response.json({ content: [{ type: 'text', text: raw }] });
-  });
-  const result = await aiPractice('/grammar', { word_id: 'word-0', action: 'generate' }, g, createCompletion('test-key')!);
-  assert.deepEqual(Object.keys(result), ['case_trigger', 'expected_form', 'de', 'en', 'focus']);
-  assert.deepEqual(result, example);
-  assert.deepEqual(g.state, before);
-});
 function memoryStore(garden = fixture()): Store & { state: typeof garden.state } {
   let version = 0;
   return { state: structuredClone(garden.state), async load() { return { version, data: structuredClone(this.state) }; }, async save(expected, data) { if (version !== expected) return false; this.state = structuredClone(data); version++; return true; } };
@@ -149,7 +132,6 @@ test('practice AI preserves state and rejects out-of-scope words', async () => {
   const result = await aiPractice('/reading', { scope: 'bag' }, g, async () => ({ setting: 'Test', de: 'Hallo.', en: 'Hello.' }));
   assert.ok('targets' in result); assert.deepEqual(g.state, before);
   await assert.rejects(aiPractice('/chat', { scope: 'bag', target_ids: ['word-22'] }, g, async () => ({})), /current practice set/);
-  await assert.rejects(aiPractice('/grammar', { word_id: 'word-0', config: { case: 'wrong' } }, g, async () => ({})), /valid grammar option/);
   const chat = await aiPractice('/chat', { scope: 'bag', target_ids: ['word-0'], message: 'Hallo', history: [] }, g,
     async () => ({ reply: 'Guten Tag!', corrections: [{ original: 'unrelated', corrected: 'other' }] }));
   assert.ok('history' in chat && Array.isArray(chat.history)); assert.deepEqual(chat.history[0].corrections, []);
@@ -282,27 +264,6 @@ test('today uses local calendar dates across DST and UTC date boundaries', () =>
     g.state.srs['word-0'].due_at = tomorrow;
     assert.equal(g.home(zone).summary.due_today, 0);
   }
-});
-
-test('Forms options bypass progress reads and exercises preserve schedules for seeds, plants and Learned words', async () => {
-  const g = fixture();
-  const store = memoryStore(g);
-  store.load = async () => { throw new Error('Options must not load progress'); };
-  const options = await dispatch('/grammar/options', 'GET', new URLSearchParams(), {}, store, catalog);
-  assert.ok('noun' in options);
-  g.add('word-0', 'home');
-  g.add('word-1', 'home');
-  g.grade('word-1', 3, 'bag');
-  g.state.known.push('word-2');
-  const before = structuredClone(g.state);
-  for (const id of ['word-0', 'word-1', 'word-2']) {
-    for (const action of ['generate', 'correct']) {
-      await aiPractice('/grammar', { word_id: id, config: { case: 'Dativ' }, action, sentence: 'Ein Wort.' }, g,
-        async () => ({ expected_form: 'dem Wort', de: 'Mit dem Wort.', corrections: [] }));
-    }
-  }
-  assert.deepEqual(g.state, before);
-  await assert.rejects(aiPractice('/grammar', { word_id: 'word-3' }, g, async () => ({})), /Practice word not found/);
 });
 
 test('words found today counts first keeps in local time, including planted and Learned words', () => {

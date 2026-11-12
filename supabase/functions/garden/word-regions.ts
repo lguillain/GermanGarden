@@ -2,7 +2,7 @@
 // https://www.goethe.de/pro/relaunch/prf/sl/Goethe-Zertifikat_B1_Wortliste.pdf
 // IDs identify the taught sense. These labels describe usage, not exclusivity.
 // Leave unverified and ambiguous senses unlabelled (e.g. Pension and Sessel).
-export type WordRegion = 'DE' | 'AT' | 'CH';
+type WordRegion = 'DE' | 'AT' | 'CH';
 export const WORD_REGIONS: Readonly<Record<string, readonly WordRegion[]>> = {
   noun_brotchen: ['DE'],
   noun_brotli: ['CH'],

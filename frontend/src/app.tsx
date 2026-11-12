@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Link, Route, Routes } from 'react-router-dom';
 import { AppShell } from './app-shell';
 import { Empty, Loading } from './components/feedback';
 import { CloudLogin } from './pages/cloud-login-page';
@@ -55,7 +55,6 @@ export function App() {
         <Route path="practice/flashcards" element={<FlashcardsPage />} />
         <Route path="practice/chat" element={<AiRoute mode="chat" />} />
         <Route path="practice/read" element={<AiRoute mode="read" />} />
-        <Route path="practice/grammar" element={<GrammarRedirect />} />
         <Route
           path="*"
           element={
@@ -67,11 +66,6 @@ export function App() {
       </Route>
     </Routes>
   );
-}
-
-function GrammarRedirect() {
-  const { search } = useLocation();
-  return <Navigate to={`/practice/flashcards${search}`} replace />;
 }
 
 function MissingConfiguration() {

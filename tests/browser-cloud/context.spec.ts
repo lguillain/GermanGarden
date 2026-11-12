@@ -80,7 +80,7 @@ for (const mode of ['practice', 'recognition', 'production']) {
     await expect(dialog).toContainText('Baum means tree');
   });
 }
-test('saved Context remains readable without AI and old grammar links preserve scope', async ({ page }) => {
+test('saved Context remains readable without AI', async ({ page }) => {
   await page.route('https://auth-test.supabase.co/**', async route => {
     const path = new URL(route.request().url()).pathname.replace('/functions/v1/garden', '');
     if (path === '/session') return route.fulfill({ json: { user: { name: 'Test', level: 'A2' }, ai_available: false } });
@@ -92,8 +92,7 @@ test('saved Context remains readable without AI and old grammar links preserve s
     }
     throw new Error(`Unexpected request: ${path}`);
   });
-  await page.goto('/#/practice/grammar?scope=bag&topic=home');
-  await expect(page).toHaveURL(/practice\/flashcards\?scope=bag&topic=home/);
+  await page.goto('/#/practice/flashcards?scope=bag&topic=home');
   await page.getByRole('button', { name: 'Context', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText('Saved explanation.');
   await expect(page.getByRole('button', { name: 'Send', exact: true })).toBeDisabled();

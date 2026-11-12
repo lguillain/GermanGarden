@@ -19,7 +19,7 @@ const ENDINGS = new Set([
 const LINKS = ['', 's', 'n', 'en', 'es', 'e', 'er'];
 const STEM_POS = new Set(['noun', 'verb', 'other']);
 
-export interface RelatedWordIds {
+interface RelatedWordIds {
   family: string[];
   together: string[];
 }
@@ -71,7 +71,7 @@ interface Stem {
   restored: boolean;
 }
 
-export function wordStems(word: Word): Stem[] {
+function wordStems(word: Word): Stem[] {
   if (!STEM_POS.has(word.pos)) return [];
   const stems = new Map<string, Stem>();
   for (const form of lemmaForms(word.lemma)) {
@@ -88,7 +88,7 @@ export function wordStems(word: Word): Stem[] {
 // A compound part is a vocabulary word, or a word part that at least two
 // vocabulary words share ("-tag" in "Feiertag" and "Montag"), since many
 // everyday compound parts are not in the learner vocabulary themselves.
-export interface CompoundParts {
+interface CompoundParts {
   isHead(part: string): boolean;
   isModifier(part: string): boolean;
 }
@@ -141,26 +141,28 @@ export function stemInForm(
 }
 
 function index(catalog: Catalog): Index {
-  let result = indexes.get(catalog);
-  if (result) return result;
-  result = {
-    words: new Map(catalog.words.map((word) => [word.id, word])),
-    parts: compoundParts([]),
-    forms: new Map(),
-    stems: new Map(),
-  };
+  const cached = indexes.get(catalog);
+  if (cached) return cached;
+  const forms = new Map<string, string[]>();
+  const stems = new Map<string, Stem[]>();
   for (const word of catalog.words) {
-    result.forms.set(word.id, lemmaForms(word.lemma));
-    result.stems.set(word.id, wordStems(word));
+    forms.set(word.id, lemmaForms(word.lemma));
+    stems.set(word.id, wordStems(word));
   }
   // Verbs appear in compounds as their stem: "Fahr|karte", "Wasch|maschine".
-  result.parts = compoundParts(
+  const parts = compoundParts(
     catalog.words.flatMap((word) =>
-      result!.forms
+      forms
         .get(word.id)!
         .flatMap((form) => (word.pos === 'verb' ? [form, form.replace(/e?n$/, '')] : [form])),
     ),
   );
+  const result: Index = {
+    words: new Map(catalog.words.map((word) => [word.id, word])),
+    parts,
+    forms,
+    stems,
+  };
   indexes.set(catalog, result);
   return result;
 }

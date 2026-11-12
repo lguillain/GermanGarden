@@ -32,7 +32,7 @@ export type ReviewTrack = (typeof REVIEW_TRACKS)[number];
 export type ReviewMode = ReviewTrack | 'mixed';
 export const REVIEW_MODES: readonly ReviewMode[] = ['mixed', ...REVIEW_TRACKS];
 // "all" means planted words across topics. Seeds always have their own set.
-export const WORD_SETS = ['all', 'topic', 'bag'] as const;
+const WORD_SETS = ['all', 'topic', 'bag'] as const;
 export const ARTICLES = ['der', 'die', 'das'] as const;
 export const VISUAL_STAGES = ['unseen', 'skipped', 'seeds', 'planted', 'due', 'grown'] as const;
 export type VisualStage = (typeof VISUAL_STAGES)[number];

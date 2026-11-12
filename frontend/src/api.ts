@@ -138,13 +138,3 @@ export interface Chat {
   history: Message[];
   used: string[];
 }
-export interface Grammar {
-  expected_form?: string;
-  de?: string;
-  en?: string;
-  focus?: string;
-  meets_config?: boolean;
-  corrections?: Correction[];
-  grammar_focus?: string;
-}
-export type GrammarOptions = Record<string, Record<string, string[]>>;

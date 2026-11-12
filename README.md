@@ -437,7 +437,7 @@ Dataset schema initialization drops old SQLite `sessions` tables. Exports no lon
 
 ### Word context
 
-Context replaces Forms on practice flashcards and revealed review cards. Opening
+Context explains word meaning and usage on practice flashcards and revealed review cards. Opening
 it generates a short English meaning/usage explanation with no example sentences,
 using the current topic (or card sentence topic) and learner CEFR level. Introductions
 are shared by word/topic/level; follow-up chats belong to the authenticated account

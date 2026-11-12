@@ -258,7 +258,7 @@ function ReviewSession({ storageKey, mode }: { storageKey: string; mode: string 
               hintsEnabled={!checkArticle || !!session.pending}
               articlePrompt={checkArticle && !session.pending}
               articleAnswered={!!session.pending}
-              revealControls={checkArticle && !session.pending ? false : undefined}
+              revealEnabled={!checkArticle || !!session.pending}
             />
             {articleChoices && <div className="article-answer-controls">{articleChoices}</div>}
             {revealed && (

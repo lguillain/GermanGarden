@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
-export interface SegmentedLink {
+interface SegmentedLink {
   key: string;
   to: string;
   active: boolean;

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api';
 
-export interface PracticeSummary {
+interface PracticeSummary {
   word_count: number;
   counts: { plants: number; seeds: number };
 }
