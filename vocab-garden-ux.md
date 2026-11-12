@@ -253,3 +253,5 @@ Topic word lists apply the level visibility rules described below.
 - Overview cards appear in this order: A little tending, Finishing touches, Fresh finds. Article reviews occupy the middle; discovery and the seed bag sit on the right. Preserve this order when stacked on phones.
 
 - Review Plants / Seeds badges count unique words due for recognition or production, excluding article-only reviews; these totals remain stable between vocabulary directions. Articles badges count only due article checks. Counts retain topic scope and are consistent before and after ratings.
+
+- A little tending, its Review action, more due today, and Upcoming count only recognition and production schedules. Article-only due words belong to Finishing touches and do not hide future vocabulary dates from Upcoming.

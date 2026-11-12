@@ -32,8 +32,8 @@ test('article migration, independent grading, production reinforcement and accou
     }
     const current = (await store().load()).data;
     const garden = new Garden(catalog, current);
-    assert.equal(garden.home().summary.due_now, 1);
-    assert.equal(garden.home().summary.due_today, 1);
+    assert.equal(garden.home().summary.due_now, 0);
+    assert.equal(garden.home().summary.due_today, 0);
     await call('/review/article', {...payload, mode:'article', choice:'der', expected_article_reviewed_at:current.srs.tree.article!.last_review_at});
     const final = (await store().load()).data;
     assert.equal(final.srs.tree.article?.last_grade, 3);
@@ -109,8 +109,13 @@ test('scope totals exclude article-only words in Review and vocabulary-only word
       }
     };
     await check(1,1); // Both vocabulary directions due still count once.
-    await db.query("update learner_srs set due_at='2099-01-01', production.due_at='2099-01-01' where user_id=$1",[account]);
+    await db.query("update learner_srs set due_at='2099-01-01T00:00:00Z', production.due_at='2099-01-01T00:00:00Z' where user_id=$1",[account]);
     await check(0,1);
+    const summary = new Garden(catalog, (await store().load()).data).home('UTC').summary;
+    assert.equal(summary.due_now, 0);
+    assert.equal(summary.due_today, 0);
+    assert.equal(summary.articles_due, 1);
+    assert.deepEqual(summary.upcoming_reviews, [{date:'2099-01-01', count:1}]);
     await db.query("update learner_srs set due_at='2000-01-01', article.due_at='2099-01-01' where user_id=$1",[account]);
     await check(1,0);
   } finally { await db.close(); }

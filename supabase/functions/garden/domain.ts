@@ -649,9 +649,10 @@ export class Garden {
     const today = calendar.format(this.now);
     return this.scope().filter((word) => {
       if (this.learned(word.id)) return false;
-      if (this.due(word.id)) return true;
+      if (this.trackDue(word.id, 'recognition') || this.trackDue(word.id, 'production'))
+        return true;
       const schedule = this.state.srs[word.id];
-      return trackSchedules(schedule).some((track) => {
+      return [schedule, schedule?.production].some((track) => {
         const dueAt = dueTime(track);
         return Number.isFinite(dueAt) && calendar.format(dueAt) === today;
       });
@@ -661,9 +662,14 @@ export class Garden {
     const calendar = localCalendar(timeZone);
     const counts = new Map<string, number>();
     for (const word of this.scope()) {
-      if (this.learned(word.id) || this.due(word.id)) continue;
+      if (
+        this.learned(word.id) ||
+        this.trackDue(word.id, 'recognition') ||
+        this.trackDue(word.id, 'production')
+      )
+        continue;
       const schedule = this.state.srs[word.id];
-      const dates = trackSchedules(schedule).map(dueTime).filter(Number.isFinite);
+      const dates = [schedule, schedule?.production].map(dueTime).filter(Number.isFinite);
       if (!dates.length) continue;
       const parts = calendar.formatToParts(Math.min(...dates));
       const part = (type: string) => parts.find((item) => item.type === type)!.value;
@@ -753,7 +759,7 @@ export class Garden {
         articles_due: this.reviewWords('all', '', [], 'article').length,
         bag_count: seedBag.length,
         bag_cap: SEED_BAG_CAPACITY,
-        due_now: this.reviewWords().length,
+        due_now: this.counts('', true, 'production').plants,
         due_today: this.reviewsDueToday(timeZone),
         found_today: this.wordsFoundToday(timeZone),
         upcoming_reviews: this.upcomingReviews(timeZone),
