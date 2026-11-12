@@ -251,3 +251,5 @@ Topic word lists apply the level visibility rules described below.
 - Overview card titles use the same warm tone: A little tending, Fresh finds, and Finishing touches. Specific learning tasks belong in the count and action text.
 
 - Overview cards appear in this order: A little tending, Finishing touches, Fresh finds. Article reviews occupy the middle; discovery and the seed bag sit on the right. Preserve this order when stacked on phones.
+
+- Review Plants / Seeds badges count unique words due for recognition or production, excluding article-only reviews; these totals remain stable between vocabulary directions. Articles badges count only due article checks. Counts retain topic scope and are consistent before and after ratings.

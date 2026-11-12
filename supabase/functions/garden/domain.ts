@@ -276,12 +276,19 @@ export class Garden {
     );
   }
 
-  counts(topic = '', review = false) {
+  counts(topic = '', review = false, mode: ReviewTrack | 'mixed' = 'mixed') {
     const countWords = (scope: string, selectedTopic = '') => {
       const words = review
         ? this.reviewWords(scope, selectedTopic)
         : this.scope(scope, selectedTopic);
-      return words.length;
+      return words.filter(
+        (word) =>
+          !review ||
+          mode === 'mixed' ||
+          (mode === 'article'
+            ? this.trackDue(word.id, 'article')
+            : this.trackDue(word.id, 'recognition') || this.trackDue(word.id, 'production')),
+      ).length;
     };
     return {
       plants: countWords(topic ? 'topic' : 'all', topic),
@@ -314,7 +321,7 @@ export class Garden {
     return {
       card,
       remaining: words.length,
-      counts: this.counts(topic, true),
+      counts: this.counts(topic, true, mode),
       ...(mode !== 'mixed'
         ? {
             mode_counts: Object.fromEntries(

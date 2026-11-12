@@ -93,3 +93,25 @@ test('Good and Easy production reinforce articles as Good even before they are d
     }
   } finally { await db.close(); }
 });
+
+test('scope totals exclude article-only words in Review and vocabulary-only words in Articles', async () => {
+  const {db, catalog, store} = await tracksDatabase();
+  try {
+    const check = async (vocabulary: number, articles: number) => {
+      const garden = new Garden(catalog, (await store().load()).data);
+      for (const mode of ['recognition','production','article'] as const) {
+        for (const scope of ['all','topic','bag']) {
+          const topic = scope === 'topic' ? 'home' : '';
+          const selection = await dispatch('/review','GET',new URLSearchParams({mode,scope,topic}),{},store(),catalog) as {counts:{plants:number;seeds:number}};
+          assert.deepEqual(selection.counts, {plants:mode === 'article' ? articles : vocabulary,seeds:0});
+          assert.deepEqual(selection.counts, garden.review(scope,topic,[],mode).counts);
+        }
+      }
+    };
+    await check(1,1); // Both vocabulary directions due still count once.
+    await db.query("update learner_srs set due_at='2099-01-01', production.due_at='2099-01-01' where user_id=$1",[account]);
+    await check(0,1);
+    await db.query("update learner_srs set due_at='2000-01-01', article.due_at='2099-01-01' where user_id=$1",[account]);
+    await check(1,0);
+  } finally { await db.close(); }
+});
